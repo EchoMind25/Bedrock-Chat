@@ -61,7 +61,13 @@ export function MessageInput({ channelId, channelName }: MessageInputProps) {
 	};
 
 	const handleFileUpload = () => {
-		alert('File upload coming soon!');
+		const input = document.createElement('input');
+		input.type = 'file';
+		input.accept = 'image/*,video/*,.pdf,.doc,.docx,.txt';
+		input.onchange = () => {
+			// File selected - upload functionality will be connected later
+		};
+		input.click();
 	};
 
 	const remainingChars = MAX_LENGTH - content.length;

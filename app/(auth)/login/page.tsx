@@ -39,8 +39,8 @@ export default function LoginPage() {
 				<Glass variant="strong" border="medium" className="w-full max-w-[420px] p-8">
 					{/* Logo */}
 					<div className="text-center mb-8">
-						<h1 className="text-2xl font-bold text-white">Welcome Back</h1>
-						<p className="text-white/60 mt-2">
+						<h1 className="text-2xl font-bold text-blue-400">Welcome Back</h1>
+						<p className="text-blue-300/60 mt-2">
 							Sign in to continue to Bedrock Chat
 						</p>
 					</div>
@@ -88,7 +88,7 @@ export default function LoginPage() {
 							<button
 								type="button"
 								onClick={() => setShowPassword(!showPassword)}
-								className="text-sm text-primary hover:text-primary-hover mt-1"
+								className="text-sm text-blue-400 hover:text-blue-300 mt-1"
 							>
 								{showPassword ? "Hide" : "Show"} password
 							</button>
@@ -99,10 +99,11 @@ export default function LoginPage() {
 								checked={rememberMe}
 								onChange={(e) => setRememberMe(e.target.checked)}
 								label="Remember me"
+								className="text-blue-300/80"
 							/>
 							<button
 								type="button"
-								className="text-sm text-primary hover:text-primary-hover"
+								className="text-sm text-blue-400 hover:text-blue-300"
 							>
 								Forgot password?
 							</button>
@@ -120,11 +121,11 @@ export default function LoginPage() {
 					</form>
 
 					{/* Signup Link */}
-					<p className="text-center mt-6 text-white/60">
+					<p className="text-center mt-6 text-blue-300/60">
 						Don't have an account?{" "}
 						<Link
 							href="/signup"
-							className="text-primary hover:text-primary-hover"
+							className="text-blue-400 hover:text-blue-300"
 						>
 							Create one free
 						</Link>

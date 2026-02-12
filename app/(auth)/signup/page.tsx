@@ -51,7 +51,6 @@ export default function SignupPage() {
 			return;
 		}
 
-		// Call Supabase signUp — sends a confirmation email with a magic link
 		const success = await signUpWithEmail(formData as SignupData);
 		if (success) {
 			setEmailSent(true);
@@ -68,7 +67,6 @@ export default function SignupPage() {
 			setEmailSent(true);
 		}
 
-		// 60-second cooldown
 		setResendCooldown(60);
 		const interval = setInterval(() => {
 			setResendCooldown((prev) => {
@@ -95,7 +93,7 @@ export default function SignupPage() {
 						<div
 							key={s}
 							className={`h-1 w-16 rounded-full transition-all ${
-								s <= step ? "bg-primary" : "bg-white/20"
+								s <= step ? "bg-blue-400" : "bg-white/20"
 							}`}
 						/>
 					))}
@@ -111,10 +109,10 @@ export default function SignupPage() {
 								animate={{ opacity: 1, x: 0 }}
 								exit={{ opacity: 0, x: -20 }}
 							>
-								<h1 className="text-2xl font-bold text-white text-center mb-2">
+								<h1 className="text-2xl font-bold text-blue-400 text-center mb-2">
 									Choose Account Type
 								</h1>
-								<p className="text-white/60 text-center mb-8">
+								<p className="text-blue-300/60 text-center mb-8">
 									Select the account type that fits your needs
 								</p>
 
@@ -122,12 +120,12 @@ export default function SignupPage() {
 									<button
 										type="button"
 										onClick={() => handleAccountTypeSelect("standard")}
-										className="w-full p-6 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-primary/50 rounded-lg transition-all text-left group"
+										className="w-full p-6 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-400/50 rounded-lg transition-all text-left group"
 									>
-										<h3 className="text-lg font-semibold text-white mb-2 group-hover:text-primary transition-colors">
+										<h3 className="text-lg font-semibold text-blue-300 mb-2 group-hover:text-blue-400 transition-colors">
 											Standard Account
 										</h3>
-										<p className="text-white/60 text-sm">
+										<p className="text-blue-200/50 text-sm">
 											Full privacy, E2E encryption, complete control over your
 											data and communications.
 										</p>
@@ -136,23 +134,23 @@ export default function SignupPage() {
 									<button
 										type="button"
 										onClick={() => handleAccountTypeSelect("parent")}
-										className="w-full p-6 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-primary/50 rounded-lg transition-all text-left group"
+										className="w-full p-6 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-400/50 rounded-lg transition-all text-left group"
 									>
-										<h3 className="text-lg font-semibold text-white mb-2 group-hover:text-primary transition-colors">
+										<h3 className="text-lg font-semibold text-blue-300 mb-2 group-hover:text-blue-400 transition-colors">
 											Family Account
 										</h3>
-										<p className="text-white/60 text-sm">
+										<p className="text-blue-200/50 text-sm">
 											Parent-managed for teens with transparent oversight and
 											monitoring controls.
 										</p>
 									</button>
 								</div>
 
-								<p className="text-center mt-6 text-white/60">
+								<p className="text-center mt-6 text-blue-300/60">
 									Already have an account?{" "}
 									<Link
 										href="/login"
-										className="text-primary hover:text-primary-hover"
+										className="text-blue-400 hover:text-blue-300"
 									>
 										Sign in
 									</Link>
@@ -171,15 +169,15 @@ export default function SignupPage() {
 								<button
 									type="button"
 									onClick={() => setStep(1)}
-									className="text-white/60 hover:text-white mb-4 flex items-center gap-2"
+									className="text-blue-300/60 hover:text-blue-300 mb-4 flex items-center gap-2"
 								>
 									← Back
 								</button>
 
-								<h1 className="text-2xl font-bold text-white mb-2">
+								<h1 className="text-2xl font-bold text-blue-400 mb-2">
 									Create Your Account
 								</h1>
-								<p className="text-white/60 mb-8">
+								<p className="text-blue-300/60 mb-8">
 									{formData.accountType === "parent"
 										? "Parent Account"
 										: "Standard Account"}
@@ -203,6 +201,7 @@ export default function SignupPage() {
 									<Input
 										type="text"
 										label="Username"
+										labelClassName="text-blue-400"
 										value={formData.username || ""}
 										onChange={(e) =>
 											setFormData({ ...formData, username: e.target.value })
@@ -216,6 +215,7 @@ export default function SignupPage() {
 									<Input
 										type="email"
 										label="Email"
+										labelClassName="text-blue-400"
 										value={formData.email || ""}
 										onChange={(e) =>
 											setFormData({ ...formData, email: e.target.value })
@@ -229,6 +229,7 @@ export default function SignupPage() {
 									<Input
 										type="password"
 										label="Password"
+										labelClassName="text-blue-400"
 										value={formData.password || ""}
 										onChange={(e) =>
 											setFormData({ ...formData, password: e.target.value })
@@ -243,6 +244,7 @@ export default function SignupPage() {
 									<Input
 										type="password"
 										label="Confirm Password"
+										labelClassName="text-blue-400"
 										value={confirmPassword}
 										onChange={(e) => setConfirmPassword(e.target.value)}
 										placeholder="••••••••"
@@ -254,6 +256,7 @@ export default function SignupPage() {
 										<Input
 											type="email"
 											label="Teen's Email (Optional)"
+											labelClassName="text-blue-400"
 											value={formData.parentEmail || ""}
 											onChange={(e) =>
 												setFormData({
@@ -298,7 +301,7 @@ export default function SignupPage() {
 										stiffness: 200,
 										damping: 15,
 									}}
-									className="w-20 h-20 mx-auto mb-6 bg-primary/20 rounded-full flex items-center justify-center"
+									className="w-20 h-20 mx-auto mb-6 bg-blue-500/20 rounded-full flex items-center justify-center"
 								>
 									<svg
 										width="40"
@@ -309,25 +312,25 @@ export default function SignupPage() {
 										strokeWidth="1.5"
 										strokeLinecap="round"
 										strokeLinejoin="round"
-										className="text-primary"
+										className="text-blue-400"
 									>
 										<rect width="20" height="16" x="2" y="4" rx="2" />
 										<path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
 									</svg>
 								</motion.div>
 
-								<h1 className="text-2xl font-bold text-white mb-2">
+								<h1 className="text-2xl font-bold text-blue-400 mb-2">
 									Check Your Email
 								</h1>
-								<p className="text-white/60 mb-2">
+								<p className="text-blue-300/60 mb-2">
 									We sent a confirmation link to
 								</p>
-								<p className="text-white font-medium mb-6">
+								<p className="text-blue-300 font-medium mb-6">
 									{formData.email}
 								</p>
 
 								<div className="bg-white/5 rounded-lg p-5 mb-6 text-left">
-									<p className="text-white/80 text-sm leading-relaxed">
+									<p className="text-blue-200/70 text-sm leading-relaxed">
 										Click the link in the email to verify your account and
 										get started. The link will redirect you back here
 										automatically.
@@ -359,15 +362,15 @@ export default function SignupPage() {
 								)}
 
 								<div className="space-y-3">
-									<p className="text-white/40 text-sm">
+									<p className="text-blue-300/40 text-sm">
 										Didn't receive the email? Check your spam folder or
 									</p>
 									<button
 										type="button"
 										className={`text-sm ${
 											resendCooldown > 0
-												? "text-white/40 cursor-not-allowed"
-												: "text-primary hover:text-primary-hover"
+												? "text-blue-300/40 cursor-not-allowed"
+												: "text-blue-400 hover:text-blue-300"
 										}`}
 										onClick={handleResendEmail}
 										disabled={resendCooldown > 0 || isLoading}
@@ -385,7 +388,7 @@ export default function SignupPage() {
 											clearError();
 											setStep(2);
 										}}
-										className="text-white/60 hover:text-white text-sm"
+										className="text-blue-300/60 hover:text-blue-300 text-sm"
 									>
 										← Use a different email
 									</button>

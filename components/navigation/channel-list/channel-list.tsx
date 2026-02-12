@@ -42,6 +42,11 @@ export function ChannelList() {
 		return (
 			<div className="w-60 h-screen bg-[oklch(0.15_0.02_250)] flex flex-col">
 				<DMList />
+				{/* Modals must always render so Add Server works from home screen */}
+				<Suspense fallback={null}>
+					<CreateServerModal />
+					<CreateChannelModal />
+				</Suspense>
 			</div>
 		);
 	}

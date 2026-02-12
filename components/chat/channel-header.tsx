@@ -1,7 +1,9 @@
 'use client';
 
-import { motion } from 'motion/react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import type { Channel } from '@/lib/types/server';
+import { useMessageStore } from '@/store/message.store';
 
 interface ChannelHeaderProps {
 	channel: Channel;
@@ -9,12 +11,27 @@ interface ChannelHeaderProps {
 }
 
 export function ChannelHeader({ channel, memberCount = 42 }: ChannelHeaderProps) {
-	const handlePinsClick = () => {
-		alert('Pinned messages coming soon!');
+	const [showSearch, setShowSearch] = useState(false);
+	const [searchQuery, setSearchQuery] = useState('');
+	const channelMessages = useMessageStore((state) => state.messages[channel.id] || []);
+	const [searchResults, setSearchResults] = useState<number>(0);
+
+	const handleSearchToggle = () => {
+		setShowSearch(!showSearch);
+		setSearchQuery('');
+		setSearchResults(0);
 	};
 
-	const handleSearchClick = () => {
-		alert('Search coming soon!');
+	const handleSearch = (query: string) => {
+		setSearchQuery(query);
+		if (query.trim()) {
+			const results = channelMessages.filter((m) =>
+				m.content.toLowerCase().includes(query.toLowerCase())
+			);
+			setSearchResults(results.length);
+		} else {
+			setSearchResults(0);
+		}
 	};
 
 	const getChannelIcon = () => {
@@ -42,63 +59,96 @@ export function ChannelHeader({ channel, memberCount = 42 }: ChannelHeaderProps)
 
 	return (
 		<div
-			className="shrink-0 h-12 flex items-center justify-between px-4 border-b"
+			className="shrink-0 border-b"
 			style={{
 				borderColor: 'oklch(0.25 0.02 285 / 0.3)',
 				backgroundColor: 'oklch(0.12 0.02 250 / 0.5)',
 				backdropFilter: 'blur(10px)',
 			}}
 		>
-			{/* Left side - Channel info */}
-			<div className="flex items-center gap-2 min-w-0">
-				{getChannelIcon()}
-				<h2 className="font-semibold text-white truncate">{channel.name}</h2>
-				{channel.description && (
-					<>
-						<div className="w-px h-4 bg-white/20" />
-						<span className="text-sm text-white/60 truncate max-w-md">
-							{channel.description}
-						</span>
-					</>
-				)}
-			</div>
-
-			{/* Right side - Actions */}
-			<div className="flex items-center gap-1">
-				{/* Member count */}
-				<div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 transition-colors cursor-default">
-					<svg className="w-4 h-4 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-					</svg>
-					<span className="text-sm text-white/60 font-medium">{memberCount}</span>
+			<div className="h-12 flex items-center justify-between px-4">
+				{/* Left side - Channel info */}
+				<div className="flex items-center gap-2 min-w-0">
+					{getChannelIcon()}
+					<h2 className="font-semibold text-white truncate">{channel.name}</h2>
+					{channel.description && (
+						<>
+							<div className="w-px h-4 bg-white/20" />
+							<span className="text-sm text-white/60 truncate max-w-md">
+								{channel.description}
+							</span>
+						</>
+					)}
 				</div>
 
-				{/* Pins button */}
-				<motion.button
-					onClick={handlePinsClick}
-					className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-					title="Pinned messages"
-					whileHover={{ scale: 1.05 }}
-					whileTap={{ scale: 0.95 }}
-				>
-					<svg className="w-5 h-5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-					</svg>
-				</motion.button>
+				{/* Right side - Actions */}
+				<div className="flex items-center gap-1">
+					{/* Member count */}
+					<div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 transition-colors cursor-default">
+						<svg className="w-4 h-4 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+						</svg>
+						<span className="text-sm text-white/60 font-medium">{memberCount}</span>
+					</div>
 
-				{/* Search button */}
-				<motion.button
-					onClick={handleSearchClick}
-					className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-					title="Search messages"
-					whileHover={{ scale: 1.05 }}
-					whileTap={{ scale: 0.95 }}
-				>
-					<svg className="w-5 h-5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-					</svg>
-				</motion.button>
+					{/* Pins button */}
+					<motion.button
+						className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+						title="Pinned messages"
+						whileHover={{ scale: 1.05 }}
+						whileTap={{ scale: 0.95 }}
+					>
+						<svg className="w-5 h-5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+						</svg>
+					</motion.button>
+
+					{/* Search button */}
+					<motion.button
+						onClick={handleSearchToggle}
+						className={`p-2 rounded-lg transition-colors ${showSearch ? 'bg-white/15 text-white' : 'hover:bg-white/10 text-white/60'}`}
+						title="Search messages"
+						whileHover={{ scale: 1.05 }}
+						whileTap={{ scale: 0.95 }}
+					>
+						<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+						</svg>
+					</motion.button>
+				</div>
 			</div>
+
+			{/* Search Bar */}
+			<AnimatePresence>
+				{showSearch && (
+					<motion.div
+						className="px-4 pb-3"
+						initial={{ height: 0, opacity: 0 }}
+						animate={{ height: 'auto', opacity: 1 }}
+						exit={{ height: 0, opacity: 0 }}
+						transition={{ duration: 0.2 }}
+					>
+						<div className="relative">
+							<svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+							</svg>
+							<input
+								type="text"
+								value={searchQuery}
+								onChange={(e) => handleSearch(e.target.value)}
+								placeholder="Search messages..."
+								className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-blue-500/50"
+								autoFocus
+							/>
+							{searchQuery && (
+								<span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-white/40">
+									{searchResults} result{searchResults !== 1 ? 's' : ''}
+								</span>
+							)}
+						</div>
+					</motion.div>
+				)}
+			</AnimatePresence>
 		</div>
 	);
 }
