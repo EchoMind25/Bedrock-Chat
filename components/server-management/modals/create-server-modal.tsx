@@ -69,53 +69,70 @@ const TEMPLATES = [
   },
 ];
 
+const CATEGORIES = [
+  { value: "general", label: "General" },
+  { value: "gaming", label: "Gaming" },
+  { value: "education", label: "Education" },
+  { value: "technology", label: "Technology" },
+  { value: "creative", label: "Creative Arts" },
+  { value: "community", label: "Community" },
+  { value: "other", label: "Other" },
+];
+
 export function CreateServerModal() {
   const { isCreateServerOpen, closeCreateServer } = useServerManagementStore();
-  const { servers } = useServerStore();
 
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedTemplate, setSelectedTemplate] = useState<ServerTemplate>("friends");
   const [serverName, setServerName] = useState("");
   const [serverIcon, setServerIcon] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Privacy settings
+  const [isPublic, setIsPublic] = useState(false);
+  const [allowDiscovery, setAllowDiscovery] = useState(false);
+  const [requireApproval, setRequireApproval] = useState(true);
+  const [category, setCategory] = useState("general");
+
   const handleClose = () => {
     closeCreateServer();
-    // Reset after animation
     setTimeout(() => {
       setStep(1);
       setSelectedTemplate("friends");
       setServerName("");
       setServerIcon(null);
       setError("");
+      setIsPublic(false);
+      setAllowDiscovery(false);
+      setRequireApproval(true);
+      setCategory("general");
     }, 300);
   };
 
   const handleNext = () => {
     if (step === 1) {
       setStep(2);
+    } else if (step === 2) {
+      if (!serverName.trim()) {
+        setError("Server name is required");
+        return;
+      }
+      if (serverName.length < 2 || serverName.length > 100) {
+        setError("Server name must be between 2 and 100 characters");
+        return;
+      }
+      setError("");
+      setStep(3);
     }
   };
 
   const handleBack = () => {
-    if (step === 2) {
-      setStep(1);
-    }
+    if (step === 2) setStep(1);
+    else if (step === 3) setStep(2);
   };
 
   const handleCreate = async () => {
-    // Validation
-    if (!serverName.trim()) {
-      setError("Server name is required");
-      return;
-    }
-
-    if (serverName.length < 2 || serverName.length > 100) {
-      setError("Server name must be between 2 and 100 characters");
-      return;
-    }
-
     const user = useAuthStore.getState().user;
     if (!user) {
       setError("You must be logged in to create a server");
@@ -136,7 +153,10 @@ export function CreateServerModal() {
           name: serverName.trim(),
           owner_id: user.id,
           icon_url: serverIcon,
-          is_public: false,
+          is_public: isPublic,
+          allow_discovery: isPublic ? true : allowDiscovery,
+          require_approval: isPublic ? false : requireApproval,
+          category,
         })
         .select()
         .single();
@@ -167,10 +187,10 @@ export function CreateServerModal() {
 
       // 4. Create channels
       const channelInserts = template.channels.map((ch, index) => {
-        const category = (categoriesData || []).find((cat) => cat.name === ch.category);
+        const cat = (categoriesData || []).find((c) => c.name === ch.category);
         return {
           server_id: serverId,
-          category_id: category?.id || null,
+          category_id: cat?.id || null,
           name: ch.name,
           type: ch.type,
           position: index,
@@ -242,7 +262,6 @@ export function CreateServerModal() {
       toast.success("Server Created", `${serverName} has been created successfully`);
       handleClose();
 
-      // Navigate to new server
       const firstChannel = channels[0];
       if (firstChannel) {
         window.location.href = `/servers/${serverId}/${firstChannel.id}`;
@@ -255,15 +274,29 @@ export function CreateServerModal() {
     }
   };
 
+  const stepTitles = {
+    1: "Choose a Template",
+    2: "Customize Your Server",
+    3: "Privacy Settings",
+  };
+
+  const privacySummary = isPublic
+    ? "This server will be publicly discoverable and anyone can join instantly."
+    : allowDiscovery
+    ? requireApproval
+      ? "This server will appear in search results, but you must approve join requests."
+      : "This server will appear in search results and users can join instantly."
+    : "This server will be completely hidden from search. Only invite links will work.";
+
   return (
     <Modal
       isOpen={isCreateServerOpen}
       onClose={handleClose}
-      title={step === 1 ? "Choose a Template" : "Customize Your Server"}
+      title={stepTitles[step]}
       size="md"
       footer={
         <div className="flex items-center justify-between w-full">
-          {step === 2 ? (
+          {step > 1 ? (
             <Button variant="ghost" onClick={handleBack}>
               Back
             </Button>
@@ -274,7 +307,7 @@ export function CreateServerModal() {
             <Button variant="ghost" onClick={handleClose}>
               Cancel
             </Button>
-            {step === 1 ? (
+            {step < 3 ? (
               <Button onClick={handleNext}>
                 Next
               </Button>
@@ -288,7 +321,7 @@ export function CreateServerModal() {
       }
     >
       <AnimatePresence mode="wait">
-        {step === 1 ? (
+        {step === 1 && (
           <motion.div
             key="step1"
             initial={{ opacity: 0, x: -20 }}
@@ -328,7 +361,9 @@ export function CreateServerModal() {
               })}
             </div>
           </motion.div>
-        ) : (
+        )}
+
+        {step === 2 && (
           <motion.div
             key="step2"
             initial={{ opacity: 0, x: 20 }}
@@ -359,6 +394,124 @@ export function CreateServerModal() {
                 <strong>{TEMPLATES.find((t) => t.id === selectedTemplate)?.name}</strong> template.
               </p>
             </div>
+          </motion.div>
+        )}
+
+        {step === 3 && (
+          <motion.div
+            key="step3"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-4"
+          >
+            <p className="text-sm text-white/60">
+              Control who can find and join your server.
+            </p>
+
+            {/* Category */}
+            <div>
+              <label className="block text-sm font-medium text-white/80 mb-2">
+                Category
+              </label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              >
+                {CATEGORIES.map((cat) => (
+                  <option key={cat.value} value={cat.value} className="bg-gray-900">
+                    {cat.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Public toggle */}
+            <div className="flex items-start gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
+              <input
+                type="checkbox"
+                id="public-server"
+                checked={isPublic}
+                onChange={(e) => {
+                  setIsPublic(e.target.checked);
+                  if (e.target.checked) {
+                    setAllowDiscovery(true);
+                    setRequireApproval(false);
+                  }
+                }}
+                className="mt-0.5 w-4 h-4 rounded border-white/30 text-blue-600 focus:ring-blue-500/50"
+              />
+              <div className="flex-1">
+                <label htmlFor="public-server" className="text-sm font-medium text-white cursor-pointer">
+                  Public Server
+                </label>
+                <p className="text-xs text-white/50 mt-1">
+                  Anyone can discover and join this server instantly
+                </p>
+              </div>
+            </div>
+
+            {/* Allow Discovery (private servers only) */}
+            {!isPublic && (
+              <div className="flex items-start gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
+                <input
+                  type="checkbox"
+                  id="allow-discovery"
+                  checked={allowDiscovery}
+                  onChange={(e) => setAllowDiscovery(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-white/30 text-blue-600 focus:ring-blue-500/50"
+                />
+                <div className="flex-1">
+                  <label htmlFor="allow-discovery" className="text-sm font-medium text-white cursor-pointer">
+                    Allow Discovery
+                  </label>
+                  <p className="text-xs text-white/50 mt-1">
+                    Let others find this server in search (they may still need approval to join)
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Require Approval (private + discoverable) */}
+            {!isPublic && allowDiscovery && (
+              <div className="flex items-start gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
+                <input
+                  type="checkbox"
+                  id="require-approval"
+                  checked={requireApproval}
+                  onChange={(e) => setRequireApproval(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-white/30 text-blue-600 focus:ring-blue-500/50"
+                />
+                <div className="flex-1">
+                  <label htmlFor="require-approval" className="text-sm font-medium text-white cursor-pointer">
+                    Require Join Approval
+                  </label>
+                  <p className="text-xs text-white/50 mt-1">
+                    Review and approve join requests before members can enter
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Privacy Summary */}
+            <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
+              <div className="flex gap-2">
+                <svg className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <p className="text-xs text-blue-200">
+                  <strong className="text-blue-300">Privacy Summary: </strong>
+                  {privacySummary}
+                </p>
+              </div>
+            </div>
+
+            {error && (
+              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+                <p className="text-xs text-red-300">{error}</p>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

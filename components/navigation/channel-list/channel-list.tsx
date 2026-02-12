@@ -11,7 +11,7 @@ import { motion } from "motion/react";
 
 // Lazy load modal components for better performance (30% smaller initial bundle)
 const ServerSettingsModal = lazy(() => import("@/components/server-management/modals/server-settings-modal/server-settings-modal").then(m => ({ default: m.ServerSettingsModal })));
-const CreateServerModal = lazy(() => import("@/components/server-management/modals/create-server-modal").then(m => ({ default: m.CreateServerModal })));
+const AddServerModal = lazy(() => import("@/components/server-management/modals/add-server-modal").then(m => ({ default: m.AddServerModal })));
 const CreateChannelModal = lazy(() => import("@/components/server-management/modals/create-channel-modal").then(m => ({ default: m.CreateChannelModal })));
 const ChannelSettingsModal = lazy(() => import("@/components/server-management/modals/channel-settings-modal/channel-settings-modal").then(m => ({ default: m.ChannelSettingsModal })));
 
@@ -44,7 +44,7 @@ export function ChannelList() {
 				<DMList />
 				{/* Modals must always render so Add Server works from home screen */}
 				<Suspense fallback={null}>
-					<CreateServerModal />
+					<AddServerModal />
 					<CreateChannelModal />
 				</Suspense>
 			</div>
@@ -161,7 +161,7 @@ export function ChannelList() {
 			{/* Modals - Lazy loaded for performance */}
 			<Suspense fallback={null}>
 				<ServerSettingsModal />
-				<CreateServerModal />
+				<AddServerModal />
 				<CreateChannelModal />
 				<ChannelSettingsModal />
 			</Suspense>

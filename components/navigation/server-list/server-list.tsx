@@ -13,7 +13,7 @@ export function ServerList() {
 	const isInitialized = useServerStore((state) => state.isInitialized);
 	const currentServerId = useServerStore((state) => state.currentServerId);
 	const setCurrentServer = useServerStore((state) => state.setCurrentServer);
-	const { openCreateServer } = useServerManagementStore();
+	const { openAddServer } = useServerManagementStore();
 
 	const homeServer = servers.find((s) => s.id === "home");
 	const otherServers = servers.filter((s) => s.id !== "home");
@@ -86,7 +86,7 @@ export function ServerList() {
 					className="w-12 h-12 rounded-full bg-[oklch(0.15_0.02_250)] hover:bg-primary hover:rounded-2xl transition-all duration-200 flex items-center justify-center text-primary hover:text-white group mt-2"
 					whileHover={{ scale: 1.05 }}
 					whileTap={{ scale: 0.95 }}
-					onClick={() => openCreateServer()}
+					onClick={() => openAddServer()}
 				>
 					<svg
 						className="w-6 h-6"

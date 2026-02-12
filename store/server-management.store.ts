@@ -10,10 +10,22 @@ import { createClient } from "../lib/supabase/client";
 export type ServerSettingsTab = "overview" | "roles" | "channels" | "moderation" | "invites";
 export type ChannelSettingsTab = "overview" | "permissions";
 
+export interface DiscoverableServer {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  member_count: number;
+  icon_url: string | null;
+  is_public: boolean;
+  require_approval: boolean;
+}
+
 interface ServerManagementState {
   // Modal states
   isServerSettingsOpen: boolean;
   isCreateServerOpen: boolean;
+  isAddServerOpen: boolean;
   isCreateChannelOpen: boolean;
   isChannelSettingsOpen: boolean;
   selectedChannelId: string | null;
@@ -35,6 +47,15 @@ interface ServerManagementState {
 
   openCreateServer: () => void;
   closeCreateServer: () => void;
+
+  openAddServer: () => void;
+  closeAddServer: () => void;
+
+  // Discovery operations
+  searchDiscoverableServers: (query: string) => Promise<DiscoverableServer[]>;
+  joinPublicServer: (serverId: string) => Promise<void>;
+  requestToJoinServer: (serverId: string, message?: string) => Promise<void>;
+  joinServerByInvite: (code: string) => Promise<void>;
 
   openCreateChannel: (preselectedCategoryId?: string) => void;
   closeCreateChannel: () => void;
@@ -94,6 +115,7 @@ export const useServerManagementStore = create<ServerManagementState>()(
         // Initial state
         isServerSettingsOpen: false,
         isCreateServerOpen: false,
+        isAddServerOpen: false,
         isCreateChannelOpen: false,
         isChannelSettingsOpen: false,
         selectedChannelId: null,
@@ -123,6 +145,132 @@ export const useServerManagementStore = create<ServerManagementState>()(
 
         closeCreateServer: () => {
           set({ isCreateServerOpen: false });
+        },
+
+        openAddServer: () => {
+          set({ isAddServerOpen: true });
+        },
+
+        closeAddServer: () => {
+          set({ isAddServerOpen: false });
+        },
+
+        // Discovery operations
+        searchDiscoverableServers: async (query) => {
+          const supabase = createClient();
+
+          let q = supabase
+            .from("servers")
+            .select("id, name, description, category, member_count, icon_url, is_public, require_approval")
+            .eq("allow_discovery", true);
+
+          if (query.trim()) {
+            q = q.or(`name.ilike.%${query}%,description.ilike.%${query}%`);
+          }
+
+          const { data, error } = await q.limit(20);
+
+          if (error) {
+            console.error("Error searching servers:", error);
+            return [];
+          }
+
+          return (data || []) as DiscoverableServer[];
+        },
+
+        joinPublicServer: async (serverId) => {
+          const supabase = createClient();
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error("Not authenticated");
+
+          const { error } = await supabase
+            .from("server_members")
+            .insert({ server_id: serverId, user_id: user.id, role: "member" });
+
+          if (error) {
+            if (error.code === "23505") {
+              toast.info("Already Joined", "You are already a member of this server");
+              return;
+            }
+            toast.error("Error", "Could not join server");
+            throw error;
+          }
+
+          toast.success("Joined Server", "You have joined the server");
+        },
+
+        requestToJoinServer: async (serverId, message) => {
+          const supabase = createClient();
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error("Not authenticated");
+
+          const { error } = await supabase
+            .from("server_join_requests")
+            .insert({
+              server_id: serverId,
+              user_id: user.id,
+              message: message || null,
+            });
+
+          if (error) {
+            if (error.code === "23505") {
+              toast.info("Already Requested", "You already have a pending request for this server");
+              return;
+            }
+            toast.error("Error", "Could not send join request");
+            throw error;
+          }
+
+          toast.success("Request Sent", "The server owner will review your request");
+        },
+
+        joinServerByInvite: async (code) => {
+          const supabase = createClient();
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error("Not authenticated");
+
+          // Look up the invite
+          const { data: invite, error: inviteError } = await supabase
+            .from("server_invites")
+            .select("*")
+            .eq("code", code.trim())
+            .single();
+
+          if (inviteError || !invite) {
+            throw new Error("Invalid or expired invite code");
+          }
+
+          // Check expiration
+          if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
+            throw new Error("This invite has expired");
+          }
+
+          // Check max uses
+          if (invite.max_uses > 0 && invite.uses >= invite.max_uses) {
+            throw new Error("This invite has reached its maximum uses");
+          }
+
+          // Join server
+          const { error: memberError } = await supabase
+            .from("server_members")
+            .insert({ server_id: invite.server_id, user_id: user.id, role: "member" });
+
+          if (memberError) {
+            if (memberError.code === "23505") {
+              toast.info("Already Joined", "You are already a member of this server");
+              return;
+            }
+            toast.error("Error", "Could not join server");
+            throw memberError;
+          }
+
+          // Increment uses
+          await supabase
+            .from("server_invites")
+            .update({ uses: invite.uses + 1 })
+            .eq("id", invite.id);
+
+          toast.success("Joined Server", "You have joined the server via invite");
         },
 
         openCreateChannel: (preselectedCategoryId) => {
