@@ -71,7 +71,7 @@ export function VoiceChannel({ channelName, participants, onLeave }: VoiceChanne
               </div>
               <div>
                 <h1 className="text-xl font-semibold text-foreground">{channelName}</h1>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-slate-400">
                   {participants.length} {participants.length === 1 ? "participant" : "participants"}
                 </p>
               </div>
@@ -126,11 +126,11 @@ export function VoiceChannel({ channelName, participants, onLeave }: VoiceChanne
                 animate={{ opacity: 1 }}
                 transition={springConfig}
               >
-                <Users className="w-16 h-16 text-muted-foreground/50 mb-4" />
+                <Users className="w-16 h-16 text-slate-400/50 mb-4" />
                 <h2 className="text-xl font-semibold text-foreground mb-2">
                   No one else is here
                 </h2>
-                <p className="text-muted-foreground text-center max-w-sm">
+                <p className="text-slate-300 text-center max-w-sm">
                   Invite some friends to join the voice channel or wait for others to connect.
                 </p>
               </motion.div>

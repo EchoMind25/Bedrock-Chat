@@ -59,7 +59,7 @@ export default function DemoPage() {
           <h1 className="text-5xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
             Bedrock Chat UI Components
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-slate-300">
             2026 Design Aesthetics with React 19 & Motion 12
           </p>
         </div>
@@ -291,7 +291,7 @@ export default function DemoPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">
+            <p className="text-slate-300">
               This card uses the Glass component with 3D transform effects. Move
               your mouse around to see the tilt in action!
             </p>

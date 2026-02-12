@@ -196,7 +196,7 @@ export function CardDescription({
   ...props
 }: CardDescriptionProps) {
   return (
-    <p className={cn("text-sm text-muted-foreground", className)} {...props}>
+    <p className={cn("text-sm text-slate-300", className)} {...props}>
       {children}
     </p>
   );

@@ -150,7 +150,7 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-foreground">{toast.title}</h3>
           {toast.description && (
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm text-slate-300 mt-1">
               {toast.description}
             </p>
           )}
@@ -164,7 +164,7 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
         className={cn(
           "absolute top-4 right-4",
           "p-1 rounded",
-          "text-muted-foreground hover:text-foreground",
+          "text-slate-400 hover:text-foreground",
           "hover:bg-muted/50",
           "transition-all duration-200",
           "focus:outline-none focus:ring-2 focus:ring-primary"

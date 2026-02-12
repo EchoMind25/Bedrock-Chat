@@ -129,7 +129,7 @@ export function VoiceSettings({ isOpen, onClose }: VoiceSettingsProps) {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label className="text-sm font-medium text-foreground">Input Volume</label>
-            <span className="text-sm text-muted-foreground">{inputVolume}%</span>
+            <span className="text-sm text-slate-400">{inputVolume}%</span>
           </div>
           <VolumeSlider
             value={inputVolume}
@@ -158,7 +158,7 @@ export function VoiceSettings({ isOpen, onClose }: VoiceSettingsProps) {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <label className="text-sm font-medium text-foreground">Output Volume</label>
-            <span className="text-sm text-muted-foreground">{outputVolume}%</span>
+            <span className="text-sm text-slate-400">{outputVolume}%</span>
           </div>
           <VolumeSlider
             value={outputVolume}
@@ -199,7 +199,7 @@ function DeviceDropdown({ devices, value, onChange }: DeviceDropdownProps) {
       >
         <span className="text-sm text-foreground">{selectedDevice?.name}</span>
         <ChevronDown
-          className={`w-4 h-4 text-muted-foreground transition-transform ${
+          className={`w-4 h-4 text-slate-400 transition-transform ${
             isOpen ? "rotate-180" : ""
           }`}
         />

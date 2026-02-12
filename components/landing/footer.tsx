@@ -147,7 +147,7 @@ export function Footer() {
             <p className="text-gray-400 text-sm text-center md:text-left">
               © 2026 Bedrock AI Systems. Privacy is not a feature, it's a right.
             </p>
-            <div className="flex items-center gap-2 text-xs text-gray-500">
+            <div className="flex items-center gap-2 text-xs text-slate-400">
               <span className="px-3 py-1 bg-primary/10 text-primary rounded-full border border-primary/30">
                 Built with transparency
               </span>

@@ -261,7 +261,7 @@ export function Dropdown({
                     className={cn(
                       "w-full px-3 py-2 rounded-lg",
                       "bg-background border border-border",
-                      "text-foreground placeholder:text-muted-foreground",
+                      "text-foreground placeholder:text-slate-500",
                       "text-sm",
                       "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     )}
@@ -277,7 +277,7 @@ export function Dropdown({
                 tabIndex={-1}
               >
                 {filteredItems.length === 0 ? (
-                  <div className="px-3 py-2 text-sm text-muted-foreground text-center">
+                  <div className="px-3 py-2 text-sm text-slate-400 text-center">
                     No results found
                   </div>
                 ) : (

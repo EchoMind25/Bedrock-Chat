@@ -210,7 +210,7 @@ export function AvatarGroup({
         <div
           className={cn(
             "relative flex items-center justify-center rounded-full",
-            "bg-muted text-muted-foreground font-semibold ring-2 ring-background",
+            "bg-slate-700 text-slate-300 font-semibold ring-2 ring-background",
             sizeClasses[size]
           )}
         >

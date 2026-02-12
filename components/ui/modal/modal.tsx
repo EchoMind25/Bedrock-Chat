@@ -208,7 +208,7 @@ export function Modal({
                   {description && (
                     <p
                       id="modal-description"
-                      className="text-sm text-muted-foreground"
+                      className="text-sm text-slate-300"
                     >
                       {description}
                     </p>
@@ -239,7 +239,7 @@ export function Modal({
                 className={cn(
                   "absolute top-4 right-4",
                   "p-2 rounded-lg",
-                  "text-muted-foreground hover:text-foreground",
+                  "text-slate-400 hover:text-foreground",
                   "hover:bg-muted/50",
                   "transition-all duration-200",
                   "focus:outline-none focus:ring-2 focus:ring-primary"

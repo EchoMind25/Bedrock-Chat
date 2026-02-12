@@ -197,7 +197,7 @@ export function TooltipIcon({
         className={cn(
           "inline-flex items-center justify-center",
           "w-5 h-5 rounded-full",
-          "text-muted-foreground hover:text-foreground",
+          "text-slate-400 hover:text-foreground",
           "transition-colors duration-200",
           "focus:outline-none focus:ring-2 focus:ring-primary"
         )}

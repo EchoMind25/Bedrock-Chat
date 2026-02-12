@@ -41,7 +41,7 @@ interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 }
 
 const variantClasses: Record<BadgeVariant, string> = {
-  default: "bg-muted text-muted-foreground",
+  default: "bg-slate-700 text-slate-300",
   primary: "bg-primary text-white",
   secondary: "bg-secondary text-white",
   success: "bg-green-500 text-white",

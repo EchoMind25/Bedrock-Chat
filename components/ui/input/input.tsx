@@ -97,7 +97,7 @@ export function Input({
 
       <div className="relative">
         {leftIcon && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
             {leftIcon}
           </div>
         )}
@@ -132,7 +132,7 @@ export function Input({
         />
 
         {rightIcon && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
             {rightIcon}
           </div>
         )}
@@ -165,7 +165,7 @@ export function Input({
       {helperText && !error && (
         <p
           id={`${props.id}-helper`}
-          className="mt-1 text-sm text-muted-foreground"
+          className="mt-1 text-sm text-slate-400"
         >
           {helperText}
         </p>
@@ -256,7 +256,7 @@ export function Textarea({
       {helperText && !error && (
         <p
           id={`${props.id}-helper`}
-          className="mt-1 text-sm text-muted-foreground"
+          className="mt-1 text-sm text-slate-400"
         >
           {helperText}
         </p>
