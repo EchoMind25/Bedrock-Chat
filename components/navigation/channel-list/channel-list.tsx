@@ -33,6 +33,10 @@ export function ChannelList() {
 				<div className="h-8 bg-white/5 rounded animate-pulse" />
 				<div className="h-8 bg-white/5 rounded animate-pulse" />
 				<div className="h-8 bg-white/5 rounded animate-pulse" />
+				{/* AddServerModal must always render so the + button works even during load failures */}
+				<Suspense fallback={null}>
+					<AddServerModal />
+				</Suspense>
 			</div>
 		);
 	}

@@ -28,8 +28,8 @@ export function ServerList() {
 	}
 
 	return (
-		<div className="w-[72px] h-screen bg-[oklch(0.12_0.02_250)] flex flex-col items-center py-3">
-			{/* Home Button - Fixed at top */}
+		<div className="w-[72px] h-screen bg-[oklch(0.12_0.02_250)] flex flex-col items-center py-3 gap-2 overflow-y-auto scrollbar-hide">
+			{/* Home Button */}
 			<Tooltip content="Direct Messages" position="right">
 				<ServerButton
 					server={homeServer}
@@ -43,57 +43,52 @@ export function ServerList() {
 			</Tooltip>
 
 			{/* Divider */}
-			<div className="w-8 h-[2px] bg-white/10 rounded-full my-2 flex-shrink-0" />
+			<div className="w-8 h-[2px] bg-white/10 rounded-full my-1" />
 
-			{/* Server List - Scrollable middle section */}
-			<div className="flex-1 overflow-y-auto scrollbar-hide w-full">
-				<motion.div
-					className="flex flex-col gap-2 w-full items-center"
-					initial="hidden"
-					animate="visible"
-					variants={{
-						hidden: { opacity: 0 },
-						visible: {
-							opacity: 1,
-							transition: {
-								staggerChildren: 0.02,
-							},
+			{/* Server List */}
+			<motion.div
+				className="flex flex-col gap-2 w-full items-center"
+				initial="hidden"
+				animate="visible"
+				variants={{
+					hidden: { opacity: 0 },
+					visible: {
+						opacity: 1,
+						transition: {
+							staggerChildren: 0.02,
 						},
-					}}
-				>
-					{otherServers.map((server) => (
-						<Tooltip key={server.id} content={server.name} position="right">
-							<ServerButton
-								server={server}
-								isActive={currentServerId === server.id}
-								onClick={() => {
-									setCurrentServer(server.id);
-									const firstTextChannel = server.channels.find((c) => c.type === "text");
-									const channelId = firstTextChannel?.id ?? server.channels[0]?.id;
-									if (channelId) {
-										router.push(`/servers/${server.id}/${channelId}`);
-									}
-								}}
-							/>
-						</Tooltip>
-					))}
-				</motion.div>
-			</div>
+					},
+				}}
+			>
+				{otherServers.map((server) => (
+					<Tooltip key={server.id} content={server.name} position="right">
+						<ServerButton
+							server={server}
+							isActive={currentServerId === server.id}
+							onClick={() => {
+								setCurrentServer(server.id);
+								const firstTextChannel = server.channels.find((c) => c.type === "text");
+								const channelId = firstTextChannel?.id ?? server.channels[0]?.id;
+								if (channelId) {
+									router.push(`/servers/${server.id}/${channelId}`);
+								}
+							}}
+						/>
+					</Tooltip>
+				))}
+			</motion.div>
 
-			{/* Divider */}
-			<div className="w-8 h-[2px] bg-white/10 rounded-full my-2 flex-shrink-0" />
-
-			{/* Add Server Button - Fixed at bottom, click-only (no hover popup) */}
+			{/* Add Server Button - click-only, no hover tooltip */}
 			<motion.button
 				type="button"
-				className="w-12 h-12 flex-shrink-0 rounded-full bg-[oklch(0.15_0.02_250)] hover:bg-green-600 hover:rounded-2xl transition-all duration-200 flex items-center justify-center text-green-500 hover:text-white cursor-pointer"
+				className="w-12 h-12 rounded-full bg-[oklch(0.15_0.02_250)] hover:bg-primary hover:rounded-2xl transition-all duration-200 flex items-center justify-center text-primary hover:text-white group mt-2"
 				whileHover={{ scale: 1.05 }}
 				whileTap={{ scale: 0.95 }}
 				onClick={() => openAddServer()}
 				aria-label="Add a Server"
 			>
 				<svg
-					className="w-6 h-6 transition-colors"
+					className="w-6 h-6"
 					fill="none"
 					stroke="currentColor"
 					viewBox="0 0 24 24"
@@ -102,7 +97,7 @@ export function ServerList() {
 					<path
 						strokeLinecap="round"
 						strokeLinejoin="round"
-						strokeWidth={2.5}
+						strokeWidth={2}
 						d="M12 4v16m8-8H4"
 					/>
 				</svg>
