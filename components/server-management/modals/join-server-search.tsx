@@ -145,7 +145,7 @@ export function JoinServerSearch({ onSuccess }: JoinServerSearchProps) {
             ) : servers.length === 0 ? (
               <div className="text-center py-8">
                 <svg
-                  className="w-12 h-12 mx-auto text-slate-600 mb-2"
+                  className="w-12 h-12 mx-auto text-slate-400 mb-2"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"

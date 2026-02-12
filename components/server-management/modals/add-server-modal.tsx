@@ -231,7 +231,7 @@ export function AddServerModal() {
       size="lg"
     >
       {/* Tab Navigation */}
-      <div className="border-b border-white/10 -mx-6 mb-6">
+      <div className="border-b border-white/10 -mx-6 mb-6 sticky top-0 z-10 bg-glass-dark/95 backdrop-blur-sm">
         <div className="flex px-6">
           <button
             type="button"
