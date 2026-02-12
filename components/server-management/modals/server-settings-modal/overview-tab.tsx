@@ -29,52 +29,57 @@ export function OverviewTab({ server, onChange }: OverviewTabProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold mb-4">Server Overview</h3>
-        <p className="text-sm text-white/60 mb-6">
-          Customize your server's appearance and basic information.
+        <h3 className="text-lg font-semibold text-slate-100 mb-1">Server Overview</h3>
+        <p className="text-sm text-slate-300">
+          Customize your server&apos;s appearance and basic information.
         </p>
       </div>
 
-      <Input
-        label="Server Name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="My Awesome Server"
-        maxLength={100}
-        helperText={`${name.length}/100 characters`}
-      />
-
-      <Textarea
-        label="Description (Optional)"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        placeholder="Describe what your server is about..."
-        maxLength={500}
-        helperText={`${description.length}/500 characters`}
-        rows={3}
-      />
-
-      <div className="grid grid-cols-2 gap-4">
-        <ImageUpload
-          label="Server Icon"
-          value={icon}
-          onChange={setIcon}
-          aspectRatio="square"
-          placeholder="Upload server icon"
+      <div className="glass-card rounded-xl p-6 space-y-6">
+        <Input
+          label="Server Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="My Awesome Server"
+          maxLength={100}
+          helperText={`${name.length}/100 characters`}
         />
 
-        <ImageUpload
-          label="Server Banner"
-          value={banner}
-          onChange={setBanner}
-          aspectRatio="banner"
-          placeholder="Upload server banner"
+        <Textarea
+          label="Description (Optional)"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Describe what your server is about..."
+          maxLength={500}
+          helperText={`${description.length}/500 characters`}
+          rows={3}
         />
       </div>
 
+      <div className="glass-card rounded-xl p-6">
+        <h4 className="text-sm font-semibold text-slate-200 mb-4">Server Branding</h4>
+        <div className="grid grid-cols-2 gap-4">
+          <ImageUpload
+            label="Server Icon"
+            value={icon}
+            onChange={setIcon}
+            aspectRatio="square"
+            placeholder="Upload server icon"
+          />
+
+          <ImageUpload
+            label="Server Banner"
+            value={banner}
+            onChange={setBanner}
+            aspectRatio="banner"
+            placeholder="Upload server banner"
+          />
+        </div>
+      </div>
+
       <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/30">
-        <p className="text-sm text-blue-200">
-          <strong>Tip:</strong> Your server icon will appear in the server list, while the banner
+        <p className="text-sm text-blue-300">
+          <strong className="text-blue-200">Tip:</strong> Your server icon will appear in the server list, while the banner
           will be displayed at the top of your server.
         </p>
       </div>

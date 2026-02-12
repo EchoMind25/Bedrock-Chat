@@ -72,7 +72,7 @@ const sizeClasses = {
   sm: "max-w-sm",
   md: "max-w-md",
   lg: "max-w-lg",
-  xl: "max-w-xl",
+  xl: "max-w-5xl",
   full: "max-w-full mx-4",
 };
 
@@ -174,7 +174,7 @@ export function Modal({
         >
           {/* Backdrop */}
           <motion.div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             variants={backdropVariants}
             initial="initial"
             animate="animate"
@@ -193,7 +193,7 @@ export function Modal({
             onKeyDown={handleKeyDown}
             tabIndex={-1}
           >
-            <Glass variant="strong" border="medium" className="max-h-[90vh] flex flex-col overflow-hidden">
+            <Glass variant="liquid-elevated" border="liquid" className="max-h-[90vh] flex flex-col overflow-hidden rounded-2xl">
               {/* Header */}
               {(title || description) && (
                 <div className="flex-shrink-0 p-6 pb-4">
@@ -218,7 +218,7 @@ export function Modal({
 
               {/* Content */}
               <div className={cn(
-                "flex-1 overflow-y-auto px-6 text-foreground scrollbar-thin",
+                "flex-1 overflow-y-auto px-6 text-foreground settings-scrollbar",
                 !(title || description) && "pt-6",
                 !footer && "pb-6",
               )}>
@@ -227,7 +227,7 @@ export function Modal({
 
               {/* Footer */}
               {footer && (
-                <div className="flex-shrink-0 px-6 py-4 border-t border-border/50 flex items-center justify-end gap-3">
+                <div className="flex-shrink-0 px-6 py-4 border-t border-slate-700/30 flex items-center justify-end gap-3">
                   {footer}
                 </div>
               )}

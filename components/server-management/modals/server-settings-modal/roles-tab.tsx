@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, GripVertical, Users } from "lucide-react";
+import { Plus, Trash2, GripVertical, Users, Shield } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "../../../ui/button/button";
 import { Input } from "../../../ui/input/input";
@@ -65,10 +65,10 @@ function SortableRoleItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center gap-3 p-3 rounded-lg border-2 transition-all cursor-pointer",
+        "flex items-center gap-3 p-3 rounded-lg transition-all cursor-pointer",
         isSelected
-          ? "border-blue-500 bg-blue-500/10"
-          : "border-white/10 hover:border-white/20 hover:bg-white/5",
+          ? "glass-interactive bg-blue-600/15 border-blue-500/40 ring-1 ring-blue-500/20"
+          : "border border-slate-700/30 hover:border-slate-600/40 hover:bg-slate-800/30",
         isDragging && "opacity-50",
       )}
       onClick={onClick}
@@ -80,26 +80,26 @@ function SortableRoleItem({
         {...listeners}
         className="cursor-grab active:cursor-grabbing"
       >
-        <GripVertical className="w-4 h-4 text-white/40" />
+        <GripVertical className="w-4 h-4 text-slate-400" />
       </div>
 
       <div
-        className="w-3 h-3 rounded-full flex-shrink-0"
+        className="w-3.5 h-3.5 rounded-full flex-shrink-0 ring-2 ring-slate-800/50"
         style={{ backgroundColor: role.color }}
       />
 
       <div className="flex-1 min-w-0">
-        <div className="font-medium text-sm truncate">{role.name}</div>
-        <div className="text-xs text-white/60 flex items-center gap-1">
+        <div className="font-medium text-sm text-slate-100 truncate">{role.name}</div>
+        <div className="text-xs text-slate-400 flex items-center gap-1">
           <Users className="w-3 h-3" />
-          {role.memberCount} members
+          {role.memberCount} {role.memberCount === 1 ? "member" : "members"}
         </div>
       </div>
 
-      {role.position > 0 && (
-        <div className="text-xs text-white/40">
-          Position {role.position}
-        </div>
+      {role.isDefault && (
+        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-700/50 text-slate-300">
+          DEFAULT
+        </span>
       )}
     </motion.div>
   );
@@ -184,179 +184,217 @@ export function RolesTab({
   };
 
   return (
-    <div className="grid grid-cols-3 gap-6 h-[600px]">
-      {/* Role List */}
-      <div className="space-y-3 overflow-y-auto scrollbar-thin">
-        <div className="flex items-center justify-between sticky top-0 bg-[oklch(0.15_0.02_250)] pb-2">
-          <h4 className="text-sm font-semibold">Roles</h4>
-          <Button
-            size="sm"
-            onClick={() => setIsCreating(true)}
-            className="gap-1"
-          >
-            <Plus className="w-4 h-4" />
-            Create
-          </Button>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-100">Roles</h3>
+          <p className="text-sm text-slate-300 mt-1">
+            Manage server roles and permissions
+          </p>
         </div>
-
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
+        <Button
+          size="sm"
+          onClick={() => setIsCreating(true)}
+          className="gap-1.5"
         >
-          <SortableContext
-            items={sortedRoles.map((r) => r.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            <div className="space-y-2">
-              {sortedRoles.map((role) => (
-                <SortableRoleItem
-                  key={role.id}
-                  role={role}
-                  isSelected={selectedRoleId === role.id}
-                  onClick={() => {
-                    setSelectedRoleId(role.id);
-                    setIsCreating(false);
-                  }}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
+          <Plus className="w-4 h-4" />
+          Create Role
+        </Button>
       </div>
 
-      {/* Role Editor */}
-      <div className="col-span-2 overflow-y-auto scrollbar-thin">
-        <AnimatePresence mode="wait">
-          {isCreating ? (
-            <motion.div
-              key="create"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="space-y-6"
+      <div className="grid grid-cols-3 gap-6 h-[540px]">
+        {/* Role List */}
+        <div className="glass-card rounded-xl p-4 overflow-y-auto settings-scrollbar">
+          <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3">
+            Server Roles &mdash; {sortedRoles.length}
+          </h4>
+
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={sortedRoles.map((r) => r.id)}
+              strategy={verticalListSortingStrategy}
             >
-              <h3 className="text-lg font-semibold">Create Role</h3>
+              <div className="space-y-2">
+                {sortedRoles.map((role) => (
+                  <SortableRoleItem
+                    key={role.id}
+                    role={role}
+                    isSelected={selectedRoleId === role.id}
+                    onClick={() => {
+                      setSelectedRoleId(role.id);
+                      setIsCreating(false);
+                    }}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
 
-              <Input
-                label="Role Name"
-                value={newRoleName}
-                onChange={(e) => setNewRoleName(e.target.value)}
-                placeholder="New Role"
-                maxLength={100}
-              />
+          {sortedRoles.length === 0 && (
+            <div className="text-center py-8">
+              <Shield className="w-10 h-10 mx-auto mb-2 text-slate-600" />
+              <p className="text-sm text-slate-400">No roles yet</p>
+            </div>
+          )}
+        </div>
 
-              <ColorPicker
-                label="Role Color"
-                value={newRoleColor}
-                onChange={setNewRoleColor}
-              />
+        {/* Role Editor */}
+        <div className="col-span-2 overflow-y-auto settings-scrollbar">
+          <AnimatePresence mode="wait">
+            {isCreating ? (
+              <motion.div
+                key="create"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="glass-card rounded-xl p-6 space-y-6"
+              >
+                <h3 className="text-lg font-semibold text-slate-100">Create Role</h3>
 
-              <Toggle
-                checked={newRoleMentionable}
-                onChange={(e) => setNewRoleMentionable(e.target.checked)}
-                label="Allow anyone to @mention this role"
-              />
-
-              <div>
-                <h4 className="text-sm font-semibold mb-3">Permissions</h4>
-                <PermissionGrid
-                  permissions={newRolePermissions}
-                  onChange={setNewRolePermissions}
+                <Input
+                  label="Role Name"
+                  value={newRoleName}
+                  onChange={(e) => setNewRoleName(e.target.value)}
+                  placeholder="New Role"
+                  maxLength={100}
                 />
-              </div>
 
-              <div className="flex items-center gap-2 pt-4 border-t border-white/10">
-                <Button onClick={handleCreateRole} disabled={!newRoleName.trim()}>
-                  Create Role
-                </Button>
-                <Button variant="ghost" onClick={() => setIsCreating(false)}>
-                  Cancel
-                </Button>
-              </div>
-            </motion.div>
-          ) : selectedRole ? (
-            <motion.div
-              key="edit"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="space-y-6"
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Edit Role</h3>
-                {!selectedRole.isDefault && (
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={handleDeleteRole}
-                    className="gap-1"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Delete
+                <ColorPicker
+                  label="Role Color"
+                  value={newRoleColor}
+                  onChange={setNewRoleColor}
+                />
+
+                <Toggle
+                  checked={newRoleMentionable}
+                  onChange={(e) => setNewRoleMentionable(e.target.checked)}
+                  label="Allow anyone to @mention this role"
+                />
+
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-200 mb-3">Permissions</h4>
+                  <PermissionGrid
+                    permissions={newRolePermissions}
+                    onChange={setNewRolePermissions}
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 pt-4 border-t border-slate-700/30">
+                  <Button onClick={handleCreateRole} disabled={!newRoleName.trim()}>
+                    Create Role
                   </Button>
-                )}
-              </div>
+                  <Button variant="ghost" onClick={() => setIsCreating(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </motion.div>
+            ) : selectedRole ? (
+              <motion.div
+                key="edit"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="glass-card rounded-xl p-6 space-y-6"
+              >
+                {/* Role Display Header */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm ring-2 ring-slate-700/50"
+                      style={{ backgroundColor: selectedRole.color }}
+                    >
+                      {selectedRole.name[0]?.toUpperCase()}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-100">{selectedRole.name}</h3>
+                      <p className="text-xs text-slate-400">{selectedRole.memberCount} {selectedRole.memberCount === 1 ? "member" : "members"}</p>
+                    </div>
+                  </div>
+                  {!selectedRole.isDefault && (
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={handleDeleteRole}
+                      className="gap-1"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete
+                    </Button>
+                  )}
+                </div>
 
-              <Input
-                label="Role Name"
-                value={selectedRole.name}
-                onChange={(e) =>
-                  onRoleUpdate(selectedRole.id, { name: e.target.value })
-                }
-                placeholder="Role Name"
-                maxLength={100}
-                disabled={selectedRole.isDefault}
-              />
-
-              <ColorPicker
-                label="Role Color"
-                value={selectedRole.color}
-                onChange={(color) => onRoleUpdate(selectedRole.id, { color })}
-              />
-
-              <Toggle
-                checked={selectedRole.mentionable}
-                onChange={(e) =>
-                  onRoleUpdate(selectedRole.id, { mentionable: e.target.checked })
-                }
-                label="Allow anyone to @mention this role"
-                disabled={selectedRole.isDefault}
-              />
-
-              <div>
-                <h4 className="text-sm font-semibold mb-3">Permissions</h4>
-                <PermissionGrid
-                  permissions={selectedRole.permissions}
-                  onChange={(permissions) =>
-                    onRoleUpdate(selectedRole.id, { permissions })
+                <Input
+                  label="Role Name"
+                  value={selectedRole.name}
+                  onChange={(e) =>
+                    onRoleUpdate(selectedRole.id, { name: e.target.value })
                   }
+                  placeholder="Role Name"
+                  maxLength={100}
+                  disabled={selectedRole.isDefault}
                 />
-              </div>
 
-              {selectedRole.isDefault && (
-                <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
-                  <p className="text-sm text-yellow-200">
-                    The @everyone role applies to all members and cannot be deleted.
+                <ColorPicker
+                  label="Role Color"
+                  value={selectedRole.color}
+                  onChange={(color) => onRoleUpdate(selectedRole.id, { color })}
+                />
+
+                <Toggle
+                  checked={selectedRole.mentionable}
+                  onChange={(e) =>
+                    onRoleUpdate(selectedRole.id, { mentionable: e.target.checked })
+                  }
+                  label="Allow anyone to @mention this role"
+                  disabled={selectedRole.isDefault}
+                />
+
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-200 mb-3">Permissions</h4>
+                  <PermissionGrid
+                    permissions={selectedRole.permissions}
+                    onChange={(permissions) =>
+                      onRoleUpdate(selectedRole.id, { permissions })
+                    }
+                  />
+                </div>
+
+                {selectedRole.isDefault && (
+                  <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+                    <p className="text-sm text-yellow-300">
+                      The @everyone role applies to all members and cannot be deleted.
+                    </p>
+                  </div>
+                )}
+              </motion.div>
+            ) : (
+              <motion.div
+                key="empty"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="glass-card rounded-xl flex items-center justify-center h-full"
+              >
+                <div className="text-center p-12">
+                  <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-slate-800/50 flex items-center justify-center">
+                    <Users className="w-10 h-10 text-slate-500" />
+                  </div>
+                  <h4 className="text-lg font-semibold text-slate-200 mb-2">
+                    Select a role to edit
+                  </h4>
+                  <p className="text-sm text-slate-400">
+                    Choose a role from the list to edit permissions and settings
                   </p>
                 </div>
-              )}
-            </motion.div>
-          ) : (
-            <motion.div
-              key="empty"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex items-center justify-center h-full text-white/40"
-            >
-              <div className="text-center">
-                <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>Select a role to edit or create a new one</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );

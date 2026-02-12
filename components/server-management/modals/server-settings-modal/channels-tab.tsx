@@ -3,7 +3,7 @@
 import { Hash, Volume2, Megaphone, GripVertical } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "../../../../lib/utils/cn";
-import type { Server, Channel, ChannelCategory } from "../../../../lib/types/server";
+import type { Server, Channel } from "../../../../lib/types/server";
 import {
   DndContext,
   closestCenter,
@@ -49,7 +49,7 @@ function SortableChannelItem({ channel }: { channel: Channel }) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center gap-3 p-3 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition-colors",
+        "flex items-center gap-3 p-3 rounded-lg border border-slate-700/30 glass-interactive transition-all",
         isDragging && "opacity-50",
       )}
     >
@@ -58,18 +58,20 @@ function SortableChannelItem({ channel }: { channel: Channel }) {
         {...listeners}
         className="cursor-grab active:cursor-grabbing"
       >
-        <GripVertical className="w-4 h-4 text-white/40" />
+        <GripVertical className="w-4 h-4 text-slate-400" />
       </div>
 
-      <Icon className="w-4 h-4 text-white/60" />
+      <div className="p-1.5 rounded-md bg-slate-800/50">
+        <Icon className="w-4 h-4 text-slate-300" />
+      </div>
 
       <div className="flex-1 min-w-0">
-        <div className="font-medium text-sm truncate">{channel.name}</div>
-        <div className="text-xs text-white/60 capitalize">{channel.type} Channel</div>
+        <div className="font-medium text-sm text-slate-100 truncate">{channel.name}</div>
+        <div className="text-xs text-slate-400 capitalize">{channel.type} Channel</div>
       </div>
 
       {channel.isNsfw && (
-        <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-500/20 text-red-400">
+        <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-500/20 text-red-300">
           NSFW
         </span>
       )}
@@ -112,15 +114,15 @@ export function ChannelsTab({ server, onChannelReorder }: ChannelsTabProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold mb-2">Channels</h3>
-        <p className="text-sm text-white/60">
-          Manage and reorder your server's channels
+        <h3 className="text-lg font-semibold text-slate-100 mb-1">Channels</h3>
+        <p className="text-sm text-slate-300">
+          Manage and reorder your server&apos;s channels
         </p>
       </div>
 
-      <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
-        <p className="text-sm text-blue-200">
-          <strong>Drag and drop</strong> channels to reorder them. You can also manage channels
+      <div className="p-3 rounded-lg glass-card">
+        <p className="text-sm text-blue-300">
+          <strong className="text-blue-200">Drag and drop</strong> channels to reorder them. You can also manage channels
           from the channel list or by clicking the settings icon next to each channel.
         </p>
       </div>
@@ -138,7 +140,7 @@ export function ChannelsTab({ server, onChannelReorder }: ChannelsTabProps) {
 
             return (
               <div key={category.id} className="space-y-2">
-                <h4 className="text-sm font-semibold text-white/80 uppercase tracking-wider">
+                <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
                   {category.name}
                 </h4>
                 <SortableContext
@@ -158,7 +160,7 @@ export function ChannelsTab({ server, onChannelReorder }: ChannelsTabProps) {
           {/* Uncategorized channels */}
           {uncategorizedChannels.length > 0 && (
             <div className="space-y-2">
-              <h4 className="text-sm font-semibold text-white/80 uppercase tracking-wider">
+              <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
                 Uncategorized
               </h4>
               <SortableContext
@@ -171,6 +173,17 @@ export function ChannelsTab({ server, onChannelReorder }: ChannelsTabProps) {
                   ))}
                 </div>
               </SortableContext>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {server.channels.length === 0 && (
+            <div className="glass-card rounded-xl p-12 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-800/50 flex items-center justify-center">
+                <Hash className="w-8 h-8 text-slate-500" />
+              </div>
+              <h4 className="text-lg font-semibold text-slate-200 mb-2">No channels yet</h4>
+              <p className="text-sm text-slate-400">Create channels to start organizing your server</p>
             </div>
           )}
         </div>

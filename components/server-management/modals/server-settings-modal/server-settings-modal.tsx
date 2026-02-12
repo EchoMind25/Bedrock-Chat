@@ -179,7 +179,7 @@ export function ServerSettingsModal() {
       size="xl"
       footer={
         <div className="flex items-center justify-between w-full">
-          <div className="text-sm text-white/60">
+          <div className="text-sm text-slate-400">
             {hasChanges && "You have unsaved changes"}
           </div>
           <div className="flex items-center gap-2">
@@ -197,29 +197,38 @@ export function ServerSettingsModal() {
         </div>
       }
     >
-      <div className="flex gap-6 h-[650px]">
-        {/* Vertical Tabs */}
-        <div className="w-48 flex-shrink-0 border-r border-white/10 pr-4 overflow-y-auto scrollbar-thin">
-          <div className="space-y-1">
+      <div className="flex gap-0 h-[650px]">
+        {/* Vertical Tabs - Liquid Glass Sidebar */}
+        <div className="w-52 flex-shrink-0 border-r border-slate-700/30 pr-0 overflow-y-auto settings-scrollbar glass-inset rounded-l-lg">
+          <div className="p-3 space-y-1">
             {tabs.map((tab) => {
               const Icon = tab.icon;
+              const isActive = serverSettingsTab === tab.id;
               return (
                 <button
                   key={tab.id}
                   type="button"
                   onClick={() => setServerSettingsTab(tab.id)}
-                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-left transition-colors ${
-                    serverSettingsTab === tab.id
-                      ? "bg-blue-500/20 text-blue-400"
-                      : "hover:bg-white/5 text-white/80"
+                  className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-left transition-all duration-200 group ${
+                    isActive
+                      ? "glass-interactive bg-blue-600/20 text-blue-300 shadow-lg shadow-blue-500/10 border-blue-500/30"
+                      : "text-slate-300 hover:text-slate-100 hover:bg-slate-800/40"
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <Icon className="w-4 h-4" />
+                  <div className="flex items-center gap-3">
+                    <Icon className={`w-4 h-4 ${
+                      isActive ? "text-blue-400" : "text-slate-400 group-hover:text-slate-300"
+                    }`} />
                     <span className="text-sm font-medium">{tab.label}</span>
                   </div>
                   {tab.count !== undefined && (
-                    <span className="text-xs text-white/60">{tab.count}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                      isActive
+                        ? "bg-blue-500/20 text-blue-300"
+                        : "bg-slate-700/60 text-slate-400"
+                    }`}>
+                      {tab.count}
+                    </span>
                   )}
                 </button>
               );
@@ -228,7 +237,7 @@ export function ServerSettingsModal() {
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto scrollbar-thin pr-2">
+        <div className="flex-1 overflow-y-auto settings-scrollbar pl-6 pr-2">
           {serverSettingsTab === "overview" && (
             <OverviewTab server={displayServer} onChange={handleOverviewChange} />
           )}

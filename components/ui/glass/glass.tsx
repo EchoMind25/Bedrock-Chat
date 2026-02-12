@@ -1,7 +1,8 @@
 import type { HTMLAttributes, ReactNode, Ref } from "react";
+import { cn } from "@/lib/utils/cn";
 
-type GlassVariant = "light" | "medium" | "strong";
-type GlassBorder = "none" | "light" | "medium" | "strong";
+type GlassVariant = "light" | "medium" | "strong" | "liquid" | "liquid-elevated";
+type GlassBorder = "none" | "light" | "medium" | "strong" | "liquid";
 
 interface GlassProps extends HTMLAttributes<HTMLDivElement> {
   /**
@@ -36,6 +37,8 @@ const variantClasses: Record<GlassVariant, string> = {
   light: "backdrop-blur-sm bg-glass-light/50",
   medium: "backdrop-blur-md bg-glass-light/70",
   strong: "backdrop-blur-xl bg-glass-light/90",
+  liquid: "liquid-glass",
+  "liquid-elevated": "liquid-glass-elevated",
 };
 
 const borderClasses: Record<GlassBorder, string> = {
@@ -43,6 +46,7 @@ const borderClasses: Record<GlassBorder, string> = {
   light: "border border-border/30",
   medium: "border border-border/50",
   strong: "border-2 border-border/70",
+  liquid: "liquid-border",
 };
 
 /**
@@ -59,21 +63,18 @@ export function Glass({
 }: GlassProps) {
   const variantClass = variantClasses[variant];
   const borderClass = borderClasses[border];
+  const isLiquid = variant === "liquid" || variant === "liquid-elevated";
 
   return (
     <div
       ref={ref}
-      className={`
-        ${variantClass}
-        ${borderClass}
-        shadow-glass
-        rounded-lg
-        transition-all
-        duration-300
-        dark:bg-glass-dark/70
-        dark:border-border-dark/50
-        ${className}
-      `}
+      className={cn(
+        variantClass,
+        borderClass,
+        "shadow-glass rounded-lg transition-all duration-300",
+        !isLiquid && "dark:bg-glass-dark/70 dark:border-border-dark/50",
+        className,
+      )}
       {...props}
     >
       {children}
@@ -96,12 +97,32 @@ export function GlassCard({
     <Glass
       variant={variant}
       border={border}
-      className={`p-6 ${className}`}
+      className={cn("p-6", className)}
       ref={ref}
       {...props}
     >
       {children}
     </Glass>
+  );
+}
+
+/**
+ * Liquid glass card with enhanced depth and glow
+ */
+export function LiquidGlassCard({
+  className = "",
+  children,
+  ref,
+  ...props
+}: Omit<GlassProps, "variant" | "border">) {
+  return (
+    <div
+      ref={ref}
+      className={cn("glass-card rounded-xl p-6", className)}
+      {...props}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -119,7 +140,7 @@ export function GlassPanel({
     <Glass
       variant="strong"
       border={border}
-      className={`p-8 ${className}`}
+      className={cn("p-8", className)}
       ref={ref}
       {...props}
     >

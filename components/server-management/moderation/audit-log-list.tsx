@@ -14,10 +14,12 @@ interface AuditLogListProps {
 export function AuditLogList({ logs }: AuditLogListProps) {
   if (logs.length === 0) {
     return (
-      <div className="text-center py-12 text-white/40">
-        <ScrollText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-        <p>No audit log entries</p>
-        <p className="text-sm mt-1">Server actions will appear here</p>
+      <div className="text-center py-12">
+        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-800/50 flex items-center justify-center">
+          <ScrollText className="w-8 h-8 text-slate-500" />
+        </div>
+        <h4 className="text-lg font-semibold text-slate-200 mb-2">No audit log entries</h4>
+        <p className="text-sm text-slate-400">Server actions will appear here</p>
       </div>
     );
   }
@@ -33,34 +35,34 @@ export function AuditLogList({ logs }: AuditLogListProps) {
             key={log.id}
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-4 rounded-lg border border-white/10 bg-white/5"
+            className="p-4 rounded-lg border border-slate-700/30 bg-slate-800/20 hover:bg-slate-800/30 transition-colors"
           >
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-blue-500/10">
+              <div className="p-2 rounded-lg bg-blue-500/15 border border-blue-500/20">
                 <Icon className="w-4 h-4 text-blue-400" />
               </div>
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium text-sm">
+                  <span className="font-medium text-sm text-slate-100">
                     {getAuditLogActionName(log.action)}
                   </span>
                   {log.targetName && (
-                    <span className="text-sm text-white/60">
-                      • {log.targetName}
+                    <span className="text-sm text-slate-400">
+                      &bull; {log.targetName}
                     </span>
                   )}
                 </div>
 
                 {log.changes && (
-                  <div className="text-sm text-white/60 mb-1">
+                  <div className="text-sm text-slate-300 mb-1">
                     {formatAuditLogChanges(log.changes)}
                   </div>
                 )}
 
                 {log.reason && (
-                  <div className="text-sm mb-1">
-                    <span className="text-white/60">Reason:</span> {log.reason}
+                  <div className="text-sm text-slate-200 mb-1">
+                    <span className="text-slate-400">Reason:</span> {log.reason}
                   </div>
                 )}
 
@@ -70,8 +72,8 @@ export function AuditLogList({ logs }: AuditLogListProps) {
                     fallback={log.actorUsername.slice(0, 2).toUpperCase()}
                     size="xs"
                   />
-                  <span className="text-xs text-white/40">
-                    {log.actorUsername} • {formatRelativeTime(log.createdAt)}
+                  <span className="text-xs text-slate-400">
+                    {log.actorUsername} &bull; {formatRelativeTime(log.createdAt)}
                   </span>
                 </div>
               </div>

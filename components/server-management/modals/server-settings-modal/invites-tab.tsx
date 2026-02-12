@@ -108,12 +108,12 @@ export function InvitesTab({ server }: InvitesTabProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">Server Invites</h3>
-          <p className="text-sm text-white/60">
+          <h3 className="text-lg font-semibold text-slate-100">Invites</h3>
+          <p className="text-sm text-slate-300 mt-1">
             Manage invite links for your server
           </p>
         </div>
-        <Button onClick={() => setIsCreating(!isCreating)} className="gap-1">
+        <Button onClick={() => setIsCreating(!isCreating)} className="gap-1.5">
           <Plus className="w-4 h-4" />
           Create Invite
         </Button>
@@ -128,8 +128,8 @@ export function InvitesTab({ server }: InvitesTabProps) {
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="p-4 rounded-lg bg-white/5 border border-white/10 space-y-4">
-              <h4 className="font-medium">Create New Invite</h4>
+            <div className="p-5 rounded-xl glass-card space-y-4">
+              <h4 className="font-medium text-slate-100">Create New Invite</h4>
 
               <Dropdown
                 label="Channel"
@@ -161,7 +161,7 @@ export function InvitesTab({ server }: InvitesTabProps) {
                 label="Temporary membership (kick on disconnect)"
               />
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 pt-3 border-t border-slate-700/30">
                 <Button
                   onClick={handleCreate}
                   loading={isLoading}
@@ -197,11 +197,21 @@ export function InvitesTab({ server }: InvitesTabProps) {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-center py-12 text-white/40"
+              className="glass-card rounded-xl p-12 text-center"
             >
-              <LinkIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>No active invites</p>
-              <p className="text-sm mt-1">Create an invite to get started</p>
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-slate-800/50 flex items-center justify-center">
+                <LinkIcon className="w-10 h-10 text-slate-500" />
+              </div>
+              <h4 className="text-lg font-semibold text-slate-200 mb-2">
+                No active invites
+              </h4>
+              <p className="text-sm text-slate-400 mb-6">
+                Create an invite link to share your server with others
+              </p>
+              <Button onClick={() => setIsCreating(true)} className="gap-1.5">
+                <Plus className="w-4 h-4" />
+                Create First Invite
+              </Button>
             </motion.div>
           )}
         </AnimatePresence>

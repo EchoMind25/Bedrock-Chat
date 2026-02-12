@@ -69,8 +69,8 @@ export function AutoModSettingsForm({ settings, onChange }: AutoModSettingsFormP
       )}
 
       <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
-        <p className="text-xs text-blue-200">
-          <strong>Note:</strong> AutoMod automatically flags and removes content that violates these
+        <p className="text-xs text-blue-300">
+          <strong className="text-blue-200">Note:</strong> AutoMod automatically flags and removes content that violates these
           rules. Moderators can review actions in the audit log.
         </p>
       </div>

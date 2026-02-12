@@ -20,10 +20,12 @@ export function BanList({ bans, onUnban }: BanListProps) {
 
   if (bans.length === 0) {
     return (
-      <div className="text-center py-12 text-white/40">
-        <UserX className="w-12 h-12 mx-auto mb-3 opacity-50" />
-        <p>No banned users</p>
-        <p className="text-sm mt-1">Users you ban will appear here</p>
+      <div className="text-center py-12">
+        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-800/50 flex items-center justify-center">
+          <UserX className="w-8 h-8 text-slate-500" />
+        </div>
+        <h4 className="text-lg font-semibold text-slate-200 mb-2">No banned users</h4>
+        <p className="text-sm text-slate-400">Users you ban will appear here</p>
       </div>
     );
   }
@@ -38,22 +40,22 @@ export function BanList({ bans, onUnban }: BanListProps) {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="p-4 rounded-lg border border-white/10 bg-white/5"
+            className="p-4 rounded-lg border border-slate-700/30 bg-slate-800/20 hover:bg-slate-800/30 transition-colors"
           >
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-start gap-3 flex-1">
                 <Avatar src={ban.avatar} fallback={ban.username.slice(0, 2).toUpperCase()} size="md" />
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium">{ban.displayName}</div>
-                  <div className="text-sm text-white/60">@{ban.username}</div>
+                  <div className="font-medium text-slate-100">{ban.displayName}</div>
+                  <div className="text-sm text-slate-400">@{ban.username}</div>
 
                   {ban.reason && (
-                    <div className="mt-2 text-sm">
-                      <span className="text-white/60">Reason:</span> {ban.reason}
+                    <div className="mt-2 text-sm text-slate-200">
+                      <span className="text-slate-400">Reason:</span> {ban.reason}
                     </div>
                   )}
 
-                  <div className="mt-2 text-xs text-white/40">
+                  <div className="mt-2 text-xs text-slate-400">
                     Banned by {ban.bannedByUsername} on{" "}
                     {ban.bannedAt.toLocaleDateString()}
                   </div>

@@ -43,9 +43,9 @@ export function InviteItem({ invite, channelName, onDelete }: InviteItemProps) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
       className={cn(
-        "p-4 rounded-lg border transition-colors",
+        "p-4 rounded-xl border transition-all",
         isValid
-          ? "border-white/10 bg-white/5"
+          ? "border-slate-700/30 bg-slate-800/20 hover:bg-slate-800/30"
           : "border-red-500/30 bg-red-500/10",
       )}
     >
@@ -54,23 +54,23 @@ export function InviteItem({ invite, channelName, onDelete }: InviteItemProps) {
           {/* Invite Code */}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <code className="px-2 py-1 rounded bg-black/30 text-blue-400 font-mono text-sm">
+              <code className="px-3 py-1 rounded-md glass-inset text-blue-300 font-mono text-sm">
                 {invite.code}
               </code>
               {!isValid && (
-                <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-500/20 text-red-400">
+                <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-500/20 text-red-300">
                   Expired
                 </span>
               )}
             </div>
-            <p className="text-xs text-white/60 flex items-center gap-1">
+            <p className="text-xs text-slate-400 flex items-center gap-1">
               <Hash className="w-3 h-3" />
               {channelName}
             </p>
           </div>
 
           {/* Invite Info */}
-          <div className="flex items-center gap-4 text-xs text-white/60">
+          <div className="flex items-center gap-4 text-xs text-slate-400">
             <div className="flex items-center gap-1">
               <Users className="w-3 h-3" />
               {invite.uses}
@@ -89,14 +89,14 @@ export function InviteItem({ invite, channelName, onDelete }: InviteItemProps) {
               fallback={invite.inviterUsername.slice(0, 2).toUpperCase()}
               size="xs"
             />
-            <span className="text-xs text-white/60">
+            <span className="text-xs text-slate-400">
               Created by {invite.inviterUsername}
             </span>
           </div>
 
           {invite.temporary && (
-            <div className="text-xs text-yellow-400">
-              ⚠️ Temporary (users will be kicked when they disconnect)
+            <div className="text-xs text-yellow-300">
+              Temporary (users will be kicked when they disconnect)
             </div>
           )}
         </div>

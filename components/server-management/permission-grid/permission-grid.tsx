@@ -36,7 +36,7 @@ export function PermissionGrid({
     <div className={cn("space-y-6", className)} {...props}>
       {Object.entries(PERMISSION_CATEGORIES).map(([category, perms]) => (
         <div key={category} className="space-y-2">
-          <h4 className="text-sm font-semibold text-white/80 uppercase tracking-wider">
+          <h4 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">
             {category.replace("_", " ")}
           </h4>
           <div className="space-y-1">
@@ -55,9 +55,9 @@ export function PermissionGrid({
       ))}
 
       {isAdmin && (
-        <div className="p-3 rounded-lg bg-blue-500/20 border border-blue-500/30">
-          <p className="text-sm text-blue-200">
-            <strong>Administrator</strong> permission grants all permissions automatically.
+        <div className="p-3 rounded-lg bg-blue-500/15 border border-blue-500/30">
+          <p className="text-sm text-blue-300">
+            <strong className="text-blue-200">Administrator</strong> permission grants all permissions automatically.
           </p>
         </div>
       )}
@@ -108,7 +108,7 @@ export function PermissionOverrideGrid({
     <div className={cn("space-y-6", className)} {...props}>
       {Object.entries(PERMISSION_CATEGORIES).map(([category, perms]) => (
         <div key={category} className="space-y-2">
-          <h4 className="text-sm font-semibold text-white/80 uppercase tracking-wider">
+          <h4 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">
             {category.replace("_", " ")}
           </h4>
           <div className="space-y-1">
@@ -125,10 +125,10 @@ export function PermissionOverrideGrid({
         </div>
       ))}
 
-      <div className="p-3 rounded-lg bg-yellow-500/20 border border-yellow-500/30">
-        <p className="text-sm text-yellow-200">
-          <strong>Allow</strong> grants the permission, <strong>Deny</strong> removes it, and{" "}
-          <strong>Neutral</strong> inherits from role permissions.
+      <div className="p-3 rounded-lg bg-yellow-500/15 border border-yellow-500/30">
+        <p className="text-sm text-yellow-300">
+          <strong className="text-yellow-200">Allow</strong> grants the permission, <strong className="text-yellow-200">Deny</strong> removes it, and{" "}
+          <strong className="text-yellow-200">Neutral</strong> inherits from role permissions.
         </p>
       </div>
     </div>

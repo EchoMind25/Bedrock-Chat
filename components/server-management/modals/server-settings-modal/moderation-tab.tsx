@@ -57,8 +57,8 @@ export function ModerationTab({ server, onAutoModUpdate }: ModerationTabProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold mb-2">Moderation</h3>
-        <p className="text-sm text-white/60">
+        <h3 className="text-lg font-semibold text-slate-100 mb-1">Moderation</h3>
+        <p className="text-sm text-slate-300">
           Manage moderation settings, bans, and view server activity
         </p>
       </div>
@@ -70,7 +70,7 @@ export function ModerationTab({ server, onAutoModUpdate }: ModerationTabProps) {
         variant="pills"
       />
 
-      <div className="min-h-[400px]">
+      <div className="min-h-[400px] glass-card rounded-xl p-5">
         {activeTab === "automod" && (
           <AutoModSettingsForm
             settings={autoModSettings}

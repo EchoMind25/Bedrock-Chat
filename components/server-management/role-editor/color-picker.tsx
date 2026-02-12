@@ -32,11 +32,11 @@ export function ColorPicker({ value, onChange, label, className, ...props }: Col
 
   return (
     <div className={cn("space-y-4", className)} {...props}>
-      {label && <label className="text-sm font-medium">{label}</label>}
+      {label && <label className="text-sm font-medium text-blue-300">{label}</label>}
 
       {/* Preset swatches */}
       <div className="space-y-2">
-        <p className="text-xs text-white/60">Preset Colors</p>
+        <p className="text-xs text-slate-400">Preset Colors</p>
         <div className="grid grid-cols-6 gap-2">
           {PRESET_ROLE_COLORS.map((preset) => (
             <motion.button
@@ -71,7 +71,7 @@ export function ColorPicker({ value, onChange, label, className, ...props }: Col
 
       {/* Custom color input */}
       <div className="space-y-2">
-        <p className="text-xs text-white/60">Custom Color (OKLCH)</p>
+        <p className="text-xs text-slate-400">Custom Color (OKLCH)</p>
         <Input
           value={customColor}
           onChange={(e) => handleCustomColorChange(e.target.value)}
@@ -82,7 +82,7 @@ export function ColorPicker({ value, onChange, label, className, ...props }: Col
 
       {/* Preview */}
       <div className="space-y-2">
-        <p className="text-xs text-white/60">Preview</p>
+        <p className="text-xs text-slate-400">Preview</p>
         <motion.div
           className="p-4 rounded-lg text-center font-medium"
           style={{ backgroundColor: value }}

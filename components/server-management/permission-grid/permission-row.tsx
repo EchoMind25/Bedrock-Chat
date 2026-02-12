@@ -2,6 +2,7 @@
 
 import { Info } from "lucide-react";
 import { Tooltip } from "../../ui/tooltip/tooltip";
+import { cn } from "../../../lib/utils/cn";
 
 interface PermissionRowProps {
   name: string;
@@ -24,7 +25,7 @@ export function PermissionRow({
         "flex items-center gap-3 p-3 rounded-lg transition-colors cursor-pointer",
         disabled
           ? "opacity-50 cursor-not-allowed"
-          : "hover:bg-white/5",
+          : "hover:bg-slate-800/30",
       )}
     >
       <input
@@ -32,14 +33,14 @@ export function PermissionRow({
         checked={checked}
         onChange={onToggle}
         disabled={disabled}
-        className="w-4 h-4 rounded border-white/20 bg-white/5 checked:bg-blue-500 checked:border-blue-500 focus:ring-2 focus:ring-blue-500/50 cursor-pointer disabled:cursor-not-allowed"
+        className="w-4 h-4 rounded border-slate-600 bg-slate-800/50 checked:bg-blue-500 checked:border-blue-500 focus:ring-2 focus:ring-blue-500/50 cursor-pointer disabled:cursor-not-allowed"
       />
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium truncate">{name}</span>
+          <span className="text-sm font-medium text-slate-200 truncate">{name}</span>
           <Tooltip content={description} position="top">
-            <Info className="w-4 h-4 text-white/40 hover:text-white/60 transition-colors flex-shrink-0" />
+            <Info className="w-4 h-4 text-slate-400 hover:text-slate-300 transition-colors flex-shrink-0" />
           </Tooltip>
         </div>
       </div>
@@ -72,9 +73,9 @@ export function ThreeStatePermissionRow({
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium truncate">{name}</span>
+          <span className="text-sm font-medium text-slate-200 truncate">{name}</span>
           <Tooltip content={description} position="top">
-            <Info className="w-4 h-4 text-white/40 hover:text-white/60 transition-colors flex-shrink-0" />
+            <Info className="w-4 h-4 text-slate-400 hover:text-slate-300 transition-colors flex-shrink-0" />
           </Tooltip>
         </div>
       </div>
@@ -88,7 +89,7 @@ export function ThreeStatePermissionRow({
             "px-3 py-1.5 rounded text-xs font-medium transition-colors",
             value === "allow"
               ? "bg-green-500 text-white"
-              : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/80",
+              : "bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:text-slate-100",
             disabled && "cursor-not-allowed",
           )}
         >
@@ -101,8 +102,8 @@ export function ThreeStatePermissionRow({
           className={cn(
             "px-3 py-1.5 rounded text-xs font-medium transition-colors",
             value === "neutral"
-              ? "bg-gray-500 text-white"
-              : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/80",
+              ? "bg-slate-500 text-white"
+              : "bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:text-slate-100",
             disabled && "cursor-not-allowed",
           )}
         >
@@ -116,7 +117,7 @@ export function ThreeStatePermissionRow({
             "px-3 py-1.5 rounded text-xs font-medium transition-colors",
             value === "deny"
               ? "bg-red-500 text-white"
-              : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/80",
+              : "bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:text-slate-100",
             disabled && "cursor-not-allowed",
           )}
         >
@@ -126,6 +127,3 @@ export function ThreeStatePermissionRow({
     </div>
   );
 }
-
-// Helper import
-import { cn } from "../../../lib/utils/cn";
