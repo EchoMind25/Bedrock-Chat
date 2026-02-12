@@ -13,7 +13,7 @@ export default function ChannelsPage() {
 			router.push("/login");
 		} else {
 			// Redirect to main app layout
-			router.push("/servers/server-1/channel-1");
+			router.push("/friends");
 		}
 	}, [isAuthenticated, router]);
 

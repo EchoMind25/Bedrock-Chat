@@ -35,7 +35,7 @@ export function ImageUpload({
       return;
     }
 
-    // Validate file size (mock)
+    // Validate file size
     const sizeMB = file.size / (1024 * 1024);
     if (sizeMB > maxSizeMB) {
       toast.error("File Too Large", `Image must be smaller than ${maxSizeMB}MB`);

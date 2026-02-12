@@ -9,10 +9,11 @@ import { Dropdown } from "../../ui/dropdown/dropdown";
 import { Toggle } from "../../ui/toggle/toggle";
 import { useServerManagementStore } from "../../../store/server-management.store";
 import { useServerStore } from "../../../store/server.store";
+import { useAuthStore } from "../../../store/auth.store";
 import { toast } from "../../../lib/stores/toast-store";
 import { cn } from "../../../lib/utils/cn";
+import { createClient } from "../../../lib/supabase/client";
 import type { ChannelType } from "../../../lib/types/server";
-import { Permission } from "../../../lib/types/permissions";
 
 const CHANNEL_TYPES: Array<{
   type: ChannelType;
@@ -97,34 +98,51 @@ export function CreateChannelModal() {
       return;
     }
 
+    const user = useAuthStore.getState().user;
+    if (!user) return;
+
     setError("");
     setIsLoading(true);
 
     try {
-      // Mock API delay
-      await new Promise((resolve) => setTimeout(resolve, 700));
+      const supabase = createClient();
+
+      // Insert channel into Supabase
+      const { data: channelData, error: channelError } = await supabase
+        .from("channels")
+        .insert({
+          server_id: currentServer.id,
+          category_id: selectedCategoryId || null,
+          name: formattedName,
+          type: channelType,
+          position: currentServer.channels.length,
+          is_private: isPrivate,
+        })
+        .select()
+        .single();
+
+      if (channelError) throw channelError;
+
+      // Log audit entry
+      await supabase.from("audit_log").insert({
+        server_id: currentServer.id,
+        actor_id: user.id,
+        action: "channel_create",
+        target_id: channelData.id,
+        target_name: formattedName,
+        target_type: "channel",
+      });
 
       const newChannel = {
-        id: `${currentServer.id}-ch-${Date.now()}`,
-        name: formattedName,
-        type: channelType,
+        id: channelData.id,
+        name: channelData.name,
+        type: channelData.type as ChannelType,
         serverId: currentServer.id,
-        categoryId: selectedCategoryId || undefined,
-        position: currentServer.channels.length,
+        categoryId: channelData.category_id,
+        position: channelData.position,
         unreadCount: 0,
-        isNsfw: false,
-        slowMode: 0,
-        permissionOverrides: isPrivate
-          ? [
-              {
-                id: `override-${Date.now()}`,
-                targetType: "role" as const,
-                targetId: `${currentServer.id}-role-everyone`,
-                allow: 0,
-                deny: Permission.VIEW_CHANNELS,
-              },
-            ]
-          : undefined,
+        isNsfw: channelData.is_nsfw,
+        slowMode: channelData.slow_mode_seconds,
       };
 
       // Add to server store
@@ -142,7 +160,8 @@ export function CreateChannelModal() {
 
       // Navigate to new channel
       window.location.href = `/servers/${currentServer.id}/${newChannel.id}`;
-    } catch (error) {
+    } catch (err) {
+      console.error("Error creating channel:", err);
       toast.error("Creation Failed", "Could not create channel. Please try again.");
     } finally {
       setIsLoading(false);

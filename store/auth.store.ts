@@ -39,10 +39,6 @@ interface AuthState {
 	updateUser: (updates: Partial<User>) => void;
 	checkAuth: () => Promise<void>;
 	setPendingSignup: (data: SignupData | null) => void;
-	// Dev mode: Quick login without credentials
-	devLogin: () => void;
-	devLoginParent: () => void;
-	devLoginTeen: () => void;
 }
 
 interface SignupData {
@@ -330,10 +326,24 @@ export const useAuthStore = create<AuthState>()(
 
 				clearError: () => set({ error: null }),
 
-				updateUser: (updates) => {
+				updateUser: async (updates) => {
 					const current = get().user;
-					if (current) {
-						set({ user: { ...current, ...updates } });
+					if (!current) return;
+
+					set({ user: { ...current, ...updates } });
+
+					try {
+						const supabase = createClient();
+						const profileUpdates: Record<string, unknown> = {};
+						if (updates.username !== undefined) profileUpdates.username = updates.username;
+						if (updates.displayName !== undefined) profileUpdates.display_name = updates.displayName;
+						if (updates.avatar !== undefined) profileUpdates.avatar_url = updates.avatar;
+
+						if (Object.keys(profileUpdates).length > 0) {
+							await supabase.from("profiles").update(profileUpdates).eq("id", current.id);
+						}
+					} catch (err) {
+						console.error("Error updating profile:", err);
 					}
 				},
 
@@ -367,60 +377,6 @@ export const useAuthStore = create<AuthState>()(
 					}
 
 					set({ user: null, isAuthenticated: false, isLoading: false });
-				},
-
-				devLogin: () => {
-					const user: User = {
-						id: "dev-user-001",
-						email: "dev@bedrock.chat",
-						username: "developer",
-						displayName: "Dev User",
-						avatar: "",
-						accountType: "standard",
-						createdAt: new Date(),
-						settings: {
-							theme: "dark",
-							notifications: true,
-							reducedMotion: false,
-						},
-					};
-					set({ user, isAuthenticated: true, isLoading: false, error: null });
-				},
-
-				devLoginParent: () => {
-					const user: User = {
-						id: "parent-1",
-						email: "parent@bedrock.chat",
-						username: "concerned_parent",
-						displayName: "Sarah Johnson",
-						avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=parent1",
-						accountType: "parent",
-						createdAt: new Date("2025-01-15"),
-						settings: {
-							theme: "dark",
-							notifications: true,
-							reducedMotion: false,
-						},
-					};
-					set({ user, isAuthenticated: true, isLoading: false, error: null });
-				},
-
-				devLoginTeen: () => {
-					const user: User = {
-						id: "teen-1",
-						email: "teen1@bedrock.chat",
-						username: "alex_cool",
-						displayName: "Alex Johnson",
-						avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=teen1",
-						accountType: "teen",
-						createdAt: new Date("2026-01-20"),
-						settings: {
-							theme: "dark",
-							notifications: true,
-							reducedMotion: false,
-						},
-					};
-					set({ user, isAuthenticated: true, isLoading: false, error: null });
 				},
 			}),
 			{

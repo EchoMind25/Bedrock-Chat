@@ -11,19 +11,10 @@ interface VoiceSettingsProps {
   onClose: () => void;
 }
 
-const mockInputDevices = [
-  { id: "default", name: "Default - Built-in Microphone" },
-  { id: "usb-mic-1", name: "USB Microphone (Blue Yeti)" },
-  { id: "headset-1", name: "Headset Microphone" },
-  { id: "webcam-1", name: "Webcam Microphone" },
-];
-
-const mockOutputDevices = [
-  { id: "default", name: "Default - Built-in Speakers" },
-  { id: "headphones-1", name: "Bluetooth Headphones" },
-  { id: "usb-speakers", name: "USB Speakers" },
-  { id: "hdmi-audio", name: "HDMI Audio Output" },
-];
+interface AudioDevice {
+  id: string;
+  name: string;
+}
 
 const springConfig = {
   type: "spring" as const,
@@ -33,6 +24,12 @@ const springConfig = {
 };
 
 export function VoiceSettings({ isOpen, onClose }: VoiceSettingsProps) {
+  const [inputDevices, setInputDevices] = useState<AudioDevice[]>([
+    { id: "default", name: "Default" },
+  ]);
+  const [outputDevices, setOutputDevices] = useState<AudioDevice[]>([
+    { id: "default", name: "Default" },
+  ]);
   const [inputDevice, setInputDevice] = useState("default");
   const [outputDevice, setOutputDevice] = useState("default");
   const [inputVolume, setInputVolume] = useState(80);
@@ -41,12 +38,42 @@ export function VoiceSettings({ isOpen, onClose }: VoiceSettingsProps) {
   const [outputMeterLevel, setOutputMeterLevel] = useState(0);
   const [isTesting, setIsTesting] = useState(false);
 
+  // Enumerate real audio devices from the browser
+  useEffect(() => {
+    if (!isOpen) return;
+
+    async function loadDevices() {
+      try {
+        // Request permission to access media devices
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        const devices = await navigator.mediaDevices.enumerateDevices();
+
+        const inputs: AudioDevice[] = [{ id: "default", name: "Default" }];
+        const outputs: AudioDevice[] = [{ id: "default", name: "Default" }];
+
+        for (const device of devices) {
+          if (device.kind === "audioinput" && device.deviceId !== "default") {
+            inputs.push({ id: device.deviceId, name: device.label || `Microphone ${inputs.length}` });
+          } else if (device.kind === "audiooutput" && device.deviceId !== "default") {
+            outputs.push({ id: device.deviceId, name: device.label || `Speaker ${outputs.length}` });
+          }
+        }
+
+        setInputDevices(inputs);
+        setOutputDevices(outputs);
+      } catch {
+        // Permission denied or no devices available - keep defaults
+      }
+    }
+
+    loadDevices();
+  }, [isOpen]);
+
   // Simulate microphone input level
   useEffect(() => {
     if (!isOpen) return;
 
     const interval = setInterval(() => {
-      // Random fluctuation to simulate voice input
       const randomLevel = Math.random() * inputVolume;
       setInputMeterLevel(randomLevel);
     }, 100);
@@ -57,7 +84,6 @@ export function VoiceSettings({ isOpen, onClose }: VoiceSettingsProps) {
   const handleTest = () => {
     setIsTesting(true);
 
-    // Simulate output test
     let level = 0;
     const interval = setInterval(() => {
       level += 5;
@@ -93,7 +119,7 @@ export function VoiceSettings({ isOpen, onClose }: VoiceSettingsProps) {
             Input Device
           </label>
           <DeviceDropdown
-            devices={mockInputDevices}
+            devices={inputDevices}
             value={inputDevice}
             onChange={setInputDevice}
           />
@@ -122,7 +148,7 @@ export function VoiceSettings({ isOpen, onClose }: VoiceSettingsProps) {
             Output Device
           </label>
           <DeviceDropdown
-            devices={mockOutputDevices}
+            devices={outputDevices}
             value={outputDevice}
             onChange={setOutputDevice}
           />
@@ -155,7 +181,7 @@ export function VoiceSettings({ isOpen, onClose }: VoiceSettingsProps) {
 }
 
 interface DeviceDropdownProps {
-  devices: { id: string; name: string }[];
+  devices: AudioDevice[];
   value: string;
   onChange: (value: string) => void;
 }

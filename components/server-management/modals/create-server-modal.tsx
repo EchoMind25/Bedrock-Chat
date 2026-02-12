@@ -9,8 +9,10 @@ import { Button } from "../../ui/button/button";
 import { ImageUpload } from "../file-upload/image-upload";
 import { useServerManagementStore } from "../../../store/server-management.store";
 import { useServerStore } from "../../../store/server.store";
+import { useAuthStore } from "../../../store/auth.store";
 import { toast } from "../../../lib/stores/toast-store";
 import { cn } from "../../../lib/utils/cn";
+import { createClient } from "../../../lib/supabase/client";
 import type { ChannelType } from "../../../lib/types/server";
 import { generateDefaultRoles } from "../../../lib/constants/roles";
 import { DEFAULT_SERVER_SETTINGS } from "../../../lib/types/server-settings";
@@ -114,53 +116,114 @@ export function CreateServerModal() {
       return;
     }
 
+    const user = useAuthStore.getState().user;
+    if (!user) {
+      setError("You must be logged in to create a server");
+      return;
+    }
+
     setError("");
     setIsLoading(true);
 
     try {
-      // Mock API delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
+      const supabase = createClient();
       const template = TEMPLATES.find((t) => t.id === selectedTemplate)!;
-      const serverId = `server-${Date.now()}`;
 
-      // Create categories
+      // 1. Create server in Supabase
+      const { data: serverData, error: serverError } = await supabase
+        .from("servers")
+        .insert({
+          name: serverName.trim(),
+          owner_id: user.id,
+          icon_url: serverIcon,
+          is_public: false,
+        })
+        .select()
+        .single();
+
+      if (serverError) throw serverError;
+
+      const serverId = serverData.id;
+
+      // 2. Add creator as owner member
+      await supabase.from("server_members").insert({
+        server_id: serverId,
+        user_id: user.id,
+        role: "owner",
+      });
+
+      // 3. Create categories
       const categoryNames = Array.from(new Set(template.channels.map((ch) => ch.category)));
-      const categories = categoryNames.map((name, index) => ({
-        id: `cat-${serverId}-${index}`,
+      const categoryInserts = categoryNames.map((name, index) => ({
+        server_id: serverId,
         name,
-        serverId,
         position: index,
       }));
 
-      // Create channels
-      const channels = template.channels.map((ch, index) => {
-        const category = categories.find((cat) => cat.name === ch.category)!;
+      const { data: categoriesData } = await supabase
+        .from("channel_categories")
+        .insert(categoryInserts)
+        .select();
+
+      // 4. Create channels
+      const channelInserts = template.channels.map((ch, index) => {
+        const category = (categoriesData || []).find((cat) => cat.name === ch.category);
         return {
-          id: `${serverId}-ch-${index}`,
+          server_id: serverId,
+          category_id: category?.id || null,
           name: ch.name,
           type: ch.type,
-          serverId,
-          categoryId: category.id,
           position: index,
-          unreadCount: 0,
-          isNsfw: false,
-          slowMode: 0,
         };
       });
 
-      // Create new server
+      const { data: channelsData } = await supabase
+        .from("channels")
+        .insert(channelInserts)
+        .select();
+
+      // 5. Log audit entry
+      await supabase.from("audit_log").insert({
+        server_id: serverId,
+        actor_id: user.id,
+        action: "server_create",
+        target_id: serverId,
+        target_name: serverName.trim(),
+        target_type: "server",
+      });
+
+      // 6. Build local server object and add to store
+      const categories = (categoriesData || []).map((cat) => ({
+        id: cat.id,
+        name: cat.name,
+        serverId,
+        position: cat.position,
+        collapsed: false,
+      }));
+
+      const channels = (channelsData || []).map((ch) => ({
+        id: ch.id,
+        name: ch.name,
+        type: ch.type as ChannelType,
+        serverId,
+        categoryId: ch.category_id,
+        position: ch.position,
+        unreadCount: 0,
+        isNsfw: ch.is_nsfw,
+        slowMode: ch.slow_mode_seconds,
+      }));
+
       const newServer = {
         id: serverId,
-        name: serverName,
+        name: serverName.trim(),
         icon: serverIcon,
-        ownerId: "current-user",
+        ownerId: user.id,
         memberCount: 1,
         isOwner: true,
         categories,
         channels,
         unreadCount: 0,
-        createdAt: new Date(),
+        createdAt: new Date(serverData.created_at),
         roles: generateDefaultRoles(serverId),
         settings: {
           ...DEFAULT_SERVER_SETTINGS,
@@ -170,7 +233,6 @@ export function CreateServerModal() {
         description: "",
       };
 
-      // Add to store
       useServerStore.setState((state) => ({
         servers: [...state.servers, newServer],
         currentServerId: serverId,
@@ -181,8 +243,12 @@ export function CreateServerModal() {
       handleClose();
 
       // Navigate to new server
-      window.location.href = `/servers/${serverId}/${channels[0]?.id || ""}`;
-    } catch (error) {
+      const firstChannel = channels[0];
+      if (firstChannel) {
+        window.location.href = `/servers/${serverId}/${firstChannel.id}`;
+      }
+    } catch (err) {
+      console.error("Error creating server:", err);
       toast.error("Creation Failed", "Could not create server. Please try again.");
     } finally {
       setIsLoading(false);

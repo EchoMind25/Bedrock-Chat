@@ -3,7 +3,6 @@
 import { use, useEffect, lazy, Suspense } from "react";
 import { useServerStore } from "@/store/server.store";
 import { Glass } from "@/components/ui/glass/glass";
-import { useRealtimeSimulation } from "@/lib/hooks/use-realtime-simulation";
 
 // Lazy load heavy chat components (includes @tanstack/react-virtual)
 const ChannelHeader = lazy(() =>
@@ -34,9 +33,6 @@ export default function ChannelPage({ params }: PageProps) {
 			setCurrentChannel(channelId);
 		}
 	}, [serverId, channelId, setCurrentServer, setCurrentChannel]);
-
-	// Enable realtime simulation
-	useRealtimeSimulation(channelId);
 
 	const server = getCurrentServer();
 	const channel = getCurrentChannel();

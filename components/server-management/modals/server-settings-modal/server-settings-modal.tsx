@@ -13,6 +13,7 @@ import { InvitesTab } from "./invites-tab";
 import { useServerManagementStore } from "../../../../store/server-management.store";
 import { useServerStore } from "../../../../store/server.store";
 import { toast } from "../../../../lib/stores/toast-store";
+import { createClient } from "../../../../lib/supabase/client";
 import type { Server } from "../../../../lib/types/server";
 import type { Role } from "../../../../lib/types/permissions";
 import type { AutoModSettings } from "../../../../lib/types/moderation";
@@ -56,8 +57,20 @@ export function ServerSettingsModal() {
     setIsSaving(true);
 
     try {
-      // Mock API delay
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      const supabase = createClient();
+      const dbUpdates: Record<string, unknown> = {};
+      if (editedServer.name !== undefined) dbUpdates.name = editedServer.name;
+      if (editedServer.icon !== undefined) dbUpdates.icon = editedServer.icon;
+      if (editedServer.description !== undefined) dbUpdates.description = editedServer.description;
+
+      if (Object.keys(dbUpdates).length > 0) {
+        const { error } = await supabase
+          .from("servers")
+          .update(dbUpdates)
+          .eq("id", currentServer.id);
+
+        if (error) throw error;
+      }
 
       // Update server in store
       useServerStore.setState((state) => ({

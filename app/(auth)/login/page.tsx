@@ -9,19 +9,15 @@ import { Button } from "@/components/ui/button/button";
 import { Input } from "@/components/ui/input/input";
 import { Toggle } from "@/components/ui/toggle/toggle";
 import Link from "next/link";
-import { isDevelopment } from "@/lib/utils/dev-mode";
 
 export default function LoginPage() {
 	const router = useRouter();
-	const { login, isLoading, error, clearError, devLogin } = useAuthStore();
+	const { login, isLoading, error, clearError } = useAuthStore();
 
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [showPassword, setShowPassword] = useState(false);
 	const [rememberMe, setRememberMe] = useState(false);
-
-	// Dev mode detection (always true in development for easy access)
-	const isDev = isDevelopment();
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -29,39 +25,12 @@ export default function LoginPage() {
 
 		const success = await login(email, password);
 		if (success) {
-			router.push("/servers/server-1/channel-1");
+			router.push("/friends");
 		}
-	};
-
-	const handleDevLogin = () => {
-		devLogin();
-		router.push("/servers/server-1/channel-1");
 	};
 
 	return (
 		<div className="min-h-screen animated-gradient flex items-center justify-center p-4">
-			{/* Dev Mode Banner */}
-			{isDev && (
-				<motion.div
-					initial={{ y: -100, opacity: 0 }}
-					animate={{ y: 0, opacity: 1 }}
-					className="fixed top-4 left-1/2 -translate-x-1/2 z-50"
-				>
-					<Glass variant="strong" className="px-6 py-3 backdrop-blur-xl">
-						<div className="flex items-center gap-4">
-							<span className="text-sm text-white/80">Development Mode</span>
-							<Button
-								size="sm"
-								onClick={handleDevLogin}
-								className="!py-1 !px-3 text-xs"
-							>
-								Quick Login
-							</Button>
-						</div>
-					</Glass>
-				</motion.div>
-			)}
-
 			<motion.div
 				initial={{ opacity: 0, y: 20 }}
 				animate={{ opacity: 1, y: 0 }}
@@ -160,21 +129,6 @@ export default function LoginPage() {
 							Create one free
 						</Link>
 					</p>
-
-					{/* Dev Mode Helper */}
-					{isDev && (
-						<motion.div
-							initial={{ opacity: 0 }}
-							animate={{ opacity: 1 }}
-							transition={{ delay: 0.3 }}
-							className="mt-6 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg"
-						>
-							<p className="text-xs text-blue-400 text-center">
-								<strong>Dev Tip:</strong> Any email + password (6+ chars) works,
-								or use Quick Login above
-							</p>
-						</motion.div>
-					)}
 				</Glass>
 			</motion.div>
 		</div>

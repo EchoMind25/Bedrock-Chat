@@ -12,6 +12,7 @@ import { PermissionOverrideGrid } from "../../permission-grid/permission-grid";
 import { useServerManagementStore, type ChannelSettingsTab } from "../../../../store/server-management.store";
 import { useServerStore } from "../../../../store/server.store";
 import { toast } from "../../../../lib/stores/toast-store";
+import { createClient } from "../../../../lib/supabase/client";
 import type { Channel } from "../../../../lib/types/server";
 import type { Role, PermissionOverride } from "../../../../lib/types/permissions";
 
@@ -72,8 +73,21 @@ export function ChannelSettingsModal() {
     setIsSaving(true);
 
     try {
-      // Mock API delay
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      const supabase = createClient();
+      const dbUpdates: Record<string, unknown> = {};
+      if (editedChannel.name !== undefined) dbUpdates.name = editedChannel.name;
+      if (editedChannel.topic !== undefined) dbUpdates.topic = editedChannel.topic;
+      if (editedChannel.slowMode !== undefined) dbUpdates.slow_mode = editedChannel.slowMode;
+      if (editedChannel.isNsfw !== undefined) dbUpdates.is_nsfw = editedChannel.isNsfw;
+
+      if (Object.keys(dbUpdates).length > 0) {
+        const { error } = await supabase
+          .from("channels")
+          .update(dbUpdates)
+          .eq("id", currentChannel.id);
+
+        if (error) throw error;
+      }
 
       // Update channel in store
       useServerStore.setState((state) => ({
@@ -112,7 +126,15 @@ export function ChannelSettingsModal() {
     }
 
     try {
-      // Delete channel
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("channels")
+        .delete()
+        .eq("id", currentChannel.id);
+
+      if (error) throw error;
+
+      // Remove channel from local store
       useServerStore.setState((state) => ({
         servers: state.servers.map((server) =>
           server.id === currentServer.id

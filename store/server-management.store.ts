@@ -3,8 +3,9 @@ import { persist } from "zustand/middleware";
 import { conditionalDevtools } from "@/lib/utils/devtools-config";
 import type { ServerInvite, InviteSettings } from "../lib/types/invites";
 import type { Ban, AuditLogEntry } from "../lib/types/moderation";
-import { generateInviteCode, calculateExpirationDate } from "../lib/types/invites";
+import { calculateExpirationDate } from "../lib/types/invites";
 import { toast } from "../lib/stores/toast-store";
+import { createClient } from "../lib/supabase/client";
 
 export type ServerSettingsTab = "overview" | "roles" | "channels" | "moderation" | "invites";
 export type ChannelSettingsTab = "overview" | "permissions";
@@ -16,7 +17,7 @@ interface ServerManagementState {
   isCreateChannelOpen: boolean;
   isChannelSettingsOpen: boolean;
   selectedChannelId: string | null;
-  preselectedCategoryId: string | null; // For create channel modal
+  preselectedCategoryId: string | null;
 
   // Tab states
   serverSettingsTab: ServerSettingsTab;
@@ -105,10 +106,7 @@ export const useServerManagementStore = create<ServerManagementState>()(
 
         // Modal actions
         openServerSettings: (tab = "overview") => {
-          set({
-            isServerSettingsOpen: true,
-            serverSettingsTab: tab,
-          });
+          set({ isServerSettingsOpen: true, serverSettingsTab: tab });
         },
 
         closeServerSettings: () => {
@@ -128,32 +126,19 @@ export const useServerManagementStore = create<ServerManagementState>()(
         },
 
         openCreateChannel: (preselectedCategoryId) => {
-          set({
-            isCreateChannelOpen: true,
-            preselectedCategoryId,
-          });
+          set({ isCreateChannelOpen: true, preselectedCategoryId });
         },
 
         closeCreateChannel: () => {
-          set({
-            isCreateChannelOpen: false,
-            preselectedCategoryId: null,
-          });
+          set({ isCreateChannelOpen: false, preselectedCategoryId: null });
         },
 
         openChannelSettings: (channelId, tab = "overview") => {
-          set({
-            isChannelSettingsOpen: true,
-            selectedChannelId: channelId,
-            channelSettingsTab: tab,
-          });
+          set({ isChannelSettingsOpen: true, selectedChannelId: channelId, channelSettingsTab: tab });
         },
 
         closeChannelSettings: () => {
-          set({
-            isChannelSettingsOpen: false,
-            selectedChannelId: null,
-          });
+          set({ isChannelSettingsOpen: false, selectedChannelId: null });
         },
 
         setChannelSettingsTab: (tab) => {
@@ -162,21 +147,39 @@ export const useServerManagementStore = create<ServerManagementState>()(
 
         // Invite operations
         createInvite: async (serverId, channelId, inviterId, inviterUsername, inviterAvatar, settings) => {
-          await new Promise((resolve) => setTimeout(resolve, 500));
+          const supabase = createClient();
+
+          const { data, error } = await supabase
+            .from("server_invites")
+            .insert({
+              server_id: serverId,
+              channel_id: channelId || null,
+              inviter_id: inviterId,
+              max_uses: settings.maxUses,
+              expires_at: calculateExpirationDate(settings.expiresAfter)?.toISOString() || null,
+              is_temporary: settings.temporary,
+            })
+            .select()
+            .single();
+
+          if (error) {
+            toast.error("Error", "Could not create invite");
+            throw error;
+          }
 
           const newInvite: ServerInvite = {
-            id: `invite-${Date.now()}`,
-            code: generateInviteCode(),
+            id: data.id,
+            code: data.code,
             serverId,
             channelId,
             inviterId,
             inviterUsername,
             inviterAvatar,
-            maxUses: settings.maxUses,
-            expiresAt: calculateExpirationDate(settings.expiresAfter),
-            temporary: settings.temporary,
+            maxUses: data.max_uses,
+            expiresAt: data.expires_at ? new Date(data.expires_at) : null,
+            temporary: data.is_temporary,
             uses: 0,
-            createdAt: new Date(),
+            createdAt: new Date(data.created_at),
           };
 
           set((state) => {
@@ -186,61 +189,65 @@ export const useServerManagementStore = create<ServerManagementState>()(
             return { invites: newInvites };
           });
 
-          // Add audit log entry
           get().addAuditLogEntry(
-            serverId,
-            "invite_create",
-            inviterId,
-            inviterUsername,
-            inviterAvatar,
-            newInvite.id,
-            newInvite.code,
-            "invite",
+            serverId, "invite_create", inviterId, inviterUsername, inviterAvatar,
+            newInvite.id, newInvite.code, "invite",
           );
 
           toast.success("Invite Created", `Invite code: ${newInvite.code}`);
-
           return newInvite;
         },
 
         deleteInvite: async (serverId, inviteId) => {
-          // Mock API delay
-          await new Promise((resolve) => setTimeout(resolve, 500));
+          const supabase = createClient();
+          const { error } = await supabase.from("server_invites").delete().eq("id", inviteId);
+
+          if (error) {
+            toast.error("Error", "Could not delete invite");
+            throw error;
+          }
 
           set((state) => {
             const serverInvites = state.invites.get(serverId) || [];
-            const invite = serverInvites.find((inv) => inv.id === inviteId);
             const newInvites = new Map(state.invites);
-            newInvites.set(
-              serverId,
-              serverInvites.filter((inv) => inv.id !== inviteId),
-            );
-
-            if (invite) {
-              get().addAuditLogEntry(
-                serverId,
-                "invite_delete",
-                "current-user",
-                "You",
-                "👤",
-                invite.id,
-                invite.code,
-                "invite",
-              );
-            }
-
+            newInvites.set(serverId, serverInvites.filter((inv) => inv.id !== inviteId));
             return { invites: newInvites };
           });
 
           toast.success("Invite Deleted", "The invite has been removed");
         },
 
-        loadInvites: (serverId, _channelIds) => {
-          const state = get();
-          if (!state.invites.has(serverId)) {
-            const newInvites = new Map(state.invites);
-            newInvites.set(serverId, []);
-            set({ invites: newInvites });
+        loadInvites: async (serverId) => {
+          try {
+            const supabase = createClient();
+            const { data, error } = await supabase
+              .from("server_invites")
+              .select(`*, inviter:profiles!server_invites_inviter_id_fkey(id, username, avatar_url)`)
+              .eq("server_id", serverId);
+
+            if (error) throw error;
+
+            const invites: ServerInvite[] = (data || []).map((inv) => {
+              const inviter = inv.inviter as unknown as Record<string, unknown>;
+              return {
+                id: inv.id, code: inv.code, serverId: inv.server_id,
+                channelId: inv.channel_id, inviterId: inv.inviter_id,
+                inviterUsername: (inviter?.username as string) || "Unknown",
+                inviterAvatar: (inviter?.avatar_url as string) || "",
+                maxUses: inv.max_uses,
+                expiresAt: inv.expires_at ? new Date(inv.expires_at) : null,
+                temporary: inv.is_temporary, uses: inv.uses,
+                createdAt: new Date(inv.created_at),
+              };
+            });
+
+            set((state) => {
+              const newInvites = new Map(state.invites);
+              newInvites.set(serverId, invites);
+              return { invites: newInvites };
+            });
+          } catch (err) {
+            console.error("Error loading invites:", err);
           }
         },
 
@@ -250,19 +257,25 @@ export const useServerManagementStore = create<ServerManagementState>()(
 
         // Moderation operations
         banUser: async (serverId, userId, username, displayName, avatar, reason, bannedBy, bannedByUsername) => {
-          await new Promise((resolve) => setTimeout(resolve, 700));
+          const supabase = createClient();
+
+          const { error } = await supabase.from("server_bans").insert({
+            server_id: serverId, user_id: userId, banned_by: bannedBy,
+            reason: reason || null,
+          });
+
+          if (error) {
+            toast.error("Error", "Could not ban user");
+            throw error;
+          }
+
+          // Remove from server_members
+          await supabase.from("server_members").delete()
+            .eq("server_id", serverId).eq("user_id", userId);
 
           const newBan: Ban = {
-            id: `ban-${Date.now()}`,
-            serverId,
-            userId,
-            username,
-            displayName,
-            avatar,
-            reason,
-            bannedBy,
-            bannedByUsername,
-            bannedAt: new Date(),
+            id: `ban-${Date.now()}`, serverId, userId, username, displayName,
+            avatar, reason, bannedBy, bannedByUsername, bannedAt: new Date(),
           };
 
           set((state) => {
@@ -272,61 +285,66 @@ export const useServerManagementStore = create<ServerManagementState>()(
             return { bans: newBans };
           });
 
-          // Add audit log entry
           get().addAuditLogEntry(
-            serverId,
-            "member_ban",
-            bannedBy,
-            bannedByUsername,
-            "👤",
-            userId,
-            username,
-            "user",
-            undefined,
-            reason,
+            serverId, "member_ban", bannedBy, bannedByUsername, "",
+            userId, username, "user", undefined, reason,
           );
 
           toast.success("User Banned", `${username} has been banned from the server`);
         },
 
         unbanUser: async (serverId, userId) => {
-          // Mock API delay
-          await new Promise((resolve) => setTimeout(resolve, 500));
+          const supabase = createClient();
+
+          const { error } = await supabase.from("server_bans").delete()
+            .eq("server_id", serverId).eq("user_id", userId);
+
+          if (error) {
+            toast.error("Error", "Could not unban user");
+            throw error;
+          }
 
           set((state) => {
             const serverBans = state.bans.get(serverId) || [];
-            const ban = serverBans.find((b) => b.userId === userId);
             const newBans = new Map(state.bans);
-            newBans.set(
-              serverId,
-              serverBans.filter((b) => b.userId !== userId),
-            );
-
-            if (ban) {
-              get().addAuditLogEntry(
-                serverId,
-                "member_unban",
-                "current-user",
-                "You",
-                "👤",
-                userId,
-                ban.username,
-                "user",
-              );
-            }
-
+            newBans.set(serverId, serverBans.filter((b) => b.userId !== userId));
             return { bans: newBans };
           });
 
           toast.success("User Unbanned", "The user can now rejoin the server");
         },
 
-        loadBans: (serverId) => {
-          const state = get();
-          if (!state.bans.has(serverId)) {
-            const newBans = new Map(state.bans);
-            newBans.set(serverId, []);
-            set({ bans: newBans });
+        loadBans: async (serverId) => {
+          try {
+            const supabase = createClient();
+            const { data, error } = await supabase
+              .from("server_bans")
+              .select(`*, user:profiles!server_bans_user_id_fkey(id, username, display_name, avatar_url), banner:profiles!server_bans_banned_by_fkey(id, username)`)
+              .eq("server_id", serverId);
+
+            if (error) throw error;
+
+            const bans: Ban[] = (data || []).map((b) => {
+              const user = b.user as unknown as Record<string, unknown>;
+              const banner = b.banner as unknown as Record<string, unknown>;
+              return {
+                id: b.id, serverId: b.server_id, userId: b.user_id,
+                username: (user?.username as string) || "Unknown",
+                displayName: (user?.display_name as string) || "Unknown",
+                avatar: (user?.avatar_url as string) || "",
+                reason: b.reason || "", bannedBy: b.banned_by,
+                bannedByUsername: (banner?.username as string) || "Unknown",
+                bannedAt: new Date(b.banned_at),
+              };
+            });
+
+            set((state) => {
+              const newBans = new Map(state.bans);
+              newBans.set(serverId, bans);
+              return { bans: newBans };
+            });
+          } catch (err) {
+            console.error("Error loading bans:", err);
           }
         },
 
@@ -334,12 +352,41 @@ export const useServerManagementStore = create<ServerManagementState>()(
           return get().bans.get(serverId) || [];
         },
 
-        loadAuditLog: (serverId) => {
-          const state = get();
-          if (!state.auditLogs.has(serverId)) {
-            const newLogs = new Map(state.auditLogs);
-            newLogs.set(serverId, []);
-            set({ auditLogs: newLogs });
+        loadAuditLog: async (serverId) => {
+          try {
+            const supabase = createClient();
+            const { data, error } = await supabase
+              .from("audit_log")
+              .select(`*, actor:profiles!audit_log_actor_id_fkey(id, username, avatar_url)`)
+              .eq("server_id", serverId)
+              .order("created_at", { ascending: false })
+              .limit(100);
+
+            if (error) throw error;
+
+            const logs: AuditLogEntry[] = (data || []).map((entry) => {
+              const actor = entry.actor as unknown as Record<string, unknown>;
+              return {
+                id: entry.id, serverId: entry.server_id,
+                action: entry.action as AuditLogEntry["action"],
+                actorId: entry.actor_id,
+                actorUsername: (actor?.username as string) || "Unknown",
+                actorAvatar: (actor?.avatar_url as string) || "",
+                targetId: entry.target_id, targetName: entry.target_name,
+                targetType: entry.target_type,
+                changes: entry.changes as Record<string, { old: unknown; new: unknown }> | undefined,
+                reason: entry.reason,
+                createdAt: new Date(entry.created_at),
+              };
+            });
+
+            set((state) => {
+              const newLogs = new Map(state.auditLogs);
+              newLogs.set(serverId, logs);
+              return { auditLogs: newLogs };
+            });
+          } catch (err) {
+            console.error("Error loading audit log:", err);
           }
         },
 
@@ -347,34 +394,43 @@ export const useServerManagementStore = create<ServerManagementState>()(
           return get().auditLogs.get(serverId) || [];
         },
 
-        addAuditLogEntry: (serverId, action, actorId, actorUsername, actorAvatar, targetId, targetName, targetType, changes, reason) => {
-          const newEntry: AuditLogEntry = {
-            id: `audit-${Date.now()}`,
-            serverId,
-            action: action as AuditLogEntry["action"],
-            actorId,
-            actorUsername,
-            actorAvatar,
-            targetId,
-            targetName,
-            targetType,
-            changes,
-            reason,
-            createdAt: new Date(),
-          };
+        addAuditLogEntry: async (serverId, action, actorId, actorUsername, actorAvatar, targetId, targetName, targetType, changes, reason) => {
+          try {
+            const supabase = createClient();
+            const { data } = await supabase
+              .from("audit_log")
+              .insert({
+                server_id: serverId, actor_id: actorId, action,
+                target_id: targetId || null, target_name: targetName || null,
+                target_type: targetType || null,
+                changes: changes ? JSON.parse(JSON.stringify(changes)) : null,
+                reason: reason || null,
+              })
+              .select()
+              .single();
 
-          set((state) => {
-            const serverLogs = state.auditLogs.get(serverId) || [];
-            const newLogs = new Map(state.auditLogs);
-            newLogs.set(serverId, [newEntry, ...serverLogs]); // Prepend new entries
-            return { auditLogs: newLogs };
-          });
+            const newEntry: AuditLogEntry = {
+              id: data?.id || `audit-${Date.now()}`, serverId,
+              action: action as AuditLogEntry["action"],
+              actorId, actorUsername, actorAvatar,
+              targetId, targetName, targetType,
+              changes, reason, createdAt: new Date(),
+            };
+
+            set((state) => {
+              const serverLogs = state.auditLogs.get(serverId) || [];
+              const newLogs = new Map(state.auditLogs);
+              newLogs.set(serverId, [newEntry, ...serverLogs]);
+              return { auditLogs: newLogs };
+            });
+          } catch (err) {
+            console.error("Error adding audit log:", err);
+          }
         },
       }),
       {
         name: "bedrock-server-management",
         partialize: (state) => ({
-          // Only persist modal states and tab preferences
           serverSettingsTab: state.serverSettingsTab,
           channelSettingsTab: state.channelSettingsTab,
         }),

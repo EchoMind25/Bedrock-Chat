@@ -65,10 +65,9 @@ function FullScreenView({ onMinimize, onClose, username, avatar }: FullScreenVie
       exit={{ opacity: 0 }}
       transition={springConfig}
     >
-      {/* Mock Screen Content */}
+      {/* Screen Content Placeholder */}
       <div className="absolute inset-0 flex items-center justify-center p-8">
         <div className="relative w-full h-full max-w-7xl rounded-2xl overflow-hidden bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-pink-900/20 border border-white/10">
-          {/* Mock desktop/application */}
           <div className="absolute inset-0 p-8">
             <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-6 h-full">
               <div className="space-y-4">
@@ -88,12 +87,11 @@ function FullScreenView({ onMinimize, onClose, username, avatar }: FullScreenVie
                 </div>
               </div>
 
-              {/* Mock content indicator */}
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
                 <Monitor className="w-24 h-24 text-white/20 mx-auto mb-4" />
                 <p className="text-white/40 text-2xl font-medium">Screen Share Active</p>
                 <p className="text-white/20 text-sm mt-2">
-                  This is a mock screen share view
+                  Screen sharing will appear here
                 </p>
               </div>
             </div>

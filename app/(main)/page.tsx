@@ -10,11 +10,10 @@ export default function MainPage() {
 
 	useEffect(() => {
 		// Redirect to current server/channel or default
-		if (currentServerId && currentChannelId) {
+		if (currentServerId && currentChannelId && currentServerId !== "home") {
 			router.push(`/servers/${currentServerId}/${currentChannelId}`);
 		} else {
-			// Default to first server and channel
-			router.push("/servers/server-1/channel-1");
+			router.push("/friends");
 		}
 	}, [currentServerId, currentChannelId, router]);
 

@@ -61,8 +61,7 @@ export function MessageInput({ channelId, channelName }: MessageInputProps) {
 	};
 
 	const handleFileUpload = () => {
-		// Mock file upload - just show an alert
-		alert('File upload coming soon! This is a mock UI.');
+		alert('File upload coming soon!');
 	};
 
 	const remainingChars = MAX_LENGTH - content.length;

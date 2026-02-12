@@ -1,13 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth.store";
+import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "@/components/ui/avatar/avatar";
 import { Tooltip } from "@/components/ui/tooltip/tooltip";
 import { motion, AnimatePresence } from "motion/react";
 
 export function UserPanel() {
-	const { user } = useAuthStore();
+	const router = useRouter();
+	const { user, logout } = useAuthStore();
 	const [showSettings, setShowSettings] = useState(false);
 
 	if (!user) {
@@ -147,6 +150,11 @@ export function UserPanel() {
 							<button
 								type="button"
 								className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded transition-colors flex items-center gap-2"
+								onClick={async () => {
+									const supabase = createClient();
+									await supabase.from("profiles").update({ status: "online" }).eq("id", user.id);
+									setShowSettings(false);
+								}}
 							>
 								<svg
 									className="w-4 h-4"
@@ -162,11 +170,16 @@ export function UserPanel() {
 										d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
 									/>
 								</svg>
-								Set Status
+								Set Online
 							</button>
 							<button
 								type="button"
 								className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded transition-colors flex items-center gap-2"
+								onClick={async () => {
+									const supabase = createClient();
+									await supabase.from("profiles").update({ status: "dnd" }).eq("id", user.id);
+									setShowSettings(false);
+								}}
 							>
 								<svg
 									className="w-4 h-4"
@@ -182,15 +195,16 @@ export function UserPanel() {
 										d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
 									/>
 								</svg>
-								Privacy Settings
+								Do Not Disturb
 							</button>
 							<div className="h-px bg-white/10 my-1" />
 							<button
 								type="button"
 								className="w-full px-3 py-2 text-sm text-left text-error hover:bg-error/10 rounded transition-colors flex items-center gap-2"
-								onClick={() => {
-									// TODO: Implement logout
-									console.log("Logout");
+								onClick={async () => {
+									setShowSettings(false);
+									await logout();
+									router.push("/login");
 								}}
 							>
 								<svg
