@@ -71,8 +71,8 @@ export function Glass({
       className={cn(
         variantClass,
         borderClass,
-        "shadow-glass rounded-lg transition-all duration-300",
-        !isLiquid && "dark:bg-glass-dark/70 dark:border-border-dark/50",
+        "rounded-lg transition-all duration-300",
+        !isLiquid && "shadow-glass dark:bg-glass-dark/70 dark:border-border-dark/50",
         className,
       )}
       {...props}

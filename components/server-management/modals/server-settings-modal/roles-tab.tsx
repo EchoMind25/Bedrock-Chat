@@ -67,7 +67,7 @@ function SortableRoleItem({
       className={cn(
         "flex items-center gap-3 p-3 rounded-lg transition-all cursor-pointer",
         isSelected
-          ? "glass-interactive bg-blue-600/15 border-blue-500/40 ring-1 ring-blue-500/20"
+          ? "border border-blue-500/40 bg-blue-600/15 ring-1 ring-blue-500/20"
           : "border border-slate-700/30 hover:border-slate-600/40 hover:bg-slate-800/30",
         isDragging && "opacity-50",
       )}

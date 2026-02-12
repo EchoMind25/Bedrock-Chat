@@ -49,7 +49,7 @@ function SortableChannelItem({ channel }: { channel: Channel }) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center gap-3 p-3 rounded-lg border border-slate-700/30 glass-interactive transition-all",
+        "flex items-center gap-3 p-3 rounded-lg border border-slate-700/30 bg-slate-800/20 hover:bg-slate-800/40 hover:border-slate-600/40 transition-all",
         isDragging && "opacity-50",
       )}
     >

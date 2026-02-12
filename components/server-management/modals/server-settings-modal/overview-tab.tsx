@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Input, Textarea } from "../../../ui/input/input";
 import { ImageUpload } from "../../file-upload/image-upload";
 import type { Server } from "../../../../lib/types/server";
@@ -16,14 +16,20 @@ export function OverviewTab({ server, onChange }: OverviewTabProps) {
   const [icon, setIcon] = useState<string | null>(server.icon);
   const [banner, setBanner] = useState<string | null>(server.banner || null);
 
-  // Update parent on changes
+  // Update parent on changes (skip initial render to avoid infinite loop)
+  const isInitialRender = useRef(true);
   useEffect(() => {
+    if (isInitialRender.current) {
+      isInitialRender.current = false;
+      return;
+    }
     onChange({
       name,
       description,
       icon,
       banner,
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- onChange is intentionally excluded to prevent infinite re-renders
   }, [name, description, icon, banner]);
 
   return (

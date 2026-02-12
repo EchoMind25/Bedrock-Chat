@@ -211,7 +211,7 @@ export function ServerSettingsModal() {
                   onClick={() => setServerSettingsTab(tab.id)}
                   className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-left transition-all duration-200 group ${
                     isActive
-                      ? "glass-interactive bg-blue-600/20 text-blue-300 shadow-lg shadow-blue-500/10 border-blue-500/30"
+                      ? "text-blue-300 border border-blue-500/30 bg-blue-600/20 shadow-lg shadow-blue-500/10"
                       : "text-slate-300 hover:text-slate-100 hover:bg-slate-800/40"
                   }`}
                 >
