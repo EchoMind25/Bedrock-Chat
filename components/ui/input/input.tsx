@@ -88,7 +88,7 @@ export function Input({
     <div className="w-full">
       {label && (
         <label
-          className={cn("block text-sm font-medium mb-2 text-foreground", labelClassName)}
+          className={cn("block text-sm font-medium mb-2", labelClassName || "text-foreground")}
           htmlFor={props.id}
         >
           {label}

@@ -5,7 +5,8 @@ import { backdropVariants, modalVariants } from "@/lib/utils/animations";
 import { cn } from "@/lib/utils/cn";
 import { AnimatePresence, motion } from "motion/react";
 import type { KeyboardEvent, ReactNode, Ref } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 interface ModalProps {
   /**
@@ -93,6 +94,11 @@ export function Modal({
 }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Focus trap implementation
   useEffect(() => {
@@ -154,7 +160,9 @@ export function Modal({
     }
   };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <div
@@ -254,7 +262,8 @@ export function Modal({
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 

@@ -3,12 +3,15 @@ import { devtools, persist } from "zustand/middleware";
 import { conditionalDevtools } from "@/lib/utils/devtools-config";
 import { createClient } from "@/lib/supabase/client";
 
+export type UserStatus = "online" | "idle" | "dnd" | "offline";
+
 export interface User {
 	id: string;
 	email: string;
 	username: string;
 	displayName: string;
 	avatar: string;
+	status: UserStatus;
 	accountType: "standard" | "parent" | "teen";
 	createdAt: Date;
 	settings: UserSettings;
@@ -56,6 +59,7 @@ function profileToUser(profile: Record<string, unknown>, email: string): User {
 		username: profile.username as string,
 		displayName: (profile.display_name as string) || (profile.username as string),
 		avatar: (profile.avatar_url as string) || "",
+		status: (profile.status as UserStatus) || "online",
 		accountType: (profile.account_type as User["accountType"]) || "standard",
 		createdAt: new Date(profile.created_at as string),
 		settings: {
@@ -292,6 +296,7 @@ export const useAuthStore = create<AuthState>()(
 								username,
 								displayName: username,
 								avatar: "",
+								status: "online",
 								accountType: accountType as User["accountType"],
 								createdAt: new Date(),
 								settings: {
@@ -338,6 +343,7 @@ export const useAuthStore = create<AuthState>()(
 						if (updates.username !== undefined) profileUpdates.username = updates.username;
 						if (updates.displayName !== undefined) profileUpdates.display_name = updates.displayName;
 						if (updates.avatar !== undefined) profileUpdates.avatar_url = updates.avatar;
+						if (updates.status !== undefined) profileUpdates.status = updates.status;
 
 						if (Object.keys(profileUpdates).length > 0) {
 							await supabase.from("profiles").update(profileUpdates).eq("id", current.id);
@@ -381,6 +387,18 @@ export const useAuthStore = create<AuthState>()(
 			}),
 			{
 				name: "bedrock-auth",
+				version: 1,
+				migrate: (persistedState: unknown, version: number) => {
+					const state = persistedState as Record<string, unknown>;
+					if (version === 0) {
+						// v0 -> v1: Add status field to existing user objects
+						const user = state.user as Record<string, unknown> | null;
+						if (user && !user.status) {
+							user.status = "online";
+						}
+					}
+					return state as ReturnType<typeof Object>;
+				},
 				partialize: (state) => ({
 					user: state.user,
 					isAuthenticated: state.isAuthenticated,

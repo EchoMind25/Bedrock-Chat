@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth.store";
-import { createClient } from "@/lib/supabase/client";
+import type { UserStatus } from "@/store/auth.store";
 import { Avatar } from "@/components/ui/avatar/avatar";
+import type { AvatarStatus } from "@/components/ui/avatar/avatar";
 import { Tooltip } from "@/components/ui/tooltip/tooltip";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -19,6 +21,13 @@ export function UserPanel() {
 	const [newDisplayName, setNewDisplayName] = useState("");
 	const settingsRef = useRef<HTMLDivElement>(null);
 	const profileRef = useRef<HTMLDivElement>(null);
+	const panelRef = useRef<HTMLDivElement>(null);
+	const [mounted, setMounted] = useState(false);
+	const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({});
+
+	useEffect(() => {
+		setMounted(true);
+	}, []);
 
 	// Click outside to close settings popup
 	useEffect(() => {
@@ -67,19 +76,40 @@ export function UserPanel() {
 		setEditingName(false);
 	};
 
-	const handleSetStatus = async (status: string) => {
-		const supabase = createClient();
-		await supabase.from("profiles").update({ status }).eq("id", user.id);
+	const statusToAvatar: Record<UserStatus, AvatarStatus> = {
+		online: "online",
+		idle: "away",
+		dnd: "busy",
+		offline: "offline",
+	};
+
+	const avatarStatus = statusToAvatar[user.status] || "online";
+
+	const handleSetStatus = (status: UserStatus) => {
+		updateUser({ status });
 		setShowSettings(false);
+		setShowProfile(false);
+	};
+
+	const computePopoverPosition = () => {
+		if (!panelRef.current) return;
+		const rect = panelRef.current.getBoundingClientRect();
+		setPopoverStyle({
+			position: "fixed" as const,
+			bottom: window.innerHeight - rect.top + 4,
+			left: rect.left + 8,
+			width: rect.width - 16,
+		});
 	};
 
 	return (
-		<div className="relative h-[52px] px-2 bg-[oklch(0.12_0.02_250)] border-t border-white/10 flex items-center gap-2">
+		<div ref={panelRef} className="relative h-[52px] px-2 bg-[oklch(0.12_0.02_250)] border-t border-white/10 flex items-center gap-2">
 			{/* User Info */}
 			<button
 				type="button"
 				className="flex items-center gap-2 flex-1 px-2 py-1 rounded hover:bg-white/5 transition-colors group"
 				onClick={() => {
+					computePopoverPosition();
 					setShowProfile(!showProfile);
 					setShowSettings(false);
 					setNewDisplayName(user.displayName);
@@ -88,7 +118,7 @@ export function UserPanel() {
 				<Avatar
 					src={user.avatar}
 					fallback={user.displayName.slice(0, 2).toUpperCase()}
-					status="online"
+					status={avatarStatus}
 					size="sm"
 				/>
 				<div className="flex-1 min-w-0 text-left">
@@ -165,6 +195,7 @@ export function UserPanel() {
 						whileHover={{ scale: 1.05, rotate: 90 }}
 						whileTap={{ scale: 0.95 }}
 						onClick={() => {
+							computePopoverPosition();
 							setShowSettings(!showSettings);
 							setShowProfile(false);
 						}}
@@ -178,162 +209,170 @@ export function UserPanel() {
 				</Tooltip>
 			</div>
 
-			{/* Profile Panel */}
-			<AnimatePresence>
-				{showProfile && (
-					<motion.div
-						ref={profileRef}
-						className="absolute bottom-14 left-2 right-2 bg-[oklch(0.18_0.02_250)] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50"
-						initial={{ opacity: 0, y: 10, scale: 0.95 }}
-						animate={{ opacity: 1, y: 0, scale: 1 }}
-						exit={{ opacity: 0, y: 10, scale: 0.95 }}
-						transition={{ type: "spring", stiffness: 260, damping: 20 }}
-					>
-						<div className="p-4">
-							{/* Profile Header */}
-							<div className="flex items-center gap-3 mb-4">
-								<Avatar
-									src={user.avatar}
-									fallback={user.displayName.slice(0, 2).toUpperCase()}
-									status="online"
-									size="lg"
-								/>
-								<div className="flex-1 min-w-0">
-									{editingName ? (
-										<div className="flex items-center gap-1">
-											<input
-												type="text"
-												value={newDisplayName}
-												onChange={(e) => setNewDisplayName(e.target.value)}
-												className="bg-white/10 border border-white/20 rounded px-2 py-1 text-sm text-white w-full focus:outline-none focus:border-blue-500/50"
-												autoFocus
-												onKeyDown={(e) => {
-													if (e.key === "Enter") handleSaveDisplayName();
-													if (e.key === "Escape") setEditingName(false);
-												}}
-											/>
+			{/* Profile Panel - rendered via portal to escape overflow clipping */}
+			{mounted && createPortal(
+				<AnimatePresence>
+					{showProfile && (
+						<motion.div
+							ref={profileRef}
+							style={popoverStyle}
+							className="bg-[oklch(0.18_0.02_250)] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50"
+							initial={{ opacity: 0, y: 10, scale: 0.95 }}
+							animate={{ opacity: 1, y: 0, scale: 1 }}
+							exit={{ opacity: 0, y: 10, scale: 0.95 }}
+							transition={{ type: "spring", stiffness: 260, damping: 20 }}
+						>
+							<div className="p-4">
+								{/* Profile Header */}
+								<div className="flex items-center gap-3 mb-4">
+									<Avatar
+										src={user.avatar}
+										fallback={user.displayName.slice(0, 2).toUpperCase()}
+										status={avatarStatus}
+										size="lg"
+									/>
+									<div className="flex-1 min-w-0">
+										{editingName ? (
+											<div className="flex items-center gap-1">
+												<input
+													type="text"
+													value={newDisplayName}
+													onChange={(e) => setNewDisplayName(e.target.value)}
+													className="bg-white/10 border border-white/20 rounded px-2 py-1 text-sm text-white w-full focus:outline-none focus:border-blue-500/50"
+													autoFocus
+													onKeyDown={(e) => {
+														if (e.key === "Enter") handleSaveDisplayName();
+														if (e.key === "Escape") setEditingName(false);
+													}}
+												/>
+												<button
+													type="button"
+													onClick={handleSaveDisplayName}
+													className="text-green-400 hover:text-green-300 text-xs px-1"
+												>
+													Save
+												</button>
+											</div>
+										) : (
 											<button
 												type="button"
-												onClick={handleSaveDisplayName}
-												className="text-green-400 hover:text-green-300 text-xs px-1"
+												onClick={() => {
+													setNewDisplayName(user.displayName);
+													setEditingName(true);
+												}}
+												className="text-left w-full group"
 											>
-												Save
+												<p className="text-sm font-semibold text-white group-hover:text-blue-400 transition-colors">
+													{user.displayName}
+													<span className="text-white/30 text-xs ml-1 opacity-0 group-hover:opacity-100 transition-opacity">edit</span>
+												</p>
 											</button>
-										</div>
-									) : (
-										<button
-											type="button"
-											onClick={() => {
-												setNewDisplayName(user.displayName);
-												setEditingName(true);
-											}}
-											className="text-left w-full group"
-										>
-											<p className="text-sm font-semibold text-white group-hover:text-blue-400 transition-colors">
-												{user.displayName}
-												<span className="text-white/30 text-xs ml-1 opacity-0 group-hover:opacity-100 transition-opacity">edit</span>
-											</p>
-										</button>
-									)}
-									<p className="text-xs text-white/60">@{user.username}</p>
-									<p className="text-xs text-white/40 capitalize">{user.accountType} account</p>
+										)}
+										<p className="text-xs text-white/60">@{user.username}</p>
+										<p className="text-xs text-white/40 capitalize">{user.accountType} account</p>
+									</div>
+								</div>
+
+								{/* Quick Actions */}
+								<div className="space-y-1">
+									<button
+										type="button"
+										className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded transition-colors flex items-center gap-2"
+										onClick={() => handleSetStatus("online")}
+									>
+										<div className="w-3 h-3 rounded-full bg-green-500" />
+										Online
+									</button>
+									<button
+										type="button"
+										className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded transition-colors flex items-center gap-2"
+										onClick={() => handleSetStatus("idle")}
+									>
+										<div className="w-3 h-3 rounded-full bg-yellow-500" />
+										Idle
+									</button>
+									<button
+										type="button"
+										className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded transition-colors flex items-center gap-2"
+										onClick={() => handleSetStatus("dnd")}
+									>
+										<div className="w-3 h-3 rounded-full bg-red-500" />
+										Do Not Disturb
+									</button>
+									<button
+										type="button"
+										className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded transition-colors flex items-center gap-2"
+										onClick={() => handleSetStatus("offline")}
+									>
+										<div className="w-3 h-3 rounded-full bg-gray-500" />
+										Invisible
+									</button>
 								</div>
 							</div>
+						</motion.div>
+					)}
+				</AnimatePresence>,
+				document.body
+			)}
 
-							{/* Quick Actions */}
-							<div className="space-y-1">
+			{/* Settings Panel - rendered via portal to escape overflow clipping */}
+			{mounted && createPortal(
+				<AnimatePresence>
+					{showSettings && (
+						<motion.div
+							ref={settingsRef}
+							style={popoverStyle}
+							className="bg-[oklch(0.18_0.02_250)] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50"
+							initial={{ opacity: 0, y: 10, scale: 0.95 }}
+							animate={{ opacity: 1, y: 0, scale: 1 }}
+							exit={{ opacity: 0, y: 10, scale: 0.95 }}
+							transition={{ type: "spring", stiffness: 260, damping: 20 }}
+						>
+							<div className="p-2 space-y-1">
 								<button
 									type="button"
 									className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded transition-colors flex items-center gap-2"
 									onClick={() => handleSetStatus("online")}
 								>
-									<div className="w-3 h-3 rounded-full bg-green-500" />
-									Online
-								</button>
-								<button
-									type="button"
-									className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded transition-colors flex items-center gap-2"
-									onClick={() => handleSetStatus("idle")}
-								>
-									<div className="w-3 h-3 rounded-full bg-yellow-500" />
-									Idle
+									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<title>Online</title>
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+									</svg>
+									Set Online
 								</button>
 								<button
 									type="button"
 									className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded transition-colors flex items-center gap-2"
 									onClick={() => handleSetStatus("dnd")}
 								>
-									<div className="w-3 h-3 rounded-full bg-red-500" />
+									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<title>DND</title>
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+									</svg>
 									Do Not Disturb
 								</button>
+								<div className="h-px bg-white/10 my-1" />
 								<button
 									type="button"
-									className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded transition-colors flex items-center gap-2"
-									onClick={() => handleSetStatus("offline")}
+									className="w-full px-3 py-2 text-sm text-left text-error hover:bg-error/10 rounded transition-colors flex items-center gap-2"
+									onClick={async () => {
+										setShowSettings(false);
+										await logout();
+										router.push("/login");
+									}}
 								>
-									<div className="w-3 h-3 rounded-full bg-gray-500" />
-									Invisible
+									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<title>Logout</title>
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+									</svg>
+									Log Out
 								</button>
 							</div>
-						</div>
-					</motion.div>
-				)}
-			</AnimatePresence>
-
-			{/* Settings Panel */}
-			<AnimatePresence>
-				{showSettings && (
-					<motion.div
-						ref={settingsRef}
-						className="absolute bottom-14 left-2 right-2 bg-[oklch(0.18_0.02_250)] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50"
-						initial={{ opacity: 0, y: 10, scale: 0.95 }}
-						animate={{ opacity: 1, y: 0, scale: 1 }}
-						exit={{ opacity: 0, y: 10, scale: 0.95 }}
-						transition={{ type: "spring", stiffness: 260, damping: 20 }}
-					>
-						<div className="p-2 space-y-1">
-							<button
-								type="button"
-								className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded transition-colors flex items-center gap-2"
-								onClick={() => handleSetStatus("online")}
-							>
-								<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<title>Online</title>
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-								</svg>
-								Set Online
-							</button>
-							<button
-								type="button"
-								className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded transition-colors flex items-center gap-2"
-								onClick={() => handleSetStatus("dnd")}
-							>
-								<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<title>DND</title>
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-								</svg>
-								Do Not Disturb
-							</button>
-							<div className="h-px bg-white/10 my-1" />
-							<button
-								type="button"
-								className="w-full px-3 py-2 text-sm text-left text-error hover:bg-error/10 rounded transition-colors flex items-center gap-2"
-								onClick={async () => {
-									setShowSettings(false);
-									await logout();
-									router.push("/login");
-								}}
-							>
-								<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<title>Logout</title>
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-								</svg>
-								Log Out
-							</button>
-						</div>
-					</motion.div>
-				)}
-			</AnimatePresence>
+						</motion.div>
+					)}
+				</AnimatePresence>,
+				document.body
+			)}
 		</div>
 	);
 }
