@@ -104,7 +104,7 @@ export function JoinServerSearch({ onSuccess }: JoinServerSearchProps) {
             "flex-1 px-4 py-2 rounded-md font-medium text-sm transition-colors",
             activeTab === "search"
               ? "bg-blue-600 text-white"
-              : "text-white/50 hover:text-white/80",
+              : "text-slate-400 hover:text-slate-200",
           )}
         >
           Search Servers
@@ -116,7 +116,7 @@ export function JoinServerSearch({ onSuccess }: JoinServerSearchProps) {
             "flex-1 px-4 py-2 rounded-md font-medium text-sm transition-colors",
             activeTab === "invite"
               ? "bg-blue-600 text-white"
-              : "text-white/50 hover:text-white/80",
+              : "text-slate-400 hover:text-slate-200",
           )}
         >
           Invite Code
@@ -125,7 +125,7 @@ export function JoinServerSearch({ onSuccess }: JoinServerSearchProps) {
 
       {error && (
         <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30">
-          <p className="text-xs text-red-300">{error}</p>
+          <p className="text-sm text-red-300">{error}</p>
         </div>
       )}
 
@@ -139,13 +139,13 @@ export function JoinServerSearch({ onSuccess }: JoinServerSearchProps) {
 
           <div className="space-y-2 max-h-80 overflow-y-auto scrollbar-thin">
             {loading ? (
-              <div className="text-center py-8 text-white/40 text-sm">
+              <div className="text-center py-8 text-slate-400 text-sm">
                 Searching servers...
               </div>
             ) : servers.length === 0 ? (
               <div className="text-center py-8">
                 <svg
-                  className="w-12 h-12 mx-auto text-white/20 mb-2"
+                  className="w-12 h-12 mx-auto text-slate-600 mb-2"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -157,8 +157,8 @@ export function JoinServerSearch({ onSuccess }: JoinServerSearchProps) {
                     d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                   />
                 </svg>
-                <p className="text-white/40 text-sm">No discoverable servers found</p>
-                <p className="text-white/30 text-xs mt-1">
+                <p className="text-slate-300 text-sm">No discoverable servers found</p>
+                <p className="text-slate-400 text-xs mt-1">
                   {searchQuery ? "Try a different search term" : "Try searching for a server"}
                 </p>
               </div>
@@ -188,7 +188,7 @@ export function JoinServerSearch({ onSuccess }: JoinServerSearchProps) {
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
-                          <h3 className="font-semibold text-white text-sm truncate">
+                          <h3 className="font-semibold text-slate-100 text-sm truncate">
                             {server.name}
                           </h3>
                           {server.is_public && (
@@ -198,11 +198,11 @@ export function JoinServerSearch({ onSuccess }: JoinServerSearchProps) {
                           )}
                         </div>
                         {server.description && (
-                          <p className="text-xs text-white/40 line-clamp-2 mb-1">
+                          <p className="text-xs text-slate-400 line-clamp-2 mb-1">
                             {server.description}
                           </p>
                         )}
-                        <div className="flex items-center gap-3 text-[11px] text-white/30">
+                        <div className="flex items-center gap-3 text-[11px] text-slate-400">
                           <span className="flex items-center gap-1">
                             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -267,7 +267,7 @@ export function JoinServerSearch({ onSuccess }: JoinServerSearchProps) {
                   d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              <p className="text-xs text-white/40">
+              <p className="text-xs text-slate-400">
                 Invite codes provide direct access to servers, bypassing the search system.
                 Only use codes from trusted sources.
               </p>

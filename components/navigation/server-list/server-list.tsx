@@ -83,31 +83,30 @@ export function ServerList() {
 			{/* Divider */}
 			<div className="w-8 h-[2px] bg-white/10 rounded-full my-2 flex-shrink-0" />
 
-			{/* Add Server Button - Fixed at bottom */}
-			<Tooltip content="Add a Server" position="right">
-				<motion.button
-					type="button"
-					className="w-12 h-12 flex-shrink-0 rounded-full bg-[oklch(0.15_0.02_250)] hover:bg-primary hover:rounded-2xl transition-all duration-200 flex items-center justify-center text-primary hover:text-white cursor-pointer"
-					whileHover={{ scale: 1.05 }}
-					whileTap={{ scale: 0.95 }}
-					onClick={() => openAddServer()}
+			{/* Add Server Button - Fixed at bottom, click-only (no hover popup) */}
+			<motion.button
+				type="button"
+				className="w-12 h-12 flex-shrink-0 rounded-full bg-[oklch(0.15_0.02_250)] hover:bg-green-600 hover:rounded-2xl transition-all duration-200 flex items-center justify-center text-green-500 hover:text-white cursor-pointer"
+				whileHover={{ scale: 1.05 }}
+				whileTap={{ scale: 0.95 }}
+				onClick={() => openAddServer()}
+				aria-label="Add a Server"
+			>
+				<svg
+					className="w-6 h-6 transition-colors"
+					fill="none"
+					stroke="currentColor"
+					viewBox="0 0 24 24"
 				>
-					<svg
-						className="w-6 h-6"
-						fill="none"
-						stroke="currentColor"
-						viewBox="0 0 24 24"
-					>
-						<title>Add Server</title>
-						<path
-							strokeLinecap="round"
-							strokeLinejoin="round"
-							strokeWidth={2}
-							d="M12 4v16m8-8H4"
-						/>
-					</svg>
-				</motion.button>
-			</Tooltip>
+					<title>Add Server</title>
+					<path
+						strokeLinecap="round"
+						strokeLinejoin="round"
+						strokeWidth={2.5}
+						d="M12 4v16m8-8H4"
+					/>
+				</svg>
+			</motion.button>
 		</div>
 	);
 }
