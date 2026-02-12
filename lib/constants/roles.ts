@@ -21,9 +21,9 @@ export function generateDefaultRoles(serverId: string): Role[] {
         Permission.SPEAK,
       position: 0,
       mentionable: false,
-      memberCount: 100, // Mock count
+      memberCount: 0,
       isDefault: true,
-      createdAt: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000), // 90 days ago
+      createdAt: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000),
     },
     {
       id: `${serverId}-role-admin`,
@@ -33,9 +33,9 @@ export function generateDefaultRoles(serverId: string): Role[] {
       permissions: Permission.ADMINISTRATOR,
       position: 2,
       mentionable: true,
-      memberCount: 5,
+      memberCount: 0,
       isDefault: false,
-      createdAt: new Date(now.getTime() - 80 * 24 * 60 * 60 * 1000), // 80 days ago
+      createdAt: new Date(now.getTime() - 80 * 24 * 60 * 60 * 1000),
     },
     {
       id: `${serverId}-role-mod`,
@@ -59,55 +59,11 @@ export function generateDefaultRoles(serverId: string): Role[] {
         Permission.DEAFEN_MEMBERS,
       position: 1,
       mentionable: true,
-      memberCount: 12,
+      memberCount: 0,
       isDefault: false,
-      createdAt: new Date(now.getTime() - 75 * 24 * 60 * 60 * 1000), // 75 days ago
+      createdAt: new Date(now.getTime() - 75 * 24 * 60 * 60 * 1000),
     },
   ];
-}
-
-// Generate mock roles with various colors and permissions
-export function generateMockRoles(serverId: string, count: number = 3): Role[] {
-  const defaultRoles = generateDefaultRoles(serverId);
-  if (count <= 3) return defaultRoles;
-
-  const colors = [
-    "oklch(0.7 0.25 150)", // Green
-    "oklch(0.65 0.25 200)", // Blue
-    "oklch(0.7 0.25 50)", // Yellow
-    "oklch(0.6 0.25 330)", // Pink
-    "oklch(0.65 0.2 100)", // Teal
-  ];
-
-  const roleNames = ["Member", "VIP", "Supporter", "Contributor", "Helper"];
-
-  const additionalRoles: Role[] = [];
-  const now = new Date();
-
-  for (let i = 0; i < count - 3 && i < roleNames.length; i++) {
-    additionalRoles.push({
-      id: `${serverId}-role-${roleNames[i].toLowerCase()}`,
-      serverId,
-      name: roleNames[i],
-      color: colors[i % colors.length],
-      permissions:
-        Permission.VIEW_CHANNELS |
-        Permission.SEND_MESSAGES |
-        Permission.EMBED_LINKS |
-        Permission.ATTACH_FILES |
-        Permission.READ_MESSAGE_HISTORY |
-        Permission.ADD_REACTIONS |
-        Permission.CONNECT |
-        Permission.SPEAK,
-      position: 0,
-      mentionable: i < 2, // First 2 are mentionable
-      memberCount: Math.floor(Math.random() * 50) + 10,
-      isDefault: false,
-      createdAt: new Date(now.getTime() - (70 - i * 10) * 24 * 60 * 60 * 1000),
-    });
-  }
-
-  return [...defaultRoles, ...additionalRoles];
 }
 
 // Preset role colors for color picker

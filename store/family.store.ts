@@ -10,7 +10,7 @@ import type {
 	TransparencyLogEntry,
 } from "@/lib/types/family";
 import type { User } from "@/store/auth.store";
-import { mockTeenAccounts, mockParent } from "@/lib/mocks/family";
+import { createClient } from "@/lib/supabase/client";
 
 interface FamilyState {
 	// Account type flags
@@ -77,43 +77,125 @@ export const useFamilyStore = create<FamilyState>()(
 			(set, get) => ({
 				...initialState,
 
-				// Initialize based on account type
+				// Initialize based on account type - loads from Supabase
 				init: (userId, accountType) => {
 					if (get().isInitialized) return;
 
 					if (accountType === "parent") {
-						// Initialize parent account with mock teen accounts
-						set({
-							isParent: true,
-							isTeen: false,
-							teenAccounts: mockTeenAccounts,
-							selectedTeenId: mockTeenAccounts[0]?.id || null,
-							isInitialized: true,
-						});
-					} else if (accountType === "teen") {
-						// Initialize teen account with parent info
-						// Find the teen account that matches this user
-						const teenAccount = mockTeenAccounts.find(
-							(ta) => ta.user.id === userId,
-						);
+						const loadParentData = async () => {
+							try {
+								const supabase = createClient();
+								const { data: families } = await supabase
+									.from("family_members")
+									.select(`family_id, family:family_accounts(id, name, monitoring_level)`)
+									.eq("user_id", userId)
+									.eq("role", "parent");
 
-						if (teenAccount) {
-							set({
-								isParent: false,
-								isTeen: true,
-								myParent: mockParent,
-								myMonitoringLevel: teenAccount.monitoringLevel,
-								myTransparencyLog: teenAccount.transparencyLog,
-								isInitialized: true,
-							});
-						}
+								const teenAccounts: TeenAccount[] = [];
+								for (const fam of families || []) {
+									const family = fam.family as unknown as Record<string, unknown>;
+									const { data: teens } = await supabase
+										.from("family_members")
+										.select(`user_id, user:profiles(id, username, display_name, avatar_url, account_type)`)
+										.eq("family_id", fam.family_id)
+										.eq("role", "child");
+
+									const { data: logs } = await supabase
+										.from("family_activity_log")
+										.select("*")
+										.eq("family_id", fam.family_id)
+										.order("occurred_at", { ascending: false })
+										.limit(50);
+
+									for (const teen of teens || []) {
+										const u = teen.user as unknown as Record<string, unknown>;
+										teenAccounts.push({
+											id: `teen-account-${u.id}`,
+											user: {
+												id: u.id as string, email: "",
+												username: u.username as string,
+												displayName: (u.display_name as string) || (u.username as string),
+												avatar: (u.avatar_url as string) || "",
+												accountType: "teen", createdAt: new Date(),
+												settings: { theme: "dark", notifications: true, reducedMotion: false },
+											},
+											parentId: userId,
+											monitoringLevel: ((family.monitoring_level as number) || 1) as MonitoringLevel,
+											activity: { messagesSent7Days: 0, serversJoined: 0, friendsAdded: 0, timeSpent7Days: 0, dailyActivity: [] },
+											contentFlags: [], pendingServers: [], pendingFriends: [],
+											transparencyLog: (logs || []).map(log => ({
+												id: log.id, action: log.activity_type,
+												details: JSON.stringify(log.details),
+												timestamp: new Date(log.occurred_at),
+												metadata: log.details as Record<string, unknown>,
+											})),
+											restrictions: {}, createdAt: new Date(), lastActivityAt: new Date(),
+										});
+									}
+								}
+
+								set({
+									isParent: true, isTeen: false, teenAccounts,
+									selectedTeenId: teenAccounts[0]?.id || null, isInitialized: true,
+								});
+							} catch (err) {
+								console.error("Error loading parent data:", err);
+								set({ isParent: true, isTeen: false, teenAccounts: [], isInitialized: true });
+							}
+						};
+						loadParentData();
+					} else if (accountType === "teen") {
+						const loadTeenData = async () => {
+							try {
+								const supabase = createClient();
+								const { data: membership } = await supabase
+									.from("family_members")
+									.select(`family_id, family:family_accounts(id, monitoring_level, created_by)`)
+									.eq("user_id", userId)
+									.eq("role", "child")
+									.single();
+
+								if (membership) {
+									const family = membership.family as unknown as Record<string, unknown>;
+									const { data: parentProfile } = await supabase
+										.from("profiles").select("*")
+										.eq("id", family.created_by).single();
+
+									const { data: logs } = await supabase
+										.from("family_activity_log").select("*")
+										.eq("family_id", membership.family_id)
+										.order("occurred_at", { ascending: false }).limit(50);
+
+									set({
+										isParent: false, isTeen: true,
+										myParent: parentProfile ? {
+											id: parentProfile.id, email: "",
+											username: parentProfile.username,
+											displayName: parentProfile.display_name || parentProfile.username,
+											avatar: parentProfile.avatar_url || "",
+											accountType: "parent", createdAt: new Date(parentProfile.created_at),
+											settings: { theme: "dark", notifications: true, reducedMotion: false },
+										} : null,
+										myMonitoringLevel: ((family.monitoring_level as number) || 1) as MonitoringLevel,
+										myTransparencyLog: (logs || []).map(log => ({
+											id: log.id, action: log.activity_type,
+											details: JSON.stringify(log.details),
+											timestamp: new Date(log.occurred_at),
+											metadata: log.details as Record<string, unknown>,
+										})),
+										isInitialized: true,
+									});
+								} else {
+									set({ isParent: false, isTeen: true, isInitialized: true });
+								}
+							} catch (err) {
+								console.error("Error loading teen data:", err);
+								set({ isParent: false, isTeen: true, isInitialized: true });
+							}
+						};
+						loadTeenData();
 					} else {
-						// Standard account - no family features
-						set({
-							isParent: false,
-							isTeen: false,
-							isInitialized: true,
-						});
+						set({ isParent: false, isTeen: false, isInitialized: true });
 					}
 				},
 

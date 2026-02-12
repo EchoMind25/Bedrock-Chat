@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   // Enable React Compiler
   reactCompiler: true,
   // Turbopack is default in Next.js 16
+  turbopack: {},
   typescript: {
     // Don't fail build on type errors during development
     ignoreBuildErrors: false,

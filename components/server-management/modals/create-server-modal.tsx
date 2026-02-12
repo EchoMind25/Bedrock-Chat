@@ -12,7 +12,7 @@ import { useServerStore } from "../../../store/server.store";
 import { toast } from "../../../lib/stores/toast-store";
 import { cn } from "../../../lib/utils/cn";
 import type { ChannelType } from "../../../lib/types/server";
-import { generateDefaultRoles } from "../../../lib/mocks/roles";
+import { generateDefaultRoles } from "../../../lib/constants/roles";
 import { DEFAULT_SERVER_SETTINGS } from "../../../lib/types/server-settings";
 
 type ServerTemplate = "gaming" | "school" | "friends" | "custom";

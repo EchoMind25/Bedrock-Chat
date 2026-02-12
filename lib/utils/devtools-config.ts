@@ -14,9 +14,9 @@ import type { StateCreator } from 'zustand';
  * localStorage.removeItem('zustand-devtools-enabled')
  */
 export const conditionalDevtools = <T>(
-  initializer: StateCreator<T>,
+  initializer: StateCreator<T, any, any>,
   options: { name: string }
-): StateCreator<T> => {
+): StateCreator<T, any, any> => {
   // Check if devtools should be enabled
   const shouldEnableDevtools =
     typeof window !== 'undefined' &&
@@ -25,7 +25,7 @@ export const conditionalDevtools = <T>(
 
   // Return either devtools-wrapped or plain initializer
   return shouldEnableDevtools
-    ? devtools(initializer, options)
+    ? devtools(initializer as StateCreator<T, [], []>, options) as StateCreator<T, any, any>
     : initializer;
 };
 

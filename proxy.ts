@@ -28,18 +28,18 @@ const securityHeaders = {
   // Referrer policy for privacy
   "Referrer-Policy": "strict-origin-when-cross-origin",
 
-  // Permissions policy - restrict features
+  // Permissions policy - restrict features (allow microphone for voice)
   "Permissions-Policy":
-    "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+    "microphone=(self), camera=(), geolocation=(), payment=()",
 
-  // Content Security Policy - strict by default
+  // Content Security Policy - allow Supabase + Daily.co
   "Content-Security-Policy": [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Adjust for production
+    "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self' data:",
-    "connect-src 'self'",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.daily.co wss://*.daily.co https://api.daily.co",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

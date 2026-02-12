@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import { conditionalDevtools } from "@/lib/utils/devtools-config";
-import { faker } from "@faker-js/faker";
+import { createClient } from "@/lib/supabase/client";
 
 export interface User {
 	id: string;
@@ -29,9 +29,10 @@ interface AuthState {
 	// Actions
 	login: (email: string, password: string) => Promise<boolean>;
 	signup: (data: SignupData) => Promise<boolean>;
-	logout: () => void;
+	logout: () => Promise<void>;
 	clearError: () => void;
 	updateUser: (updates: Partial<User>) => void;
+	checkAuth: () => Promise<void>;
 	// Dev mode: Quick login without credentials
 	devLogin: () => void;
 	devLoginParent: () => void;
@@ -43,7 +44,24 @@ interface SignupData {
 	username: string;
 	password: string;
 	accountType: "standard" | "parent" | "teen";
-	parentEmail?: string; // Required if teen
+	parentEmail?: string;
+}
+
+function profileToUser(profile: Record<string, unknown>, email: string): User {
+	return {
+		id: profile.id as string,
+		email,
+		username: profile.username as string,
+		displayName: (profile.display_name as string) || (profile.username as string),
+		avatar: (profile.avatar_url as string) || "",
+		accountType: (profile.account_type as User["accountType"]) || "standard",
+		createdAt: new Date(profile.created_at as string),
+		settings: {
+			theme: "dark",
+			notifications: true,
+			reducedMotion: false,
+		},
+	};
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -58,92 +76,130 @@ export const useAuthStore = create<AuthState>()(
 				login: async (email, password) => {
 					set({ isLoading: true, error: null });
 
-					// Simulate network delay (800-1500ms)
-					await new Promise((r) =>
-						setTimeout(r, 50 + Math.random() * 100),
-					);
+					try {
+						const supabase = createClient();
+						const { data, error } = await supabase.auth.signInWithPassword({
+							email,
+							password,
+						});
 
-					// Mock validation
-					if (!email.includes("@")) {
+						if (error) {
+							set({ isLoading: false, error: error.message });
+							return false;
+						}
+
+						if (data.user) {
+							const { data: profile } = await supabase
+								.from("profiles")
+								.select("*")
+								.eq("id", data.user.id)
+								.single();
+
+							if (profile) {
+								set({
+									user: profileToUser(profile, email),
+									isAuthenticated: true,
+									isLoading: false,
+								});
+								return true;
+							}
+						}
+
+						set({ isLoading: false, error: "Profile not found" });
+						return false;
+					} catch (err) {
 						set({
 							isLoading: false,
-							error: "Invalid email format",
+							error: err instanceof Error ? err.message : "Login failed",
 						});
 						return false;
 					}
-
-					if (password.length < 6) {
-						set({
-							isLoading: false,
-							error: "Password must be at least 6 characters",
-						});
-						return false;
-					}
-
-					// Generate mock user
-					const user: User = {
-						id: faker.string.uuid(),
-						email,
-						username: email.split("@")[0],
-						displayName: faker.person.fullName(),
-						avatar: faker.image.avatar(),
-						accountType: "standard",
-						createdAt: new Date(),
-						settings: {
-							theme: "dark",
-							notifications: true,
-							reducedMotion: false,
-						},
-					};
-
-					set({ user, isAuthenticated: true, isLoading: false });
-					return true;
 				},
 
 				signup: async (data) => {
 					set({ isLoading: true, error: null });
 
-					await new Promise((r) =>
-						setTimeout(r, 50 + Math.random() * 100),
-					);
+					try {
+						const supabase = createClient();
 
-					// Mock validation
-					if (data.username.length < 3) {
+						if (data.username.length < 3) {
+							set({
+								isLoading: false,
+								error: "Username must be at least 3 characters",
+							});
+							return false;
+						}
+
+						if (data.accountType === "teen" && !data.parentEmail) {
+							set({
+								isLoading: false,
+								error: "Parent email required for teen accounts",
+							});
+							return false;
+						}
+
+						const { data: authData, error } = await supabase.auth.signUp({
+							email: data.email,
+							password: data.password,
+						});
+
+						if (error) {
+							set({ isLoading: false, error: error.message });
+							return false;
+						}
+
+						if (authData.user) {
+							const { error: profileError } = await supabase
+								.from("profiles")
+								.insert({
+									id: authData.user.id,
+									username: data.username,
+									display_name: data.username,
+									account_type: data.accountType,
+								});
+
+							if (profileError) {
+								set({ isLoading: false, error: profileError.message });
+								return false;
+							}
+
+							const user: User = {
+								id: authData.user.id,
+								email: data.email,
+								username: data.username,
+								displayName: data.username,
+								avatar: "",
+								accountType: data.accountType,
+								createdAt: new Date(),
+								settings: {
+									theme: "dark",
+									notifications: true,
+									reducedMotion: false,
+								},
+							};
+
+							set({ user, isAuthenticated: true, isLoading: false });
+							return true;
+						}
+
+						set({ isLoading: false });
+						return false;
+					} catch (err) {
 						set({
 							isLoading: false,
-							error: "Username must be at least 3 characters",
+							error: err instanceof Error ? err.message : "Signup failed",
 						});
 						return false;
 					}
-
-					if (data.accountType === "teen" && !data.parentEmail) {
-						set({
-							isLoading: false,
-							error: "Parent email required for teen accounts",
-						});
-						return false;
-					}
-
-					const user: User = {
-						id: faker.string.uuid(),
-						email: data.email,
-						username: data.username,
-						displayName: data.username,
-						avatar: faker.image.avatar(),
-						accountType: data.accountType,
-						createdAt: new Date(),
-						settings: {
-							theme: "dark",
-							notifications: true,
-							reducedMotion: false,
-						},
-					};
-
-					set({ user, isAuthenticated: true, isLoading: false });
-					return true;
 				},
 
-				logout: () => {
+				logout: async () => {
+					try {
+						const supabase = createClient();
+						await supabase.auth.signOut();
+					} catch {
+						// Ignore signout errors
+					}
 					set({ user: null, isAuthenticated: false, error: null });
 				},
 
@@ -156,14 +212,43 @@ export const useAuthStore = create<AuthState>()(
 					}
 				},
 
-				// Dev mode: Instantly create and log in a user
+				checkAuth: async () => {
+					try {
+						const supabase = createClient();
+						const {
+							data: { session },
+						} = await supabase.auth.getSession();
+
+						if (session?.user) {
+							const { data: profile } = await supabase
+								.from("profiles")
+								.select("*")
+								.eq("id", session.user.id)
+								.single();
+
+							if (profile) {
+								set({
+									user: profileToUser(profile, session.user.email || ""),
+									isAuthenticated: true,
+									isLoading: false,
+								});
+								return;
+							}
+						}
+					} catch {
+						// Auth check failed
+					}
+
+					set({ user: null, isAuthenticated: false, isLoading: false });
+				},
+
 				devLogin: () => {
 					const user: User = {
-						id: faker.string.uuid(),
+						id: "dev-user-001",
 						email: "dev@bedrock.chat",
 						username: "developer",
 						displayName: "Dev User",
-						avatar: faker.image.avatar(),
+						avatar: "",
 						accountType: "standard",
 						createdAt: new Date(),
 						settings: {
@@ -175,7 +260,6 @@ export const useAuthStore = create<AuthState>()(
 					set({ user, isAuthenticated: true, isLoading: false, error: null });
 				},
 
-				// Dev mode: Login as parent
 				devLoginParent: () => {
 					const user: User = {
 						id: "parent-1",
@@ -194,7 +278,6 @@ export const useAuthStore = create<AuthState>()(
 					set({ user, isAuthenticated: true, isLoading: false, error: null });
 				},
 
-				// Dev mode: Login as teen
 				devLoginTeen: () => {
 					const user: User = {
 						id: "teen-1",

@@ -4,7 +4,7 @@ import { useState, type HTMLAttributes } from "react";
 import { motion } from "motion/react";
 import { Check } from "lucide-react";
 import { cn } from "../../../lib/utils/cn";
-import { PRESET_ROLE_COLORS } from "../../../lib/mocks/roles";
+import { PRESET_ROLE_COLORS } from "../../../lib/constants/roles";
 import { Input } from "../../ui/input/input";
 
 interface ColorPickerProps extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {

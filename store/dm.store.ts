@@ -2,26 +2,18 @@ import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import { conditionalDevtools } from "@/lib/utils/devtools-config";
 import type { DirectMessage } from "@/lib/types/dm";
-import { generateInitialDMs, generateMockDM } from "@/lib/mocks/dms";
-import { useFriendsStore } from "./friends.store";
-import { faker } from "@faker-js/faker";
+import { createClient } from "@/lib/supabase/client";
 
 interface DMState {
-	// Data
 	dms: DirectMessage[];
 	currentDmId: string | null;
-
-	// Initialization
 	isInitialized: boolean;
 
-	// Actions
 	init: () => void;
 	setCurrentDm: (dmId: string) => void;
 	createDm: (userId: string) => DirectMessage | null;
 	markDmRead: (dmId: string) => void;
 	closeDm: (dmId: string) => void;
-
-	// Getters
 	getCurrentDm: () => DirectMessage | undefined;
 	getDmByUserId: (userId: string) => DirectMessage | undefined;
 	getTotalUnreadCount: () => number;
@@ -31,56 +23,111 @@ export const useDMStore = create<DMState>()(
 	conditionalDevtools(
 		persist(
 			(set, get) => ({
-				// Initial state
 				dms: [],
 				currentDmId: null,
 				isInitialized: false,
 
-				// Initialize DMs
 				init: () => {
 					if (get().isInitialized) return;
 
-					// Get friends from friends store
-					const friends = useFriendsStore.getState().friends;
-					const dms = generateInitialDMs(friends);
+					const loadDMs = async () => {
+						try {
+							const supabase = createClient();
+							const { data: { user } } = await supabase.auth.getUser();
+							if (!user) {
+								set({ isInitialized: true });
+								return;
+							}
 
-					set({
-						dms,
-						isInitialized: true,
-					});
+							const { data: sentDMs } = await supabase
+								.from("direct_messages")
+								.select(`id, content, created_at, read_at, receiver:profiles!direct_messages_receiver_id_fkey(id, username, display_name, avatar_url, status)`)
+								.eq("sender_id", user.id).eq("is_deleted", false)
+								.order("created_at", { ascending: false }).limit(50);
+
+							const { data: receivedDMs } = await supabase
+								.from("direct_messages")
+								.select(`id, content, created_at, read_at, sender:profiles!direct_messages_sender_id_fkey(id, username, display_name, avatar_url, status)`)
+								.eq("receiver_id", user.id).eq("is_deleted", false)
+								.order("created_at", { ascending: false }).limit(50);
+
+							const conversationMap = new Map<string, DirectMessage>();
+
+							for (const msg of sentDMs || []) {
+								const other = msg.receiver as unknown as Record<string, unknown>;
+								const otherId = other.id as string;
+								if (!conversationMap.has(otherId)) {
+									conversationMap.set(otherId, {
+										id: `dm-${otherId}`,
+										participants: [
+											{ id: `p-${otherId}`, userId: otherId, username: other.username as string, displayName: (other.display_name as string) || (other.username as string), avatar: (other.avatar_url as string) || "", status: (other.status as "online" | "idle" | "dnd" | "offline") || "offline" },
+											{ id: `p-${user.id}`, userId: user.id, username: "You", displayName: "You", avatar: "", status: "online" },
+										],
+										lastMessage: { content: msg.content, timestamp: new Date(msg.created_at), authorId: user.id },
+										unreadCount: 0, isEncrypted: true, createdAt: new Date(msg.created_at),
+									});
+								}
+							}
+
+							for (const msg of receivedDMs || []) {
+								const other = msg.sender as unknown as Record<string, unknown>;
+								const otherId = other.id as string;
+								const existing = conversationMap.get(otherId);
+								const isUnread = !msg.read_at;
+
+								if (!existing) {
+									conversationMap.set(otherId, {
+										id: `dm-${otherId}`,
+										participants: [
+											{ id: `p-${otherId}`, userId: otherId, username: other.username as string, displayName: (other.display_name as string) || (other.username as string), avatar: (other.avatar_url as string) || "", status: (other.status as "online" | "idle" | "dnd" | "offline") || "offline" },
+											{ id: `p-${user.id}`, userId: user.id, username: "You", displayName: "You", avatar: "", status: "online" },
+										],
+										lastMessage: { content: msg.content, timestamp: new Date(msg.created_at), authorId: otherId },
+										unreadCount: isUnread ? 1 : 0, isEncrypted: true, createdAt: new Date(msg.created_at),
+									});
+								} else if (isUnread) {
+									existing.unreadCount++;
+								}
+							}
+
+							const dms = Array.from(conversationMap.values()).sort((a, b) => {
+								const aTime = a.lastMessage?.timestamp?.getTime() ?? 0;
+								const bTime = b.lastMessage?.timestamp?.getTime() ?? 0;
+								return bTime - aTime;
+							});
+
+							set({ dms, isInitialized: true });
+						} catch (err) {
+							console.error("Error loading DMs:", err);
+							set({ isInitialized: true });
+						}
+					};
+
+					loadDMs();
 				},
 
-				// Actions
 				setCurrentDm: (dmId) => {
 					set({ currentDmId: dmId });
-					// Mark as read when selected
 					get().markDmRead(dmId);
 				},
 
 				createDm: (userId) => {
-					// Check if DM already exists
 					const existingDm = get().getDmByUserId(userId);
 					if (existingDm) return existingDm;
 
-					// Get friend info
-					const friend = useFriendsStore.getState().friends.find((f) => f.userId === userId);
-					if (!friend) return null;
+					const newDm: DirectMessage = {
+						id: `dm-${userId}`,
+						participants: [{ id: `p-${userId}`, userId, username: "User", displayName: "User", avatar: "", status: "offline" }],
+						unreadCount: 0, isEncrypted: true, createdAt: new Date(),
+					};
 
-					// Create new DM
-					const newDm = generateMockDM(friend, false);
-
-					set((state) => ({
-						dms: [newDm, ...state.dms],
-					}));
-
+					set((state) => ({ dms: [newDm, ...state.dms] }));
 					return newDm;
 				},
 
 				markDmRead: (dmId) => {
 					set((state) => ({
-						dms: state.dms.map((dm) =>
-							dm.id === dmId ? { ...dm, unreadCount: 0 } : dm
-						),
+						dms: state.dms.map((dm) => dm.id === dmId ? { ...dm, unreadCount: 0 } : dm),
 					}));
 				},
 
@@ -91,16 +138,13 @@ export const useDMStore = create<DMState>()(
 					}));
 				},
 
-				// Getters
 				getCurrentDm: () => {
 					const { currentDmId, dms } = get();
 					return dms.find((dm) => dm.id === currentDmId);
 				},
 
 				getDmByUserId: (userId) => {
-					return get().dms.find((dm) =>
-						dm.participants.some((p) => p.userId === userId)
-					);
+					return get().dms.find((dm) => dm.participants.some((p) => p.userId === userId));
 				},
 
 				getTotalUnreadCount: () => {
@@ -109,10 +153,7 @@ export const useDMStore = create<DMState>()(
 			}),
 			{
 				name: "bedrock-dm",
-				partialize: (state) => ({
-					currentDmId: state.currentDmId,
-					// Don't persist DMs - regenerate on init
-				}),
+				partialize: (state) => ({ currentDmId: state.currentDmId }),
 			}
 		),
 		{ name: "DMStore" }

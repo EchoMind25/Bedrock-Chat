@@ -1,12 +1,9 @@
 import { create } from "zustand";
-import { persist, devtools } from "zustand/middleware";
+import { persist } from "zustand/middleware";
 import { conditionalDevtools } from "@/lib/utils/devtools-config";
 import type { ServerInvite, InviteSettings } from "../lib/types/invites";
-import type { Ban, AuditLogEntry, AutoModSettings } from "../lib/types/moderation";
-import type { Role } from "../lib/types/permissions";
-import { generateMockInvites, createMockInvite } from "../lib/mocks/invites";
-import { generateMockBans, createMockBan } from "../lib/mocks/bans";
-import { generateMockAuditLog, createAuditLogEntry } from "../lib/mocks/audit-logs";
+import type { Ban, AuditLogEntry } from "../lib/types/moderation";
+import { generateInviteCode, calculateExpirationDate } from "../lib/types/invites";
 import { toast } from "../lib/stores/toast-store";
 
 export type ServerSettingsTab = "overview" | "roles" | "channels" | "moderation" | "invites";
@@ -165,17 +162,22 @@ export const useServerManagementStore = create<ServerManagementState>()(
 
         // Invite operations
         createInvite: async (serverId, channelId, inviterId, inviterUsername, inviterAvatar, settings) => {
-          // Mock API delay
           await new Promise((resolve) => setTimeout(resolve, 500));
 
-          const newInvite = createMockInvite(
+          const newInvite: ServerInvite = {
+            id: `invite-${Date.now()}`,
+            code: generateInviteCode(),
             serverId,
             channelId,
             inviterId,
             inviterUsername,
             inviterAvatar,
-            settings,
-          );
+            maxUses: settings.maxUses,
+            expiresAt: calculateExpirationDate(settings.expiresAfter),
+            temporary: settings.temporary,
+            uses: 0,
+            createdAt: new Date(),
+          };
 
           set((state) => {
             const serverInvites = state.invites.get(serverId) || [];
@@ -233,12 +235,11 @@ export const useServerManagementStore = create<ServerManagementState>()(
           toast.success("Invite Deleted", "The invite has been removed");
         },
 
-        loadInvites: (serverId, channelIds) => {
+        loadInvites: (serverId, _channelIds) => {
           const state = get();
           if (!state.invites.has(serverId)) {
-            const mockInvites = generateMockInvites(serverId, channelIds);
             const newInvites = new Map(state.invites);
-            newInvites.set(serverId, mockInvites);
+            newInvites.set(serverId, []);
             set({ invites: newInvites });
           }
         },
@@ -249,10 +250,10 @@ export const useServerManagementStore = create<ServerManagementState>()(
 
         // Moderation operations
         banUser: async (serverId, userId, username, displayName, avatar, reason, bannedBy, bannedByUsername) => {
-          // Mock API delay
           await new Promise((resolve) => setTimeout(resolve, 700));
 
-          const newBan = createMockBan(
+          const newBan: Ban = {
+            id: `ban-${Date.now()}`,
             serverId,
             userId,
             username,
@@ -261,7 +262,8 @@ export const useServerManagementStore = create<ServerManagementState>()(
             reason,
             bannedBy,
             bannedByUsername,
-          );
+            bannedAt: new Date(),
+          };
 
           set((state) => {
             const serverBans = state.bans.get(serverId) || [];
@@ -322,9 +324,8 @@ export const useServerManagementStore = create<ServerManagementState>()(
         loadBans: (serverId) => {
           const state = get();
           if (!state.bans.has(serverId)) {
-            const mockBans = generateMockBans(serverId);
             const newBans = new Map(state.bans);
-            newBans.set(serverId, mockBans);
+            newBans.set(serverId, []);
             set({ bans: newBans });
           }
         },
@@ -336,9 +337,8 @@ export const useServerManagementStore = create<ServerManagementState>()(
         loadAuditLog: (serverId) => {
           const state = get();
           if (!state.auditLogs.has(serverId)) {
-            const mockLogs = generateMockAuditLog(serverId);
             const newLogs = new Map(state.auditLogs);
-            newLogs.set(serverId, mockLogs);
+            newLogs.set(serverId, []);
             set({ auditLogs: newLogs });
           }
         },
@@ -348,9 +348,10 @@ export const useServerManagementStore = create<ServerManagementState>()(
         },
 
         addAuditLogEntry: (serverId, action, actorId, actorUsername, actorAvatar, targetId, targetName, targetType, changes, reason) => {
-          const newEntry = createAuditLogEntry(
+          const newEntry: AuditLogEntry = {
+            id: `audit-${Date.now()}`,
             serverId,
-            action as any,
+            action: action as AuditLogEntry["action"],
             actorId,
             actorUsername,
             actorAvatar,
@@ -359,7 +360,8 @@ export const useServerManagementStore = create<ServerManagementState>()(
             targetType,
             changes,
             reason,
-          );
+            createdAt: new Date(),
+          };
 
           set((state) => {
             const serverLogs = state.auditLogs.get(serverId) || [];
