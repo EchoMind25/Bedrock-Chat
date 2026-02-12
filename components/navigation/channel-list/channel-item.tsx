@@ -15,8 +15,9 @@ interface ChannelItemProps {
 
 export function ChannelItem({ channel, isActive }: ChannelItemProps) {
 	const router = useRouter();
-	const { setCurrentChannel, currentServerId } = useServerStore();
-	const { openChannelSettings } = useServerManagementStore();
+	const setCurrentChannel = useServerStore((s) => s.setCurrentChannel);
+	const currentServerId = useServerStore((s) => s.currentServerId);
+	const openChannelSettings = useServerManagementStore((s) => s.openChannelSettings);
 
 	const getChannelIcon = () => {
 		switch (channel.type) {

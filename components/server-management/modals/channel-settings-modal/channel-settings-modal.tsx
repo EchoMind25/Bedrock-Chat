@@ -41,8 +41,9 @@ export function ChannelSettingsModal() {
     setChannelSettingsTab,
   } = useServerManagementStore();
 
-  const { getCurrentServer } = useServerStore();
-  const currentServer = getCurrentServer();
+  const servers = useServerStore((s) => s.servers);
+  const currentServerId = useServerStore((s) => s.currentServerId);
+  const currentServer = servers.find((s) => s.id === currentServerId);
 
   const [editedChannel, setEditedChannel] = useState<Partial<Channel>>({});
   const [hasChanges, setHasChanges] = useState(false);

@@ -165,6 +165,8 @@ export const useServerStore = create<ServerState>()(
 				},
 
 				setCurrentServer: (serverId) => {
+					// Skip if already on this server to avoid unnecessary state updates
+					if (get().currentServerId === serverId) return;
 					set({ currentServerId: serverId });
 					const server = get().servers.find((s) => s.id === serverId);
 					if (server && server.channels.length > 0) {
@@ -176,6 +178,8 @@ export const useServerStore = create<ServerState>()(
 				},
 
 				setCurrentChannel: (channelId) => {
+					// Skip if already on this channel to avoid unnecessary state updates
+					if (get().currentChannelId === channelId) return;
 					set({ currentChannelId: channelId });
 					get().markChannelRead(channelId);
 				},
@@ -214,8 +218,17 @@ export const useServerStore = create<ServerState>()(
 				},
 
 				markChannelRead: (channelId) => {
+					// Short-circuit: only update if a channel actually has unread messages
+					const needsUpdate = get().servers.some(server =>
+						server.channels.some(ch => ch.id === channelId && ch.unreadCount > 0)
+					);
+					if (!needsUpdate) return;
+
 					set((state) => ({
 						servers: state.servers.map((server) => {
+							// Return same reference for servers that don't contain this channel
+							if (!server.channels.some(ch => ch.id === channelId)) return server;
+
 							const updatedChannels = server.channels.map((ch) =>
 								ch.id === channelId ? { ...ch, unreadCount: 0 } : ch
 							);

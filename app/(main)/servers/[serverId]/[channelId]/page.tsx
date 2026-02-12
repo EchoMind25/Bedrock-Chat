@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, lazy, Suspense } from "react";
+import { use, useEffect, useMemo, lazy, Suspense } from "react";
 import { useServerStore } from "@/store/server.store";
 import { Glass } from "@/components/ui/glass/glass";
 
@@ -24,7 +24,23 @@ interface PageProps {
 
 export default function ChannelPage({ params }: PageProps) {
 	const { serverId, channelId } = use(params);
-	const { setCurrentServer, setCurrentChannel, getCurrentServer, getCurrentChannel } = useServerStore();
+
+	// Use individual selectors to prevent re-renders from unrelated state changes
+	const setCurrentServer = useServerStore((s) => s.setCurrentServer);
+	const setCurrentChannel = useServerStore((s) => s.setCurrentChannel);
+	const currentServerId = useServerStore((s) => s.currentServerId);
+	const currentChannelId = useServerStore((s) => s.currentChannelId);
+	const servers = useServerStore((s) => s.servers);
+
+	// Derive server and channel from stable selectors
+	const server = useMemo(
+		() => servers.find((s) => s.id === currentServerId),
+		[servers, currentServerId]
+	);
+	const channel = useMemo(
+		() => server?.channels.find((c) => c.id === currentChannelId),
+		[server, currentChannelId]
+	);
 
 	// Update store when URL changes
 	useEffect(() => {
@@ -33,9 +49,6 @@ export default function ChannelPage({ params }: PageProps) {
 			setCurrentChannel(channelId);
 		}
 	}, [serverId, channelId, setCurrentServer, setCurrentChannel]);
-
-	const server = getCurrentServer();
-	const channel = getCurrentChannel();
 
 	if (!server || !channel) {
 		return (

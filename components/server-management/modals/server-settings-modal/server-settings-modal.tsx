@@ -26,8 +26,9 @@ export function ServerSettingsModal() {
     setServerSettingsTab,
   } = useServerManagementStore();
 
-  const { getCurrentServer } = useServerStore();
-  const currentServer = getCurrentServer();
+  const servers = useServerStore((s) => s.servers);
+  const currentServerId = useServerStore((s) => s.currentServerId);
+  const currentServer = servers.find((s) => s.id === currentServerId);
 
   // Local state for unsaved changes
   const [editedServer, setEditedServer] = useState<Partial<Server>>({});

@@ -20,7 +20,7 @@ export function ChannelList() {
 	const isInitialized = useServerStore((state) => state.isInitialized);
 	const currentChannelId = useServerStore((state) => state.currentChannelId);
 	const toggleCategoryStore = useServerStore((state) => state.toggleCategory);
-	const { openServerSettings } = useServerManagementStore();
+	const openServerSettings = useServerManagementStore((s) => s.openServerSettings);
 
 	// Check if we're in home/DM context
 	const isHomeContext = currentServer?.id === "home";

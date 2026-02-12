@@ -13,7 +13,10 @@ interface MessageListProps {
 
 export function MessageList({ channelId }: MessageListProps) {
 	const parentRef = useRef<HTMLDivElement>(null);
-	const { messages, isLoading, loadMessages, typingUsers } = useMessageStore();
+	const messages = useMessageStore((s) => s.messages);
+	const isLoading = useMessageStore((s) => s.isLoading);
+	const loadMessages = useMessageStore((s) => s.loadMessages);
+	const typingUsers = useMessageStore((s) => s.typingUsers);
 	const channelMessages = messages[channelId] || [];
 	const typing = typingUsers[channelId] || [];
 

@@ -13,7 +13,9 @@ import { motion, AnimatePresence } from "motion/react";
 
 export function UserPanel() {
 	const router = useRouter();
-	const { user, logout, updateUser } = useAuthStore();
+	const user = useAuthStore((s) => s.user);
+	const logout = useAuthStore((s) => s.logout);
+	const updateUser = useAuthStore((s) => s.updateUser);
 	const [showSettings, setShowSettings] = useState(false);
 	const [showProfile, setShowProfile] = useState(false);
 	const [isMuted, setIsMuted] = useState(false);

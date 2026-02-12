@@ -17,8 +17,9 @@ export function MessageInput({ channelId, channelName }: MessageInputProps) {
 	const [content, setContent] = useState('');
 	const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
-	const { sendMessage, setTyping } = useMessageStore();
-	const user = useAuthStore(state => state.user);
+	const sendMessage = useMessageStore((s) => s.sendMessage);
+	const setTyping = useMessageStore((s) => s.setTyping);
+	const user = useAuthStore((s) => s.user);
 
 	// Auto-resize textarea
 	useEffect(() => {

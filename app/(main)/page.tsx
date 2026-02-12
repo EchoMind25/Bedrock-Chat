@@ -6,7 +6,8 @@ import { useServerStore } from "@/store/server.store";
 
 export default function MainPage() {
 	const router = useRouter();
-	const { currentServerId, currentChannelId } = useServerStore();
+	const currentServerId = useServerStore((s) => s.currentServerId);
+	const currentChannelId = useServerStore((s) => s.currentChannelId);
 
 	useEffect(() => {
 		// Redirect to current server/channel or default

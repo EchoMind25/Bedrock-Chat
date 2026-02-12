@@ -43,7 +43,8 @@ const CHANNEL_TYPES: Array<{
 
 export function CreateChannelModal() {
   const { isCreateChannelOpen, closeCreateChannel, preselectedCategoryId } = useServerManagementStore();
-  const { getCurrentServer } = useServerStore();
+  const servers = useServerStore((s) => s.servers);
+  const currentServerId = useServerStore((s) => s.currentServerId);
 
   const [channelName, setChannelName] = useState("");
   const [channelType, setChannelType] = useState<ChannelType>("text");
@@ -52,7 +53,7 @@ export function CreateChannelModal() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const currentServer = getCurrentServer();
+  const currentServer = servers.find((s) => s.id === currentServerId);
 
   // Set preselected category when modal opens
   useEffect(() => {

@@ -16,10 +16,20 @@ export default function MainLayout({
 	children: React.ReactNode;
 }) {
 	const router = useRouter();
-	const { isAuthenticated, user, checkAuth } = useAuthStore();
-	const { init: initServers, isInitialized: serversInitialized } = useServerStore();
-	const { init: initFriends, isInitialized: friendsInitialized } = useFriendsStore();
-	const { init: initDMs, isInitialized: dmsInitialized } = useDMStore();
+
+	// Use individual selectors to prevent re-renders from unrelated state changes
+	const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+	const user = useAuthStore((s) => s.user);
+	const checkAuth = useAuthStore((s) => s.checkAuth);
+
+	const initServers = useServerStore((s) => s.init);
+	const serversInitialized = useServerStore((s) => s.isInitialized);
+
+	const initFriends = useFriendsStore((s) => s.init);
+	const friendsInitialized = useFriendsStore((s) => s.isInitialized);
+
+	const initDMs = useDMStore((s) => s.init);
+	const dmsInitialized = useDMStore((s) => s.isInitialized);
 
 	// Check auth with Supabase on mount (picks up sessions from callback redirect)
 	useEffect(() => {
