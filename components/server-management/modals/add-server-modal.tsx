@@ -10,7 +10,9 @@ import { JoinServerSearch } from "./join-server-search";
 type AddServerView = "choose" | "create" | "join";
 
 export function AddServerModal() {
-  const { isAddServerOpen, closeAddServer, openCreateServer } = useServerManagementStore();
+  const isAddServerOpen = useServerManagementStore((state) => state.isAddServerOpen);
+  const closeAddServer = useServerManagementStore((state) => state.closeAddServer);
+  const openCreateServer = useServerManagementStore((state) => state.openCreateServer);
   const [view, setView] = useState<AddServerView>("choose");
 
   const handleClose = () => {

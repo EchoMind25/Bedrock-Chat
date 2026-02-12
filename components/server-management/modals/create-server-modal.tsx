@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Gamepad2, GraduationCap, Users, Sparkles } from "lucide-react";
 import { Modal } from "../../ui/modal/modal";
@@ -80,6 +81,7 @@ const CATEGORIES = [
 ];
 
 export function CreateServerModal() {
+  const router = useRouter();
   const { isCreateServerOpen, closeCreateServer } = useServerManagementStore();
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -264,7 +266,7 @@ export function CreateServerModal() {
 
       const firstChannel = channels[0];
       if (firstChannel) {
-        window.location.href = `/servers/${serverId}/${firstChannel.id}`;
+        router.push(`/servers/${serverId}/${firstChannel.id}`);
       }
     } catch (err) {
       console.error("Error creating server:", err);

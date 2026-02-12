@@ -13,7 +13,7 @@ export function ServerList() {
 	const isInitialized = useServerStore((state) => state.isInitialized);
 	const currentServerId = useServerStore((state) => state.currentServerId);
 	const setCurrentServer = useServerStore((state) => state.setCurrentServer);
-	const { openAddServer } = useServerManagementStore();
+	const openAddServer = useServerManagementStore((state) => state.openAddServer);
 
 	const homeServer = servers.find((s) => s.id === "home");
 	const otherServers = servers.filter((s) => s.id !== "home");
@@ -28,8 +28,8 @@ export function ServerList() {
 	}
 
 	return (
-		<div className="w-[72px] h-screen bg-[oklch(0.12_0.02_250)] flex flex-col items-center py-3 gap-2 overflow-y-auto scrollbar-hide">
-			{/* Home Button */}
+		<div className="w-[72px] h-screen bg-[oklch(0.12_0.02_250)] flex flex-col items-center py-3">
+			{/* Home Button - Fixed at top */}
 			<Tooltip content="Direct Messages" position="right">
 				<ServerButton
 					server={homeServer}
@@ -43,47 +43,51 @@ export function ServerList() {
 			</Tooltip>
 
 			{/* Divider */}
-			<div className="w-8 h-[2px] bg-white/10 rounded-full my-1" />
+			<div className="w-8 h-[2px] bg-white/10 rounded-full my-2 flex-shrink-0" />
 
-			{/* Server List */}
-			<motion.div
-				className="flex flex-col gap-2 w-full items-center"
-				initial="hidden"
-				animate="visible"
-				variants={{
-					hidden: { opacity: 0 },
-					visible: {
-						opacity: 1,
-						transition: {
-							staggerChildren: 0.02,
+			{/* Server List - Scrollable middle section */}
+			<div className="flex-1 overflow-y-auto scrollbar-hide w-full">
+				<motion.div
+					className="flex flex-col gap-2 w-full items-center"
+					initial="hidden"
+					animate="visible"
+					variants={{
+						hidden: { opacity: 0 },
+						visible: {
+							opacity: 1,
+							transition: {
+								staggerChildren: 0.02,
+							},
 						},
-					},
-				}}
-			>
-				{otherServers.map((server) => (
-					<Tooltip key={server.id} content={server.name} position="right">
-						<ServerButton
-							server={server}
-							isActive={currentServerId === server.id}
-							onClick={() => {
-								setCurrentServer(server.id);
-								// Get first text channel for this server
-								const firstTextChannel = server.channels.find((c) => c.type === "text");
-								const channelId = firstTextChannel?.id ?? server.channels[0]?.id;
-								if (channelId) {
-									router.push(`/servers/${server.id}/${channelId}`);
-								}
-							}}
-						/>
-					</Tooltip>
-				))}
-			</motion.div>
+					}}
+				>
+					{otherServers.map((server) => (
+						<Tooltip key={server.id} content={server.name} position="right">
+							<ServerButton
+								server={server}
+								isActive={currentServerId === server.id}
+								onClick={() => {
+									setCurrentServer(server.id);
+									const firstTextChannel = server.channels.find((c) => c.type === "text");
+									const channelId = firstTextChannel?.id ?? server.channels[0]?.id;
+									if (channelId) {
+										router.push(`/servers/${server.id}/${channelId}`);
+									}
+								}}
+							/>
+						</Tooltip>
+					))}
+				</motion.div>
+			</div>
 
-			{/* Add Server Button */}
+			{/* Divider */}
+			<div className="w-8 h-[2px] bg-white/10 rounded-full my-2 flex-shrink-0" />
+
+			{/* Add Server Button - Fixed at bottom */}
 			<Tooltip content="Add a Server" position="right">
 				<motion.button
 					type="button"
-					className="w-12 h-12 rounded-full bg-[oklch(0.15_0.02_250)] hover:bg-primary hover:rounded-2xl transition-all duration-200 flex items-center justify-center text-primary hover:text-white group mt-2"
+					className="w-12 h-12 flex-shrink-0 rounded-full bg-[oklch(0.15_0.02_250)] hover:bg-primary hover:rounded-2xl transition-all duration-200 flex items-center justify-center text-primary hover:text-white cursor-pointer"
 					whileHover={{ scale: 1.05 }}
 					whileTap={{ scale: 0.95 }}
 					onClick={() => openAddServer()}
