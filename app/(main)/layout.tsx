@@ -62,16 +62,18 @@ export default function MainLayout({
 	return (
 		<div className="flex h-screen overflow-hidden bg-[oklch(0.12_0.02_250)]">
 			{/* Server List - 72px */}
-			<ServerList />
+			<div className="relative z-10">
+				<ServerList />
+			</div>
 
 			{/* Channel List + User Panel - 240px */}
-			<div className="flex flex-col w-60 bg-[oklch(0.15_0.02_250)]">
+			<div className="relative z-10 flex flex-col w-60 bg-[oklch(0.15_0.02_250)]">
 				<ChannelList />
 				<UserPanel />
 			</div>
 
 			{/* Main Content Area - Flexible */}
-			<main className="flex-1 flex flex-col overflow-hidden">{children}</main>
+			<main className="relative z-20 flex-1 flex flex-col overflow-hidden">{children}</main>
 		</div>
 	);
 }

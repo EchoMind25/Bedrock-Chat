@@ -8,6 +8,7 @@ import type { UserStatus } from "@/store/auth.store";
 import { Avatar } from "@/components/ui/avatar/avatar";
 import type { AvatarStatus } from "@/components/ui/avatar/avatar";
 import { Tooltip } from "@/components/ui/tooltip/tooltip";
+import { ProfileModal } from "@/components/profile/profile-modal";
 import { motion, AnimatePresence } from "motion/react";
 
 export function UserPanel() {
@@ -17,10 +18,7 @@ export function UserPanel() {
 	const [showProfile, setShowProfile] = useState(false);
 	const [isMuted, setIsMuted] = useState(false);
 	const [isDeafened, setIsDeafened] = useState(false);
-	const [editingName, setEditingName] = useState(false);
-	const [newDisplayName, setNewDisplayName] = useState("");
 	const settingsRef = useRef<HTMLDivElement>(null);
-	const profileRef = useRef<HTMLDivElement>(null);
 	const panelRef = useRef<HTMLDivElement>(null);
 	const [mounted, setMounted] = useState(false);
 	const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({});
@@ -31,21 +29,17 @@ export function UserPanel() {
 
 	// Click outside to close settings popup
 	useEffect(() => {
-		if (!showSettings && !showProfile) return;
+		if (!showSettings) return;
 
 		const handleClickOutside = (e: MouseEvent) => {
 			if (showSettings && settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
 				setShowSettings(false);
 			}
-			if (showProfile && profileRef.current && !profileRef.current.contains(e.target as Node)) {
-				setShowProfile(false);
-				setEditingName(false);
-			}
 		};
 
 		document.addEventListener("mousedown", handleClickOutside);
 		return () => document.removeEventListener("mousedown", handleClickOutside);
-	}, [showSettings, showProfile]);
+	}, [showSettings]);
 
 	if (!user) {
 		return null;
@@ -69,13 +63,6 @@ export function UserPanel() {
 		}
 	};
 
-	const handleSaveDisplayName = () => {
-		if (newDisplayName.trim() && newDisplayName !== user.displayName) {
-			updateUser({ displayName: newDisplayName.trim() });
-		}
-		setEditingName(false);
-	};
-
 	const statusToAvatar: Record<UserStatus, AvatarStatus> = {
 		online: "online",
 		idle: "away",
@@ -88,7 +75,6 @@ export function UserPanel() {
 	const handleSetStatus = (status: UserStatus) => {
 		updateUser({ status });
 		setShowSettings(false);
-		setShowProfile(false);
 	};
 
 	const computePopoverPosition = () => {
@@ -104,15 +90,13 @@ export function UserPanel() {
 
 	return (
 		<div ref={panelRef} className="relative h-[52px] px-2 bg-[oklch(0.12_0.02_250)] border-t border-white/10 flex items-center gap-2">
-			{/* User Info */}
+			{/* User Info - opens profile modal */}
 			<button
 				type="button"
 				className="flex items-center gap-2 flex-1 px-2 py-1 rounded hover:bg-white/5 transition-colors group"
 				onClick={() => {
-					computePopoverPosition();
-					setShowProfile(!showProfile);
+					setShowProfile(true);
 					setShowSettings(false);
-					setNewDisplayName(user.displayName);
 				}}
 			>
 				<Avatar
@@ -126,7 +110,7 @@ export function UserPanel() {
 						{user.displayName}
 					</p>
 					<p className="text-xs text-white/60 truncate">
-						#{user.username.slice(0, 4)}
+						@{user.username}
 					</p>
 				</div>
 			</button>
@@ -197,7 +181,6 @@ export function UserPanel() {
 						onClick={() => {
 							computePopoverPosition();
 							setShowSettings(!showSettings);
-							setShowProfile(false);
 						}}
 					>
 						<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -209,111 +192,8 @@ export function UserPanel() {
 				</Tooltip>
 			</div>
 
-			{/* Profile Panel - rendered via portal to escape overflow clipping */}
-			{mounted && createPortal(
-				<AnimatePresence>
-					{showProfile && (
-						<motion.div
-							ref={profileRef}
-							style={popoverStyle}
-							className="bg-[oklch(0.18_0.02_250)] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50"
-							initial={{ opacity: 0, y: 10, scale: 0.95 }}
-							animate={{ opacity: 1, y: 0, scale: 1 }}
-							exit={{ opacity: 0, y: 10, scale: 0.95 }}
-							transition={{ type: "spring", stiffness: 260, damping: 20 }}
-						>
-							<div className="p-4">
-								{/* Profile Header */}
-								<div className="flex items-center gap-3 mb-4">
-									<Avatar
-										src={user.avatar}
-										fallback={user.displayName.slice(0, 2).toUpperCase()}
-										status={avatarStatus}
-										size="lg"
-									/>
-									<div className="flex-1 min-w-0">
-										{editingName ? (
-											<div className="flex items-center gap-1">
-												<input
-													type="text"
-													value={newDisplayName}
-													onChange={(e) => setNewDisplayName(e.target.value)}
-													className="bg-white/10 border border-white/20 rounded px-2 py-1 text-sm text-white w-full focus:outline-none focus:border-blue-500/50"
-													autoFocus
-													onKeyDown={(e) => {
-														if (e.key === "Enter") handleSaveDisplayName();
-														if (e.key === "Escape") setEditingName(false);
-													}}
-												/>
-												<button
-													type="button"
-													onClick={handleSaveDisplayName}
-													className="text-green-400 hover:text-green-300 text-xs px-1"
-												>
-													Save
-												</button>
-											</div>
-										) : (
-											<button
-												type="button"
-												onClick={() => {
-													setNewDisplayName(user.displayName);
-													setEditingName(true);
-												}}
-												className="text-left w-full group"
-											>
-												<p className="text-sm font-semibold text-white group-hover:text-blue-400 transition-colors">
-													{user.displayName}
-													<span className="text-white/30 text-xs ml-1 opacity-0 group-hover:opacity-100 transition-opacity">edit</span>
-												</p>
-											</button>
-										)}
-										<p className="text-xs text-white/60">@{user.username}</p>
-										<p className="text-xs text-white/40 capitalize">{user.accountType} account</p>
-									</div>
-								</div>
-
-								{/* Quick Actions */}
-								<div className="space-y-1">
-									<button
-										type="button"
-										className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded transition-colors flex items-center gap-2"
-										onClick={() => handleSetStatus("online")}
-									>
-										<div className="w-3 h-3 rounded-full bg-green-500" />
-										Online
-									</button>
-									<button
-										type="button"
-										className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded transition-colors flex items-center gap-2"
-										onClick={() => handleSetStatus("idle")}
-									>
-										<div className="w-3 h-3 rounded-full bg-yellow-500" />
-										Idle
-									</button>
-									<button
-										type="button"
-										className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded transition-colors flex items-center gap-2"
-										onClick={() => handleSetStatus("dnd")}
-									>
-										<div className="w-3 h-3 rounded-full bg-red-500" />
-										Do Not Disturb
-									</button>
-									<button
-										type="button"
-										className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded transition-colors flex items-center gap-2"
-										onClick={() => handleSetStatus("offline")}
-									>
-										<div className="w-3 h-3 rounded-full bg-gray-500" />
-										Invisible
-									</button>
-								</div>
-							</div>
-						</motion.div>
-					)}
-				</AnimatePresence>,
-				document.body
-			)}
+			{/* Profile Modal */}
+			<ProfileModal isOpen={showProfile} onClose={() => setShowProfile(false)} />
 
 			{/* Settings Panel - rendered via portal to escape overflow clipping */}
 			{mounted && createPortal(

@@ -108,8 +108,8 @@ export function Input({
           disabled={disabled}
           className={cn(
             "w-full px-4 py-2 rounded-lg",
-            "bg-background border border-border",
-            "text-foreground placeholder:text-muted-foreground",
+            "bg-slate-900/50 border border-slate-700/50",
+            "text-white placeholder:text-slate-500",
             "transition-all duration-200",
             "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
             "disabled:opacity-50 disabled:cursor-not-allowed",
@@ -207,8 +207,8 @@ export function Textarea({
           disabled={disabled}
           className={cn(
             "w-full px-4 py-2 rounded-lg resize-y",
-            "bg-background border border-border",
-            "text-foreground placeholder:text-muted-foreground",
+            "bg-slate-900/50 border border-slate-700/50",
+            "text-white placeholder:text-slate-500",
             "transition-all duration-200",
             "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
             "disabled:opacity-50 disabled:cursor-not-allowed",
