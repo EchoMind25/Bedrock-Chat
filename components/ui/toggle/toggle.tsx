@@ -42,17 +42,17 @@ const sizeClasses = {
   sm: {
     container: "w-9 h-5",
     thumb: "w-3.5 h-3.5",
-    translate: "translate-x-4",
+    translate: 16,
   },
   md: {
     container: "w-11 h-6",
     thumb: "w-4 h-4",
-    translate: "translate-x-5",
+    translate: 20,
   },
   lg: {
     container: "w-14 h-7",
     thumb: "w-5 h-5",
-    translate: "translate-x-7",
+    translate: 28,
   },
 };
 
@@ -144,7 +144,7 @@ export function Toggle({
               sizes.thumb
             )}
             animate={{
-              x: checked ? sizes.translate : "0",
+              x: checked ? sizes.translate : 0,
             }}
             transition={{
               type: "spring",
@@ -156,7 +156,7 @@ export function Toggle({
       </div>
 
       {label && (
-        <span className="text-sm font-medium text-foreground select-none">
+        <span className="text-sm font-medium select-none">
           {label}
         </span>
       )}

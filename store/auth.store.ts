@@ -33,7 +33,7 @@ interface AuthState {
 	pendingSignup: SignupData | null;
 
 	// Actions
-	login: (email: string, password: string) => Promise<boolean>;
+	login: (email: string, password: string, rememberMe?: boolean) => Promise<boolean>;
 	signUpWithEmail: (data: SignupData) => Promise<boolean>;
 	resendConfirmationEmail: (email: string) => Promise<boolean>;
 	completeSignup: () => Promise<boolean>;
@@ -80,7 +80,7 @@ export const useAuthStore = create<AuthState>()(
 				error: null,
 				pendingSignup: null,
 
-				login: async (email, password) => {
+				login: async (email, password, rememberMe = false) => {
 					set({ isLoading: true, error: null });
 
 					try {
@@ -103,6 +103,14 @@ export const useAuthStore = create<AuthState>()(
 								.single();
 
 							if (profile) {
+								// Store rememberMe preference so checkAuth can respect it
+								if (rememberMe) {
+									localStorage.setItem("bedrock-remember-me", "true");
+								} else {
+									localStorage.removeItem("bedrock-remember-me");
+									sessionStorage.setItem("bedrock-session-active", "true");
+								}
+
 								set({
 									user: profileToUser(profile, email),
 									isAuthenticated: true,
@@ -326,6 +334,8 @@ export const useAuthStore = create<AuthState>()(
 					} catch {
 						// Ignore signout errors
 					}
+					localStorage.removeItem("bedrock-remember-me");
+					sessionStorage.removeItem("bedrock-session-active");
 					set({ user: null, isAuthenticated: false, error: null, pendingSignup: null });
 				},
 
@@ -358,6 +368,17 @@ export const useAuthStore = create<AuthState>()(
 				checkAuth: async () => {
 					try {
 						const supabase = createClient();
+
+						// If user didn't check "Remember me", sign out on new browser session
+						const remembered = localStorage.getItem("bedrock-remember-me");
+						const sessionActive = sessionStorage.getItem("bedrock-session-active");
+						if (!remembered && !sessionActive) {
+							// New browser session without rememberMe — sign out
+							await supabase.auth.signOut();
+							set({ user: null, isAuthenticated: false, isLoading: false });
+							return;
+						}
+
 						const {
 							data: { user },
 						} = await supabase.auth.getUser();

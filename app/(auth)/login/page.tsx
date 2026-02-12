@@ -23,7 +23,7 @@ export default function LoginPage() {
 		e.preventDefault();
 		clearError();
 
-		const success = await login(email, password);
+		const success = await login(email, password, rememberMe);
 		if (success) {
 			router.push("/friends");
 		}
