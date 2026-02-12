@@ -15,14 +15,29 @@ type Step = 1 | 2 | 3 | 4;
 
 export default function SignupPage() {
 	const router = useRouter();
-	const { signup, isLoading, error, clearError, devLogin } = useAuthStore();
+	const {
+		signUpWithEmail,
+		verifyOtp,
+		isLoading,
+		error,
+		clearError,
+		devLogin,
+	} = useAuthStore();
 
 	const [step, setStep] = useState<Step>(1);
 	const [formData, setFormData] = useState<Partial<SignupData>>({
 		accountType: "standard",
 	});
-	const [verificationCode, setVerificationCode] = useState(["", "", "", "", "", ""]);
+	const [verificationCode, setVerificationCode] = useState([
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+	]);
 	const [confirmPassword, setConfirmPassword] = useState("");
+	const [resendCooldown, setResendCooldown] = useState(0);
 
 	// Dev mode detection
 	const isDev = isDevelopment();
@@ -41,7 +56,6 @@ export default function SignupPage() {
 		e.preventDefault();
 		clearError();
 
-		// Simple validation
 		if (!formData.email || !formData.username || !formData.password) {
 			return;
 		}
@@ -50,22 +64,46 @@ export default function SignupPage() {
 			return;
 		}
 
-		// In mock version, skip to step 4 (welcome) or simulate verification
-		setStep(3);
+		if (formData.password.length < 6) {
+			return;
+		}
+
+		// Call Supabase signUp — this sends the OTP verification email
+		const success = await signUpWithEmail(formData as SignupData);
+		if (success) {
+			setStep(3);
+		}
 	};
 
 	const handleVerification = async () => {
 		const code = verificationCode.join("");
 		if (code.length !== 6) return;
 
-		// Mock: Accept any 6 digits after minimal delay
-		await new Promise((r) => setTimeout(r, 100));
-
-		// Create account
-		const success = await signup(formData as SignupData);
+		// Verify the OTP code against Supabase
+		const success = await verifyOtp(formData.email!, code);
 		if (success) {
 			setStep(4);
 		}
+	};
+
+	const handleResendCode = async () => {
+		if (resendCooldown > 0) return;
+		clearError();
+
+		// Re-trigger signUp to resend the OTP
+		await signUpWithEmail(formData as SignupData);
+
+		// 60-second cooldown
+		setResendCooldown(60);
+		const interval = setInterval(() => {
+			setResendCooldown((prev) => {
+				if (prev <= 1) {
+					clearInterval(interval);
+					return 0;
+				}
+				return prev - 1;
+			});
+		}, 1000);
 	};
 
 	const handleComplete = () => {
@@ -271,7 +309,10 @@ export default function SignupPage() {
 											label="Teen's Email (Optional)"
 											value={formData.parentEmail || ""}
 											onChange={(e) =>
-												setFormData({ ...formData, parentEmail: e.target.value })
+												setFormData({
+													...formData,
+													parentEmail: e.target.value,
+												})
 											}
 											placeholder="teen@example.com"
 											id="parent-email"
@@ -303,7 +344,10 @@ export default function SignupPage() {
 							>
 								<button
 									type="button"
-									onClick={() => setStep(2)}
+									onClick={() => {
+										clearError();
+										setStep(2);
+									}}
 									className="text-white/60 hover:text-white mb-4 flex items-center gap-2"
 								>
 									← Back
@@ -313,9 +357,23 @@ export default function SignupPage() {
 									Verify Your Email
 								</h1>
 								<p className="text-white/60 mb-8">
-									We've sent a 6-digit code to{" "}
+									We sent a 6-digit code to{" "}
 									<span className="text-white">{formData.email}</span>
 								</p>
+
+								{/* Error Display */}
+								<AnimatePresence>
+									{error && (
+										<motion.div
+											initial={{ opacity: 0, x: -10 }}
+											animate={{ opacity: 1, x: 0 }}
+											exit={{ opacity: 0 }}
+											className="bg-red-500/20 border border-red-500/50 rounded-lg p-3 mb-6"
+										>
+											<p className="text-red-400 text-sm">{error}</p>
+										</motion.div>
+									)}
+								</AnimatePresence>
 
 								{/* 6-digit code input */}
 								<div className="flex gap-2 justify-center mb-6">
@@ -324,18 +382,54 @@ export default function SignupPage() {
 											key={index}
 											type="text"
 											maxLength={1}
+											inputMode="numeric"
+											pattern="[0-9]"
 											value={digit}
 											onChange={(e) => {
+												const val = e.target.value.replace(/[^0-9]/g, "");
 												const newCode = [...verificationCode];
-												newCode[index] = e.target.value;
+												newCode[index] = val;
 												setVerificationCode(newCode);
 
 												// Auto-advance to next input
-												if (e.target.value && index < 5) {
+												if (val && index < 5) {
 													const nextInput = document.querySelector(
 														`input[name="code-${index + 1}"]`,
 													) as HTMLInputElement;
 													nextInput?.focus();
+												}
+											}}
+											onKeyDown={(e) => {
+												// Handle backspace to go to previous input
+												if (
+													e.key === "Backspace" &&
+													!digit &&
+													index > 0
+												) {
+													const prevInput = document.querySelector(
+														`input[name="code-${index - 1}"]`,
+													) as HTMLInputElement;
+													prevInput?.focus();
+												}
+											}}
+											onPaste={(e) => {
+												e.preventDefault();
+												const pasted = e.clipboardData
+													.getData("text")
+													.replace(/[^0-9]/g, "")
+													.slice(0, 6);
+												if (pasted.length > 0) {
+													const newCode = [...verificationCode];
+													for (let i = 0; i < pasted.length && i < 6; i++) {
+														newCode[i] = pasted[i];
+													}
+													setVerificationCode(newCode);
+													// Focus the input after the last pasted digit
+													const focusIdx = Math.min(pasted.length, 5);
+													const target = document.querySelector(
+														`input[name="code-${focusIdx}"]`,
+													) as HTMLInputElement;
+													target?.focus();
 												}
 											}}
 											name={`code-${index}`}
@@ -357,14 +451,22 @@ export default function SignupPage() {
 
 								<button
 									type="button"
-									className="text-sm text-primary hover:text-primary-hover mt-4"
+									className={`text-sm mt-4 ${
+										resendCooldown > 0
+											? "text-white/40 cursor-not-allowed"
+											: "text-primary hover:text-primary-hover"
+									}`}
+									onClick={handleResendCode}
+									disabled={resendCooldown > 0}
 								>
-									Resend code
+									{resendCooldown > 0
+										? `Resend code in ${resendCooldown}s`
+										: "Resend code"}
 								</button>
 
 								{isDev && (
 									<p className="text-xs text-blue-400 mt-4">
-										Dev: Any 6 digits will work
+										Dev: Check your Supabase inbox or dashboard for the OTP code
 									</p>
 								)}
 							</motion.div>

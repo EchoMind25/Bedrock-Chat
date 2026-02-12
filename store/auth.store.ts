@@ -26,13 +26,19 @@ interface AuthState {
 	isLoading: boolean;
 	error: string | null;
 
+	// Pending signup data (stored between signUp and OTP verify)
+	pendingSignup: SignupData | null;
+
 	// Actions
 	login: (email: string, password: string) => Promise<boolean>;
-	signup: (data: SignupData) => Promise<boolean>;
+	signUpWithEmail: (data: SignupData) => Promise<boolean>;
+	verifyOtp: (email: string, token: string) => Promise<boolean>;
+	createProfile: (data: SignupData) => Promise<boolean>;
 	logout: () => Promise<void>;
 	clearError: () => void;
 	updateUser: (updates: Partial<User>) => void;
 	checkAuth: () => Promise<void>;
+	setPendingSignup: (data: SignupData | null) => void;
 	// Dev mode: Quick login without credentials
 	devLogin: () => void;
 	devLoginParent: () => void;
@@ -72,6 +78,7 @@ export const useAuthStore = create<AuthState>()(
 				isAuthenticated: false,
 				isLoading: false,
 				error: null,
+				pendingSignup: null,
 
 				login: async (email, password) => {
 					set({ isLoading: true, error: null });
@@ -116,7 +123,8 @@ export const useAuthStore = create<AuthState>()(
 					}
 				},
 
-				signup: async (data) => {
+				// Step 1: Register with Supabase and trigger OTP email
+				signUpWithEmail: async (data) => {
 					set({ isLoading: true, error: null });
 
 					try {
@@ -138,9 +146,28 @@ export const useAuthStore = create<AuthState>()(
 							return false;
 						}
 
+						// Check if username is already taken
+						const { data: existingUser } = await supabase
+							.from("profiles")
+							.select("id")
+							.ilike("username", data.username)
+							.maybeSingle();
+
+						if (existingUser) {
+							set({ isLoading: false, error: "Username is already taken" });
+							return false;
+						}
+
+						// Call signUp — this sends the OTP email
 						const { data: authData, error } = await supabase.auth.signUp({
 							email: data.email,
 							password: data.password,
+							options: {
+								data: {
+									username: data.username,
+									account_type: data.accountType,
+								},
+							},
 						});
 
 						if (error) {
@@ -148,46 +175,142 @@ export const useAuthStore = create<AuthState>()(
 							return false;
 						}
 
-						if (authData.user) {
-							const { error: profileError } = await supabase
-								.from("profiles")
-								.insert({
-									id: authData.user.id,
-									username: data.username,
-									display_name: data.username,
-									account_type: data.accountType,
-								});
-
-							if (profileError) {
-								set({ isLoading: false, error: profileError.message });
-								return false;
-							}
-
-							const user: User = {
-								id: authData.user.id,
-								email: data.email,
-								username: data.username,
-								displayName: data.username,
-								avatar: "",
-								accountType: data.accountType,
-								createdAt: new Date(),
-								settings: {
-									theme: "dark",
-									notifications: true,
-									reducedMotion: false,
-								},
-							};
-
-							set({ user, isAuthenticated: true, isLoading: false });
-							return true;
+						// Supabase returns a user with an `identities` array.
+						// If identities is empty, the email is already registered.
+						if (authData.user && authData.user.identities?.length === 0) {
+							set({
+								isLoading: false,
+								error: "An account with this email already exists",
+							});
+							return false;
 						}
 
-						set({ isLoading: false });
-						return false;
+						// Store pending signup data for after OTP verification
+						set({ pendingSignup: data, isLoading: false });
+						return true;
 					} catch (err) {
 						set({
 							isLoading: false,
 							error: err instanceof Error ? err.message : "Signup failed",
+						});
+						return false;
+					}
+				},
+
+				// Step 2: Verify the 6-digit OTP code from the email
+				verifyOtp: async (email, token) => {
+					set({ isLoading: true, error: null });
+
+					try {
+						const supabase = createClient();
+						const { data, error } = await supabase.auth.verifyOtp({
+							email,
+							token,
+							type: "signup",
+						});
+
+						if (error) {
+							set({ isLoading: false, error: error.message });
+							return false;
+						}
+
+						if (data.session && data.user) {
+							// OTP verified — user now has a valid session
+							const pendingSignup = get().pendingSignup;
+							if (pendingSignup) {
+								const profileCreated = await get().createProfile(pendingSignup);
+								if (!profileCreated) {
+									return false;
+								}
+							}
+
+							// Fetch the created profile
+							const { data: profile } = await supabase
+								.from("profiles")
+								.select("*")
+								.eq("id", data.user.id)
+								.single();
+
+							if (profile) {
+								set({
+									user: profileToUser(profile, email),
+									isAuthenticated: true,
+									isLoading: false,
+									pendingSignup: null,
+								});
+								return true;
+							}
+
+							// Profile might have been created by the database trigger
+							// Use the pending data to build the user object
+							if (pendingSignup) {
+								set({
+									user: {
+										id: data.user.id,
+										email,
+										username: pendingSignup.username,
+										displayName: pendingSignup.username,
+										avatar: "",
+										accountType: pendingSignup.accountType,
+										createdAt: new Date(),
+										settings: {
+											theme: "dark",
+											notifications: true,
+											reducedMotion: false,
+										},
+									},
+									isAuthenticated: true,
+									isLoading: false,
+									pendingSignup: null,
+								});
+								return true;
+							}
+						}
+
+						set({ isLoading: false, error: "Verification failed" });
+						return false;
+					} catch (err) {
+						set({
+							isLoading: false,
+							error: err instanceof Error ? err.message : "Verification failed",
+						});
+						return false;
+					}
+				},
+
+				// Create profile in the profiles table (called after OTP verification)
+				createProfile: async (data) => {
+					try {
+						const supabase = createClient();
+						const { data: { user } } = await supabase.auth.getUser();
+
+						if (!user) {
+							set({ error: "No authenticated user found" });
+							return false;
+						}
+
+						const { error: profileError } = await supabase
+							.from("profiles")
+							.insert({
+								id: user.id,
+								username: data.username,
+								display_name: data.username,
+								account_type: data.accountType,
+							});
+
+						if (profileError) {
+							// Ignore duplicate key errors (profile may exist from DB trigger)
+							if (!profileError.message.includes("duplicate")) {
+								set({ isLoading: false, error: profileError.message });
+								return false;
+							}
+						}
+
+						return true;
+					} catch (err) {
+						set({
+							isLoading: false,
+							error: err instanceof Error ? err.message : "Profile creation failed",
 						});
 						return false;
 					}
@@ -200,7 +323,7 @@ export const useAuthStore = create<AuthState>()(
 					} catch {
 						// Ignore signout errors
 					}
-					set({ user: null, isAuthenticated: false, error: null });
+					set({ user: null, isAuthenticated: false, error: null, pendingSignup: null });
 				},
 
 				clearError: () => set({ error: null }),
@@ -212,23 +335,25 @@ export const useAuthStore = create<AuthState>()(
 					}
 				},
 
+				setPendingSignup: (data) => set({ pendingSignup: data }),
+
 				checkAuth: async () => {
 					try {
 						const supabase = createClient();
 						const {
-							data: { session },
-						} = await supabase.auth.getSession();
+							data: { user },
+						} = await supabase.auth.getUser();
 
-						if (session?.user) {
+						if (user) {
 							const { data: profile } = await supabase
 								.from("profiles")
 								.select("*")
-								.eq("id", session.user.id)
+								.eq("id", user.id)
 								.single();
 
 							if (profile) {
 								set({
-									user: profileToUser(profile, session.user.email || ""),
+									user: profileToUser(profile, user.email || ""),
 									isAuthenticated: true,
 									isLoading: false,
 								});
