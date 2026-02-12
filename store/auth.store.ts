@@ -26,14 +26,14 @@ interface AuthState {
 	isLoading: boolean;
 	error: string | null;
 
-	// Pending signup data (stored between signUp and OTP verify)
+	// Pending signup data (stored between signUp and email confirmation)
 	pendingSignup: SignupData | null;
 
 	// Actions
 	login: (email: string, password: string) => Promise<boolean>;
 	signUpWithEmail: (data: SignupData) => Promise<boolean>;
-	verifyOtp: (email: string, token: string) => Promise<boolean>;
-	createProfile: (data: SignupData) => Promise<boolean>;
+	resendConfirmationEmail: (email: string) => Promise<boolean>;
+	completeSignup: () => Promise<boolean>;
 	logout: () => Promise<void>;
 	clearError: () => void;
 	updateUser: (updates: Partial<User>) => void;
@@ -123,7 +123,7 @@ export const useAuthStore = create<AuthState>()(
 					}
 				},
 
-				// Step 1: Register with Supabase and trigger OTP email
+				// Step 1: Register with Supabase — sends a confirmation email with a magic link
 				signUpWithEmail: async (data) => {
 					set({ isLoading: true, error: null });
 
@@ -158,11 +158,14 @@ export const useAuthStore = create<AuthState>()(
 							return false;
 						}
 
-						// Call signUp — this sends the OTP email
+						// Call signUp — sends confirmation email with a magic link.
+						// The emailRedirectTo tells Supabase where to redirect after
+						// the user clicks the confirmation link.
 						const { data: authData, error } = await supabase.auth.signUp({
 							email: data.email,
 							password: data.password,
 							options: {
+								emailRedirectTo: `${window.location.origin}/auth/callback`,
 								data: {
 									username: data.username,
 									account_type: data.accountType,
@@ -175,7 +178,6 @@ export const useAuthStore = create<AuthState>()(
 							return false;
 						}
 
-						// Supabase returns a user with an `identities` array.
 						// If identities is empty, the email is already registered.
 						if (authData.user && authData.user.identities?.length === 0) {
 							set({
@@ -185,7 +187,7 @@ export const useAuthStore = create<AuthState>()(
 							return false;
 						}
 
-						// Store pending signup data for after OTP verification
+						// Store pending signup data for the confirmation screen
 						set({ pendingSignup: data, isLoading: false });
 						return true;
 					} catch (err) {
@@ -197,16 +199,18 @@ export const useAuthStore = create<AuthState>()(
 					}
 				},
 
-				// Step 2: Verify the 6-digit OTP code from the email
-				verifyOtp: async (email, token) => {
+				// Resend the confirmation email
+				resendConfirmationEmail: async (email) => {
 					set({ isLoading: true, error: null });
 
 					try {
 						const supabase = createClient();
-						const { data, error } = await supabase.auth.verifyOtp({
-							email,
-							token,
+						const { error } = await supabase.auth.resend({
 							type: "signup",
+							email,
+							options: {
+								emailRedirectTo: `${window.location.origin}/auth/callback`,
+							},
 						});
 
 						if (error) {
@@ -214,103 +218,101 @@ export const useAuthStore = create<AuthState>()(
 							return false;
 						}
 
-						if (data.session && data.user) {
-							// OTP verified — user now has a valid session
-							const pendingSignup = get().pendingSignup;
-							if (pendingSignup) {
-								const profileCreated = await get().createProfile(pendingSignup);
-								if (!profileCreated) {
-									return false;
-								}
-							}
-
-							// Fetch the created profile
-							const { data: profile } = await supabase
-								.from("profiles")
-								.select("*")
-								.eq("id", data.user.id)
-								.single();
-
-							if (profile) {
-								set({
-									user: profileToUser(profile, email),
-									isAuthenticated: true,
-									isLoading: false,
-									pendingSignup: null,
-								});
-								return true;
-							}
-
-							// Profile might have been created by the database trigger
-							// Use the pending data to build the user object
-							if (pendingSignup) {
-								set({
-									user: {
-										id: data.user.id,
-										email,
-										username: pendingSignup.username,
-										displayName: pendingSignup.username,
-										avatar: "",
-										accountType: pendingSignup.accountType,
-										createdAt: new Date(),
-										settings: {
-											theme: "dark",
-											notifications: true,
-											reducedMotion: false,
-										},
-									},
-									isAuthenticated: true,
-									isLoading: false,
-									pendingSignup: null,
-								});
-								return true;
-							}
-						}
-
-						set({ isLoading: false, error: "Verification failed" });
-						return false;
+						set({ isLoading: false });
+						return true;
 					} catch (err) {
 						set({
 							isLoading: false,
-							error: err instanceof Error ? err.message : "Verification failed",
+							error: err instanceof Error ? err.message : "Failed to resend email",
 						});
 						return false;
 					}
 				},
 
-				// Create profile in the profiles table (called after OTP verification)
-				createProfile: async (data) => {
+				// Called after the user clicks the confirmation link and lands on /auth/callback.
+				// The callback route exchanges the code for a session and creates the profile.
+				// This method is for checking auth state from the client after redirect.
+				completeSignup: async () => {
+					set({ isLoading: true, error: null });
+
 					try {
 						const supabase = createClient();
-						const { data: { user } } = await supabase.auth.getUser();
+						const {
+							data: { user },
+						} = await supabase.auth.getUser();
 
 						if (!user) {
-							set({ error: "No authenticated user found" });
+							set({ isLoading: false, error: "Not authenticated" });
 							return false;
 						}
+
+						// Fetch profile (created by the callback route)
+						const { data: profile } = await supabase
+							.from("profiles")
+							.select("*")
+							.eq("id", user.id)
+							.single();
+
+						if (profile) {
+							set({
+								user: profileToUser(profile, user.email || ""),
+								isAuthenticated: true,
+								isLoading: false,
+								pendingSignup: null,
+							});
+							return true;
+						}
+
+						// Profile might not exist yet — create it from pending data
+						const pendingSignup = get().pendingSignup;
+						const username =
+							pendingSignup?.username ||
+							user.user_metadata?.username ||
+							user.email?.split("@")[0] ||
+							`user_${user.id.slice(0, 8)}`;
+						const accountType =
+							pendingSignup?.accountType ||
+							user.user_metadata?.account_type ||
+							"standard";
 
 						const { error: profileError } = await supabase
 							.from("profiles")
 							.insert({
 								id: user.id,
-								username: data.username,
-								display_name: data.username,
-								account_type: data.accountType,
+								username,
+								display_name: username,
+								account_type: accountType,
 							});
 
-						if (profileError) {
-							// Ignore duplicate key errors (profile may exist from DB trigger)
-							if (!profileError.message.includes("duplicate")) {
-								set({ isLoading: false, error: profileError.message });
-								return false;
-							}
+						if (profileError && !profileError.message.includes("duplicate")) {
+							set({ isLoading: false, error: profileError.message });
+							return false;
 						}
 
+						set({
+							user: {
+								id: user.id,
+								email: user.email || "",
+								username,
+								displayName: username,
+								avatar: "",
+								accountType: accountType as User["accountType"],
+								createdAt: new Date(),
+								settings: {
+									theme: "dark",
+									notifications: true,
+									reducedMotion: false,
+								},
+							},
+							isAuthenticated: true,
+							isLoading: false,
+							pendingSignup: null,
+						});
 						return true;
 					} catch (err) {
 						set({
 							isLoading: false,
-							error: err instanceof Error ? err.message : "Profile creation failed",
+							error: err instanceof Error ? err.message : "Signup completion failed",
 						});
 						return false;
 					}
@@ -426,6 +428,7 @@ export const useAuthStore = create<AuthState>()(
 				partialize: (state) => ({
 					user: state.user,
 					isAuthenticated: state.isAuthenticated,
+					pendingSignup: state.pendingSignup,
 				}),
 			},
 		),

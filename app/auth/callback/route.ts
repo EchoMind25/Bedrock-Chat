@@ -4,9 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 /**
  * Auth callback handler for Supabase email confirmation links.
  *
- * When a user clicks the confirmation link in their email,
- * Supabase redirects them here with a `code` query parameter.
- * We exchange the code for a session, then redirect to the app.
+ * Flow:
+ * 1. User clicks "Confirm your email" link in their inbox
+ * 2. Supabase verifies the token and redirects here with a `code` param
+ * 3. We exchange the code for a session (sets auth cookies)
+ * 4. We create the user's profile if it doesn't exist yet
+ * 5. We redirect to the main app
  */
 export async function GET(request: Request) {
 	const { searchParams, origin } = new URL(request.url);
@@ -18,7 +21,7 @@ export async function GET(request: Request) {
 		const { error } = await supabase.auth.exchangeCodeForSession(code);
 
 		if (!error) {
-			// Check if the user has a profile, create one if missing
+			// Session is now active — create profile if it doesn't exist
 			const {
 				data: { user },
 			} = await supabase.auth.getUser();
@@ -31,24 +34,27 @@ export async function GET(request: Request) {
 					.maybeSingle();
 
 				if (!existingProfile) {
-					// Create profile from user metadata (set during signUp)
 					const metadata = user.user_metadata;
+					const username =
+						metadata?.username ||
+						user.email?.split("@")[0] ||
+						`user_${user.id.slice(0, 8)}`;
+
 					await supabase.from("profiles").insert({
 						id: user.id,
-						username:
-							metadata?.username ||
-							user.email?.split("@")[0] ||
-							`user_${user.id.slice(0, 8)}`,
-						display_name: metadata?.username || user.email?.split("@")[0],
+						username,
+						display_name: username,
 						account_type: metadata?.account_type || "standard",
 					});
 				}
 			}
 
+			// Redirect to the app — the main layout will call checkAuth()
+			// which reads the session from cookies and loads the profile
 			return NextResponse.redirect(`${origin}${next}`);
 		}
 	}
 
-	// If code exchange fails, redirect to login with error
+	// If code exchange fails, redirect to login
 	return NextResponse.redirect(`${origin}/login`);
 }

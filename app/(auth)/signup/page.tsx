@@ -11,13 +11,13 @@ import { Input } from "@/components/ui/input/input";
 import Link from "next/link";
 import { isDevelopment } from "@/lib/utils/dev-mode";
 
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3;
 
 export default function SignupPage() {
 	const router = useRouter();
 	const {
 		signUpWithEmail,
-		verifyOtp,
+		resendConfirmationEmail,
 		isLoading,
 		error,
 		clearError,
@@ -28,16 +28,9 @@ export default function SignupPage() {
 	const [formData, setFormData] = useState<Partial<SignupData>>({
 		accountType: "standard",
 	});
-	const [verificationCode, setVerificationCode] = useState([
-		"",
-		"",
-		"",
-		"",
-		"",
-		"",
-	]);
 	const [confirmPassword, setConfirmPassword] = useState("");
 	const [resendCooldown, setResendCooldown] = useState(0);
+	const [emailSent, setEmailSent] = useState(false);
 
 	// Dev mode detection
 	const isDev = isDevelopment();
@@ -68,30 +61,22 @@ export default function SignupPage() {
 			return;
 		}
 
-		// Call Supabase signUp — this sends the OTP verification email
+		// Call Supabase signUp — sends a confirmation email with a magic link
 		const success = await signUpWithEmail(formData as SignupData);
 		if (success) {
+			setEmailSent(true);
 			setStep(3);
 		}
 	};
 
-	const handleVerification = async () => {
-		const code = verificationCode.join("");
-		if (code.length !== 6) return;
-
-		// Verify the OTP code against Supabase
-		const success = await verifyOtp(formData.email!, code);
-		if (success) {
-			setStep(4);
-		}
-	};
-
-	const handleResendCode = async () => {
-		if (resendCooldown > 0) return;
+	const handleResendEmail = async () => {
+		if (resendCooldown > 0 || !formData.email) return;
 		clearError();
 
-		// Re-trigger signUp to resend the OTP
-		await signUpWithEmail(formData as SignupData);
+		const success = await resendConfirmationEmail(formData.email);
+		if (success) {
+			setEmailSent(true);
+		}
 
 		// 60-second cooldown
 		setResendCooldown(60);
@@ -104,10 +89,6 @@ export default function SignupPage() {
 				return prev - 1;
 			});
 		}, 1000);
-	};
-
-	const handleComplete = () => {
-		router.push("/servers/server-1/channel-1");
 	};
 
 	return (
@@ -141,18 +122,16 @@ export default function SignupPage() {
 				className="w-full max-w-[520px]"
 			>
 				{/* Progress Indicator */}
-				{step < 4 && (
-					<div className="mb-6 flex justify-center gap-2">
-						{[1, 2, 3].map((s) => (
-							<div
-								key={s}
-								className={`h-1 w-16 rounded-full transition-all ${
-									s <= step ? "bg-primary" : "bg-white/20"
-								}`}
-							/>
-						))}
-					</div>
-				)}
+				<div className="mb-6 flex justify-center gap-2">
+					{[1, 2, 3].map((s) => (
+						<div
+							key={s}
+							className={`h-1 w-16 rounded-full transition-all ${
+								s <= step ? "bg-primary" : "bg-white/20"
+							}`}
+						/>
+					))}
+				</div>
 
 				<Glass variant="strong" border="medium" className="p-8">
 					<AnimatePresence mode="wait">
@@ -333,7 +312,7 @@ export default function SignupPage() {
 							</motion.div>
 						)}
 
-						{/* Step 3: Verification */}
+						{/* Step 3: Check Your Email */}
 						{step === 3 && (
 							<motion.div
 								key="step3"
@@ -342,24 +321,50 @@ export default function SignupPage() {
 								exit={{ opacity: 0, x: -20 }}
 								className="text-center"
 							>
-								<button
-									type="button"
-									onClick={() => {
-										clearError();
-										setStep(2);
+								{/* Email icon */}
+								<motion.div
+									initial={{ scale: 0 }}
+									animate={{ scale: 1 }}
+									transition={{
+										type: "spring",
+										stiffness: 200,
+										damping: 15,
 									}}
-									className="text-white/60 hover:text-white mb-4 flex items-center gap-2"
+									className="w-20 h-20 mx-auto mb-6 bg-primary/20 rounded-full flex items-center justify-center"
 								>
-									← Back
-								</button>
+									<svg
+										width="40"
+										height="40"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										strokeWidth="1.5"
+										strokeLinecap="round"
+										strokeLinejoin="round"
+										className="text-primary"
+									>
+										<rect width="20" height="16" x="2" y="4" rx="2" />
+										<path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+									</svg>
+								</motion.div>
 
 								<h1 className="text-2xl font-bold text-white mb-2">
-									Verify Your Email
+									Check Your Email
 								</h1>
-								<p className="text-white/60 mb-8">
-									We sent a 6-digit code to{" "}
-									<span className="text-white">{formData.email}</span>
+								<p className="text-white/60 mb-2">
+									We sent a confirmation link to
 								</p>
+								<p className="text-white font-medium mb-6">
+									{formData.email}
+								</p>
+
+								<div className="bg-white/5 rounded-lg p-5 mb-6 text-left">
+									<p className="text-white/80 text-sm leading-relaxed">
+										Click the link in the email to verify your account and
+										get started. The link will redirect you back here
+										automatically.
+									</p>
+								</div>
 
 								{/* Error Display */}
 								<AnimatePresence>
@@ -368,169 +373,55 @@ export default function SignupPage() {
 											initial={{ opacity: 0, x: -10 }}
 											animate={{ opacity: 1, x: 0 }}
 											exit={{ opacity: 0 }}
-											className="bg-red-500/20 border border-red-500/50 rounded-lg p-3 mb-6"
+											className="bg-red-500/20 border border-red-500/50 rounded-lg p-3 mb-4"
 										>
 											<p className="text-red-400 text-sm">{error}</p>
 										</motion.div>
 									)}
 								</AnimatePresence>
 
-								{/* 6-digit code input */}
-								<div className="flex gap-2 justify-center mb-6">
-									{verificationCode.map((digit, index) => (
-										<input
-											key={index}
-											type="text"
-											maxLength={1}
-											inputMode="numeric"
-											pattern="[0-9]"
-											value={digit}
-											onChange={(e) => {
-												const val = e.target.value.replace(/[^0-9]/g, "");
-												const newCode = [...verificationCode];
-												newCode[index] = val;
-												setVerificationCode(newCode);
-
-												// Auto-advance to next input
-												if (val && index < 5) {
-													const nextInput = document.querySelector(
-														`input[name="code-${index + 1}"]`,
-													) as HTMLInputElement;
-													nextInput?.focus();
-												}
-											}}
-											onKeyDown={(e) => {
-												// Handle backspace to go to previous input
-												if (
-													e.key === "Backspace" &&
-													!digit &&
-													index > 0
-												) {
-													const prevInput = document.querySelector(
-														`input[name="code-${index - 1}"]`,
-													) as HTMLInputElement;
-													prevInput?.focus();
-												}
-											}}
-											onPaste={(e) => {
-												e.preventDefault();
-												const pasted = e.clipboardData
-													.getData("text")
-													.replace(/[^0-9]/g, "")
-													.slice(0, 6);
-												if (pasted.length > 0) {
-													const newCode = [...verificationCode];
-													for (let i = 0; i < pasted.length && i < 6; i++) {
-														newCode[i] = pasted[i];
-													}
-													setVerificationCode(newCode);
-													// Focus the input after the last pasted digit
-													const focusIdx = Math.min(pasted.length, 5);
-													const target = document.querySelector(
-														`input[name="code-${focusIdx}"]`,
-													) as HTMLInputElement;
-													target?.focus();
-												}
-											}}
-											name={`code-${index}`}
-											className="w-12 h-14 text-center text-2xl font-bold bg-white/5 border border-white/20 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/50 focus:outline-none text-white"
-										/>
-									))}
-								</div>
-
-								<Button
-									variant="primary"
-									size="lg"
-									className="w-full"
-									onClick={handleVerification}
-									loading={isLoading}
-									disabled={verificationCode.join("").length !== 6}
-								>
-									Verify & Create Account
-								</Button>
-
-								<button
-									type="button"
-									className={`text-sm mt-4 ${
-										resendCooldown > 0
-											? "text-white/40 cursor-not-allowed"
-											: "text-primary hover:text-primary-hover"
-									}`}
-									onClick={handleResendCode}
-									disabled={resendCooldown > 0}
-								>
-									{resendCooldown > 0
-										? `Resend code in ${resendCooldown}s`
-										: "Resend code"}
-								</button>
-
-								{isDev && (
-									<p className="text-xs text-blue-400 mt-4">
-										Dev: Check your Supabase inbox or dashboard for the OTP code
-									</p>
+								{emailSent && (
+									<motion.p
+										initial={{ opacity: 0 }}
+										animate={{ opacity: 1 }}
+										className="text-green-400 text-sm mb-4"
+									>
+										Confirmation email sent!
+									</motion.p>
 								)}
-							</motion.div>
-						)}
 
-						{/* Step 4: Welcome */}
-						{step === 4 && (
-							<motion.div
-								key="step4"
-								initial={{ opacity: 0, scale: 0.95 }}
-								animate={{ opacity: 1, scale: 1 }}
-								className="text-center"
-							>
-								<motion.div
-									initial={{ scale: 0 }}
-									animate={{ scale: 1 }}
-									transition={{
-										type: "spring",
-										stiffness: 200,
-										damping: 15,
-										delay: 0.2,
-									}}
-									className="w-20 h-20 mx-auto mb-6 bg-primary/20 rounded-full flex items-center justify-center"
-								>
-									<span className="text-4xl">🎉</span>
-								</motion.div>
-
-								<h1 className="text-3xl font-bold text-white mb-2">
-									Welcome to Bedrock Chat!
-								</h1>
-								<p className="text-white/60 mb-8">
-									Your account has been created successfully.
-								</p>
-
-								<div className="bg-white/5 rounded-lg p-6 mb-8 text-left">
-									<h3 className="font-semibold text-white mb-4">
-										Quick Tips to Get Started:
-									</h3>
-									<ul className="space-y-3 text-white/80 text-sm">
-										<li className="flex items-start gap-3">
-											<span className="text-primary">✓</span>
-											<span>
-												Your data is encrypted and private by default
-											</span>
-										</li>
-										<li className="flex items-start gap-3">
-											<span className="text-primary">✓</span>
-											<span>Create or join servers to connect with others</span>
-										</li>
-										<li className="flex items-start gap-3">
-											<span className="text-primary">✓</span>
-											<span>Customize your profile in settings</span>
-										</li>
-									</ul>
+								<div className="space-y-3">
+									<p className="text-white/40 text-sm">
+										Didn't receive the email? Check your spam folder or
+									</p>
+									<button
+										type="button"
+										className={`text-sm ${
+											resendCooldown > 0
+												? "text-white/40 cursor-not-allowed"
+												: "text-primary hover:text-primary-hover"
+										}`}
+										onClick={handleResendEmail}
+										disabled={resendCooldown > 0 || isLoading}
+									>
+										{resendCooldown > 0
+											? `Resend email in ${resendCooldown}s`
+											: "Resend confirmation email"}
+									</button>
 								</div>
 
-								<Button
-									variant="primary"
-									size="lg"
-									className="w-full"
-									onClick={handleComplete}
-								>
-									Get Started
-								</Button>
+								<div className="mt-8 pt-6 border-t border-white/10">
+									<button
+										type="button"
+										onClick={() => {
+											clearError();
+											setStep(2);
+										}}
+										className="text-white/60 hover:text-white text-sm"
+									>
+										← Use a different email
+									</button>
+								</div>
 							</motion.div>
 						)}
 					</AnimatePresence>

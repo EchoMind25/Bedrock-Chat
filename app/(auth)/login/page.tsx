@@ -95,6 +95,7 @@ export default function LoginPage() {
 						<Input
 							type="email"
 							label="Email"
+							labelClassName="text-blue-400"
 							value={email}
 							onChange={(e) => setEmail(e.target.value)}
 							placeholder="you@example.com"
@@ -107,6 +108,7 @@ export default function LoginPage() {
 							<Input
 								type={showPassword ? "text" : "password"}
 								label="Password"
+								labelClassName="text-blue-400"
 								value={password}
 								onChange={(e) => setPassword(e.target.value)}
 								placeholder="••••••••"

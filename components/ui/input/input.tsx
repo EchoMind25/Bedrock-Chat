@@ -17,6 +17,11 @@ interface BaseInputProps {
   label?: string;
 
   /**
+   * Additional classes for the label
+   */
+  labelClassName?: string;
+
+  /**
    * Error message
    */
   error?: string;
@@ -66,6 +71,7 @@ interface TextareaProps
  */
 export function Input({
   label,
+  labelClassName,
   error,
   helperText,
   className = "",
@@ -82,7 +88,7 @@ export function Input({
     <div className="w-full">
       {label && (
         <label
-          className="block text-sm font-medium mb-2 text-foreground"
+          className={cn("block text-sm font-medium mb-2 text-foreground", labelClassName)}
           htmlFor={props.id}
         >
           {label}

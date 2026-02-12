@@ -16,10 +16,15 @@ export default function MainLayout({
 	children: React.ReactNode;
 }) {
 	const router = useRouter();
-	const { isAuthenticated, user } = useAuthStore();
+	const { isAuthenticated, user, checkAuth } = useAuthStore();
 	const { init: initServers, isInitialized: serversInitialized } = useServerStore();
 	const { init: initFriends, isInitialized: friendsInitialized } = useFriendsStore();
 	const { init: initDMs, isInitialized: dmsInitialized } = useDMStore();
+
+	// Check auth with Supabase on mount (picks up sessions from callback redirect)
+	useEffect(() => {
+		checkAuth();
+	}, [checkAuth]);
 
 	// Initialize all stores in parallel for maximum performance
 	useEffect(() => {
