@@ -11,7 +11,8 @@ interface ReactionBarProps {
 }
 
 export function ReactionBar({ reactions, messageId, channelId }: ReactionBarProps) {
-	const { addReaction, removeReaction } = useMessageStore();
+	const addReaction = useMessageStore((state) => state.addReaction);
+	const removeReaction = useMessageStore((state) => state.removeReaction);
 
 	if (reactions.length === 0) return null;
 

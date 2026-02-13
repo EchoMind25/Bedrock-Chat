@@ -65,7 +65,8 @@ export function MessageList({ channelId }: MessageListProps) {
 		if (isNearBottom) {
 			virtualizer.scrollToIndex(channelMessages.length - 1, { align: 'end' });
 		}
-	}, [lastMessageId, channelMessages.length, virtualizer]);
+	// eslint-disable-next-line react-hooks/exhaustive-deps -- virtualizer is intentionally excluded (unstable reference)
+	}, [lastMessageId, channelMessages.length]);
 
 	if (isLoading) {
 		return <MessageListSkeleton />;

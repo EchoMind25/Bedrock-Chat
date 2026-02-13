@@ -30,12 +30,12 @@ export function MessageInput({ channelId, channelName }: MessageInputProps) {
 		textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
 	}, [content]);
 
-	// Typing indicator
+	// Typing indicator (debounced to prevent excessive store updates)
 	useEffect(() => {
-		if (content.length > 0 && user) {
+		if (content.length > 0 && user?.username) {
 			setTyping(channelId, user.username);
 		}
-	}, [content, channelId, setTyping, user]);
+	}, [content, channelId, setTyping, user?.username]);
 
 	const handleSubmit = () => {
 		if (!content.trim()) return;

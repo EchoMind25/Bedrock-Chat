@@ -21,7 +21,9 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 	const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
 	const [isEditing, setIsEditing] = useState(false);
 	const [editContent, setEditContent] = useState(message.content);
-	const { addReaction, editMessage, deleteMessage } = useMessageStore();
+	const addReaction = useMessageStore((state) => state.addReaction);
+	const editMessage = useMessageStore((state) => state.editMessage);
+	const deleteMessage = useMessageStore((state) => state.deleteMessage);
 	const currentUser = useAuthStore(state => state.user);
 
 	const isOwnMessage = currentUser?.id === message.author.id;
