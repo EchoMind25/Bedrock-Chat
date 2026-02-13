@@ -10,11 +10,16 @@ interface OnboardingState {
 	isOnboardingComplete: boolean;
 	onboardingStep: number;
 
+	// App entrance transition (shown after login/signup and on PWA launch)
+	showEntranceTransition: boolean;
+
 	setIntroPreference: (pref: IntroPreference) => void;
 	markIntroSeen: () => void;
 	setOnboardingStep: (step: number) => void;
 	completeOnboarding: () => void;
 	resetOnboarding: () => void;
+	triggerEntranceTransition: () => void;
+	completeEntranceTransition: () => void;
 }
 
 export const useOnboardingStore = create<OnboardingState>()(
@@ -25,6 +30,7 @@ export const useOnboardingStore = create<OnboardingState>()(
 				hasSeenIntro: false,
 				isOnboardingComplete: false,
 				onboardingStep: 0,
+				showEntranceTransition: false,
 
 				setIntroPreference: (pref) => set({ introPreference: pref }),
 
@@ -41,7 +47,12 @@ export const useOnboardingStore = create<OnboardingState>()(
 						onboardingStep: 0,
 						hasSeenIntro: false,
 						introPreference: "full",
+						showEntranceTransition: false,
 					}),
+
+				triggerEntranceTransition: () => set({ showEntranceTransition: true }),
+
+				completeEntranceTransition: () => set({ showEntranceTransition: false }),
 			}),
 			{
 				name: "bedrock-onboarding",

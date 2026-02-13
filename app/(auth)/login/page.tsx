@@ -7,6 +7,7 @@ import { useOnboardingStore } from "@/store/onboarding.store";
 import { WorldFormation } from "@/components/login/world-formation/world-formation";
 import { LoginForm } from "@/components/login/login-form";
 import { SkipIntroButton } from "@/components/login/skip-intro-button";
+import { AppEntranceTransition } from "@/components/transitions/app-entrance-transition";
 
 export default function LoginPage() {
 	const router = useRouter();
@@ -16,6 +17,9 @@ export default function LoginPage() {
 	const isOnboardingComplete = useOnboardingStore(
 		(s) => s.isOnboardingComplete,
 	);
+	const showEntranceTransition = useOnboardingStore((s) => s.showEntranceTransition);
+	const triggerEntranceTransition = useOnboardingStore((s) => s.triggerEntranceTransition);
+	const completeEntranceTransition = useOnboardingStore((s) => s.completeEntranceTransition);
 
 	const [showForm, setShowForm] = useState(false);
 	const [introActive, setIntroActive] = useState(false);
@@ -48,12 +52,20 @@ export default function LoginPage() {
 	}, [markIntroSeen]);
 
 	const handleLoginSuccess = useCallback(() => {
+		// Trigger entrance transition instead of immediate redirect
+		setStatusMessage("Entering Bedrock...");
+		triggerEntranceTransition();
+	}, [triggerEntranceTransition]);
+
+	const handleEntranceComplete = useCallback(() => {
+		completeEntranceTransition();
+		// Navigate to appropriate destination after transition
 		if (isOnboardingComplete) {
-			router.push("/friends");
+			router.push("/channels");
 		} else {
 			router.push("/onboarding");
 		}
-	}, [isOnboardingComplete, router]);
+	}, [isOnboardingComplete, router, completeEntranceTransition]);
 
 	return (
 		<div className="min-h-screen relative overflow-hidden bg-black">
@@ -77,6 +89,12 @@ export default function LoginPage() {
 			<AnimatePresence>
 				{showForm && <LoginForm onSuccess={handleLoginSuccess} />}
 			</AnimatePresence>
+
+			{/* App Entrance Transition (after login) */}
+			<AppEntranceTransition
+				isActive={showEntranceTransition}
+				onComplete={handleEntranceComplete}
+			/>
 		</div>
 	);
 }
