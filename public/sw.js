@@ -76,14 +76,18 @@ self.addEventListener("fetch", (event) => {
       caches.match(event.request).then((cached) => {
         const fetchPromise = fetch(event.request)
           .then((response) => {
-            if (response.ok) {
+            // Clone IMMEDIATELY before any async operations
+            if (response && response.ok && response.status === 200) {
+              const responseToCache = response.clone();
+              // Cache asynchronously without blocking return
               caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, response.clone());
+                cache.put(event.request, responseToCache);
               });
             }
+            // Return the original response
             return response;
           })
-          .catch(() => cached);
+          .catch(() => cached || new Response("Network error", { status: 503 }));
 
         return cached || fetchPromise;
       })

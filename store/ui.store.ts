@@ -10,6 +10,8 @@ interface UIState {
 	// Mobile responsiveness
 	isMobile: boolean;
 	isMobileMenuOpen: boolean;
+	isMobileServerListOpen: boolean;
+	isMobileChannelListOpen: boolean;
 
 	// Theme
 	theme: "dark" | "light";
@@ -28,6 +30,9 @@ interface UIState {
 	toggleChannelList: () => void;
 	setMobile: (isMobile: boolean) => void;
 	toggleMobileMenu: () => void;
+	setMobileServerListOpen: (isOpen: boolean) => void;
+	setMobileChannelListOpen: (isOpen: boolean) => void;
+	closeMobileSidebars: () => void;
 	setTheme: (theme: "dark" | "light") => void;
 	setIdle: (isIdle: boolean) => void;
 	startPortalTransition: (
@@ -47,6 +52,8 @@ export const useUIStore = create<UIState>()(
 				isChannelListCollapsed: false,
 				isMobile: false,
 				isMobileMenuOpen: false,
+				isMobileServerListOpen: false,
+				isMobileChannelListOpen: false,
 				theme: "dark",
 				isIdle: false,
 				isPortalTransitioning: false,
@@ -69,6 +76,18 @@ export const useUIStore = create<UIState>()(
 
 				toggleMobileMenu: () =>
 					set((state) => ({ isMobileMenuOpen: !state.isMobileMenuOpen })),
+
+				setMobileServerListOpen: (isOpen) =>
+					set({ isMobileServerListOpen: isOpen }),
+
+				setMobileChannelListOpen: (isOpen) =>
+					set({ isMobileChannelListOpen: isOpen }),
+
+				closeMobileSidebars: () =>
+					set({
+						isMobileServerListOpen: false,
+						isMobileChannelListOpen: false,
+					}),
 
 				setTheme: (theme) => set({ theme }),
 

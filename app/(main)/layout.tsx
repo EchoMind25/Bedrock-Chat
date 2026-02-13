@@ -7,9 +7,11 @@ import { useServerStore } from "@/store/server.store";
 import { useFriendsStore } from "@/store/friends.store";
 import { useDMStore } from "@/store/dm.store";
 import { useUIStore } from "@/store/ui.store";
+import { useIsMobile } from "@/lib/hooks/use-media-query";
 import { ServerList } from "@/components/navigation/server-list/server-list";
 import { ChannelList } from "@/components/navigation/channel-list/channel-list";
 import { UserPanel } from "@/components/navigation/user-panel/user-panel";
+import { MobileNav } from "@/components/navigation/mobile-nav";
 import { PortalOverlay } from "@/components/navigation/portal-overlay";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { useIdleDetection } from "@/lib/hooks/use-idle-detection";
@@ -35,6 +37,9 @@ export default function MainLayout({
 	const isIdle = useIdleDetection();
 	usePerformanceMonitor();
 
+	// Mobile detection
+	const isMobile = useIsMobile();
+
 	// Initialize enhanced performance monitoring pipeline
 	useEffect(() => {
 		const cleanup = initPerformanceMonitoring();
@@ -53,6 +58,11 @@ export default function MainLayout({
 		// Sync idle state to performance monitor for threshold switching
 		PerformanceMonitor.getInstance().setIdleState(isIdle);
 	}, [isIdle]);
+
+	// Sync mobile detection to UI store
+	useEffect(() => {
+		useUIStore.getState().setMobile(isMobile);
+	}, [isMobile]);
 
 	// Coordinated initialization: auth first, then data stores
 	useEffect(() => {
@@ -137,25 +147,58 @@ export default function MainLayout({
 				Skip to main content
 			</a>
 
-			{/* Server List - 72px */}
-			<ErrorBoundary level="feature" name="ServerList">
-				<div className="relative z-10">
-					<ServerList />
-				</div>
-			</ErrorBoundary>
+			{/* Desktop: Server List - 72px (hidden on mobile) */}
+			{!isMobile && (
+				<ErrorBoundary level="feature" name="ServerList">
+					<div className="relative z-10">
+						<ServerList />
+					</div>
+				</ErrorBoundary>
+			)}
 
-			{/* Channel List + User Panel - 240px */}
-			<ErrorBoundary level="feature" name="ChannelList">
-				<div className="relative z-10 flex flex-col w-60 bg-[oklch(0.15_0.02_250)]">
-					<ChannelList />
-					<UserPanel />
-				</div>
-			</ErrorBoundary>
+			{/* Desktop: Channel List + User Panel - 240px (hidden on mobile) */}
+			{!isMobile && (
+				<ErrorBoundary level="feature" name="ChannelList">
+					<div className="relative z-10 flex flex-col w-60 bg-[oklch(0.15_0.02_250)]">
+						<ChannelList />
+						<UserPanel />
+					</div>
+				</ErrorBoundary>
+			)}
+
+			{/* Mobile: Slide-over sidebars (rendered within ServerList/ChannelList) */}
+			{isMobile && (
+				<>
+					<ErrorBoundary level="feature" name="ServerList">
+						<ServerList />
+					</ErrorBoundary>
+					<ErrorBoundary level="feature" name="ChannelList">
+						<ChannelList />
+					</ErrorBoundary>
+				</>
+			)}
 
 			{/* Main Content Area - Flexible */}
 			<ErrorBoundary level="page" name="MainContent">
-				<main id="main-content" className="relative z-20 flex-1 flex flex-col overflow-hidden">{children}</main>
+				<main
+					id="main-content"
+					className="relative z-20 flex-1 flex flex-col overflow-hidden"
+					style={
+						isMobile
+							? { paddingBottom: "calc(56px + env(safe-area-inset-bottom))" }
+							: undefined
+					}
+				>
+					{children}
+				</main>
 			</ErrorBoundary>
+
+			{/* Mobile: Bottom Navigation */}
+			{isMobile && (
+				<ErrorBoundary level="feature" name="MobileNav">
+					<MobileNav />
+				</ErrorBoundary>
+			)}
 
 			{/* Portal transition overlay */}
 			<PortalOverlay />

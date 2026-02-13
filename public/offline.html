@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5, viewport-fit=cover">
+  <meta name="theme-color" content="#7C3AED">
   <title>Bedrock Chat - Offline</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -49,9 +50,19 @@
       font-size: 1rem;
       cursor: pointer;
       transition: opacity 0.15s;
+      min-width: 120px;
+      min-height: 44px;
+      touch-action: manipulation;
     }
     button:hover { opacity: 0.85; }
     button:active { transform: scale(0.97); }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 2rem 1.5rem;
+        padding-bottom: calc(2rem + env(safe-area-inset-bottom));
+      }
+    }
   </style>
 </head>
 <body>

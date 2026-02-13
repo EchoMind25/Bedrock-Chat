@@ -97,7 +97,7 @@ export function ChannelItem({ channel, isActive }: ChannelItemProps) {
 				type="button"
 				onClick={handleChannelClick}
 				className={cn(
-					"w-full px-2 py-1.5 mx-1 rounded flex items-center gap-2 text-sm transition-colors group",
+					"w-full px-2 py-3 md:py-1.5 mx-1 min-h-[44px] md:min-h-0 rounded flex items-center gap-2 text-sm transition-colors group touch-manipulation",
 					isActive
 						? "bg-white/10 text-white"
 						: "text-white/60 hover:bg-white/5 hover:text-white/80"
@@ -142,7 +142,7 @@ export function ChannelItem({ channel, isActive }: ChannelItemProps) {
 						role="button"
 						tabIndex={0}
 						aria-label={`Settings for ${channel.name}`}
-						className="p-1 hover:bg-white/10 rounded transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+						className="p-2 md:p-1 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center hover:bg-white/10 rounded transition-colors cursor-pointer md:opacity-0 md:group-hover:opacity-100 touch-manipulation"
 						onClick={(e) => {
 							e.stopPropagation();
 							openChannelSettings(channel.id);

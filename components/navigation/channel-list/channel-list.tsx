@@ -1,14 +1,16 @@
 "use client";
 
 import { useMemo, lazy, Suspense } from "react";
-import { Settings } from "lucide-react";
+import { Settings, X } from "lucide-react";
 import { useServerStore } from "@/store/server.store";
+import { useUIStore } from "@/store/ui.store";
 import { useServerManagementStore } from "@/store/server-management.store";
+import { useIsMobile } from "@/lib/hooks/use-media-query";
 import { ChannelCategory } from "./channel-category";
 import { ChannelItem } from "./channel-item";
 import { DMList } from "@/components/dm/dm-list";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 
 // Lazy load modal components for better performance (30% smaller initial bundle)
 const ServerSettingsModal = lazy(() => import("@/components/server-management/modals/server-settings-modal/server-settings-modal").then(m => ({ default: m.ServerSettingsModal })));
@@ -23,12 +25,20 @@ export function ChannelList() {
 	const toggleCategoryStore = useServerStore((state) => state.toggleCategory);
 	const openServerSettings = useServerManagementStore((s) => s.openServerSettings);
 
+	const isMobile = useIsMobile();
+	const isMobileChannelListOpen = useUIStore(
+		(state) => state.isMobileChannelListOpen
+	);
+	const setMobileChannelListOpen = useUIStore(
+		(state) => state.setMobileChannelListOpen
+	);
+
 	// Check if we're in home/DM context
 	const isHomeContext = currentServer?.id === "home";
 
 	// Show loading state while initializing
 	if (!isInitialized || !currentServer) {
-		return (
+		const loadingContent = (
 			<div className="w-60 h-screen bg-[oklch(0.15_0.02_250)] flex flex-col gap-2 p-3">
 				<div className="h-12 bg-white/5 rounded animate-pulse" />
 				<div className="h-8 bg-white/5 rounded animate-pulse" />
@@ -42,11 +52,43 @@ export function ChannelList() {
 				</Suspense>
 			</div>
 		);
+
+		if (isMobile) {
+			return (
+				<>
+					<AnimatePresence>
+						{isMobileChannelListOpen && (
+							<>
+								<motion.div
+									className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+									initial={{ opacity: 0 }}
+									animate={{ opacity: 1 }}
+									exit={{ opacity: 0 }}
+									onClick={() => setMobileChannelListOpen(false)}
+									aria-hidden="true"
+								/>
+								<motion.div
+									className="fixed left-0 top-0 bottom-0 z-50"
+									initial={{ x: -280 }}
+									animate={{ x: 0 }}
+									exit={{ x: -280 }}
+									transition={{ type: "spring", stiffness: 300, damping: 30 }}
+								>
+									{loadingContent}
+								</motion.div>
+							</>
+						)}
+					</AnimatePresence>
+				</>
+			);
+		}
+
+		return loadingContent;
 	}
 
 	// Show DM list when in home context
 	if (isHomeContext) {
-		return (
+		const dmContent = (
 			<div className="w-60 h-screen bg-[oklch(0.15_0.02_250)] flex flex-col">
 				<DMList />
 				{/* Modals must always render so Add Server works from home screen */}
@@ -58,6 +100,41 @@ export function ChannelList() {
 				</Suspense>
 			</div>
 		);
+
+		if (isMobile) {
+			return (
+				<>
+					<AnimatePresence>
+						{isMobileChannelListOpen && (
+							<>
+								<motion.div
+									className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+									initial={{ opacity: 0 }}
+									animate={{ opacity: 1 }}
+									exit={{ opacity: 0 }}
+									onClick={() => setMobileChannelListOpen(false)}
+									aria-hidden="true"
+								/>
+								<motion.div
+									className="fixed left-0 top-0 bottom-0 z-50"
+									style={{
+										paddingBottom: "calc(56px + env(safe-area-inset-bottom))",
+									}}
+									initial={{ x: -280 }}
+									animate={{ x: 0 }}
+									exit={{ x: -280 }}
+									transition={{ type: "spring", stiffness: 300, damping: 30 }}
+								>
+									{dmContent}
+								</motion.div>
+							</>
+						)}
+					</AnimatePresence>
+				</>
+			);
+		}
+
+		return dmContent;
 	}
 
 	const toggleCategory = (categoryId: string) => {
@@ -87,21 +164,31 @@ export function ChannelList() {
 		return grouped;
 	}, [currentServer.channels]);
 
-	return (
+	const channelListContent = (
 		<div className="w-60 h-screen bg-[oklch(0.15_0.02_250)] flex flex-col">
 			{/* Server Header */}
 			<div className="h-12 px-4 flex items-center justify-between border-b border-white/10 hover:bg-white/5 transition-colors group">
-				<h2 className="font-semibold text-white truncate">
+				{isMobile && (
+					<button
+						type="button"
+						onClick={() => setMobileChannelListOpen(false)}
+						className="p-2 -ml-2 text-white/60 hover:text-white/80 hover:bg-white/5 rounded-lg transition-colors touch-manipulation"
+						aria-label="Close channel list"
+					>
+						<X className="w-5 h-5" />
+					</button>
+				)}
+				<h2 className="font-semibold text-white truncate flex-1">
 					{currentServer.name}
 				</h2>
 				{currentServer.isOwner && (
 					<button
 						type="button"
 						onClick={() => openServerSettings()}
-						className="p-1 rounded hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100"
+						className="p-2 rounded hover:bg-white/10 transition-colors touch-manipulation"
 						aria-label="Server Settings"
 					>
-						<Settings className="w-4 h-4 text-white/60 hover:text-white/80" />
+						<Settings className="w-5 h-5 text-white/60 hover:text-white/80" />
 					</button>
 				)}
 			</div>
@@ -178,4 +265,44 @@ export function ChannelList() {
 			</Suspense>
 		</div>
 	);
+
+	// Mobile: slide-over overlay pattern
+	if (isMobile) {
+		return (
+			<>
+				<AnimatePresence>
+					{isMobileChannelListOpen && (
+						<>
+							{/* Dark overlay backdrop */}
+							<motion.div
+								className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+								initial={{ opacity: 0 }}
+								animate={{ opacity: 1 }}
+								exit={{ opacity: 0 }}
+								onClick={() => setMobileChannelListOpen(false)}
+								aria-hidden="true"
+							/>
+
+							{/* Slide-over panel */}
+							<motion.div
+								className="fixed left-0 top-0 bottom-0 z-50"
+								style={{
+									paddingBottom: "calc(56px + env(safe-area-inset-bottom))",
+								}}
+								initial={{ x: -280 }}
+								animate={{ x: 0 }}
+								exit={{ x: -280 }}
+								transition={{ type: "spring", stiffness: 300, damping: 30 }}
+							>
+								{channelListContent}
+							</motion.div>
+						</>
+					)}
+				</AnimatePresence>
+			</>
+		);
+	}
+
+	// Desktop: persistent sidebar
+	return channelListContent;
 }

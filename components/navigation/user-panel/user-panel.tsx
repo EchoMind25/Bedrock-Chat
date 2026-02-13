@@ -91,11 +91,11 @@ export function UserPanel() {
 	};
 
 	return (
-		<div ref={panelRef} className="relative h-[52px] px-2 bg-[oklch(0.12_0.02_250)] border-t border-white/10 flex items-center gap-2">
+		<div ref={panelRef} className="relative min-h-[52px] md:h-[52px] h-auto px-2 py-1 bg-[oklch(0.12_0.02_250)] border-t border-white/10 flex items-center gap-2">
 			{/* User Info - opens profile modal */}
 			<button
 				type="button"
-				className="flex items-center gap-2 flex-1 px-2 py-1 rounded hover:bg-white/5 transition-colors group"
+				className="flex items-center gap-2 flex-1 px-2 py-1 min-h-[44px] rounded hover:bg-white/5 transition-colors group touch-manipulation"
 				onClick={() => {
 					setShowProfile(true);
 					setShowSettings(false);
@@ -123,7 +123,7 @@ export function UserPanel() {
 				<Tooltip content={isMuted ? "Unmute" : "Mute"} position="top">
 					<motion.button
 						type="button"
-						className={`w-8 h-8 rounded hover:bg-white/10 flex items-center justify-center transition-colors ${
+						className={`min-w-[44px] min-h-[44px] w-11 h-11 md:w-8 md:h-8 rounded hover:bg-white/10 flex items-center justify-center transition-colors touch-manipulation ${
 							isMuted ? "text-red-400" : "text-white/60 hover:text-white"
 						}`}
 						whileHover={{ scale: 1.05 }}
@@ -149,7 +149,7 @@ export function UserPanel() {
 				<Tooltip content={isDeafened ? "Undeafen" : "Deafen"} position="top">
 					<motion.button
 						type="button"
-						className={`w-8 h-8 rounded hover:bg-white/10 flex items-center justify-center transition-colors ${
+						className={`min-w-[44px] min-h-[44px] w-11 h-11 md:w-8 md:h-8 rounded hover:bg-white/10 flex items-center justify-center transition-colors touch-manipulation ${
 							isDeafened ? "text-red-400" : "text-white/60 hover:text-white"
 						}`}
 						whileHover={{ scale: 1.05 }}
@@ -177,7 +177,7 @@ export function UserPanel() {
 				<Tooltip content="User Settings" position="top">
 					<motion.button
 						type="button"
-						className="w-8 h-8 rounded hover:bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition-colors"
+						className="min-w-[44px] min-h-[44px] w-11 h-11 md:w-8 md:h-8 rounded hover:bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition-colors touch-manipulation"
 						whileHover={{ scale: 1.05, rotate: 90 }}
 						whileTap={{ scale: 0.95 }}
 						onClick={() => {
