@@ -24,7 +24,8 @@ export function ScrollToBottom({ scrollElement, onClick }: ScrollToBottomProps) 
 		handleScroll(); // Check initial state
 
 		return () => scrollElement.removeEventListener('scroll', handleScroll);
-	}, [scrollElement]);
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []); // Empty deps - effect should only run on mount/unmount, scrollElement is captured in closure
 
 	return (
 		<AnimatePresence>

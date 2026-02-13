@@ -48,7 +48,8 @@ export default function ChannelPage({ params }: PageProps) {
 			setCurrentServer(serverId);
 			setCurrentChannel(channelId);
 		}
-	}, [serverId, channelId, setCurrentServer, setCurrentChannel]);
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [serverId, channelId]); // Exclude store actions - they're stable Zustand actions
 
 	// Show loading skeleton while stores are initializing
 	if (!isInitialized) {

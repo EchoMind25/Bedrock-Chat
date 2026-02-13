@@ -35,7 +35,8 @@ export function MessageInput({ channelId, channelName }: MessageInputProps) {
 		if (content.length > 0 && user?.username) {
 			setTyping(channelId, user.username);
 		}
-	}, [content, channelId, setTyping, user?.username]);
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [content, channelId, user?.username]); // Exclude setTyping - it's a stable Zustand action
 
 	const handleSubmit = () => {
 		if (!content.trim()) return;

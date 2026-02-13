@@ -83,17 +83,19 @@ export default function MainLayout({
 				await ensureUserInAllServers();
 			}
 
-			// Step 3: Init stores in parallel and await them
+			// Step 3: Init stores (servers awaited, friends/dm fire-and-forget)
 			const serverState = useServerStore.getState();
 			const friendsState = useFriendsStore.getState();
 			const dmState = useDMStore.getState();
 
 			const promises: Promise<void>[] = [];
 			if (!serverState.isInitialized) promises.push(serverState.loadServers());
-			if (!friendsState.isInitialized) { friendsState.init(); }
-			if (!dmState.isInitialized) { dmState.init(); }
+			// Note: init() methods are synchronous wrappers that kick off async work
+			// They set isInitialized = true internally after loading completes
+			if (!friendsState.isInitialized) friendsState.init();
+			if (!dmState.isInitialized) dmState.init();
 
-			// Await server loading so child pages can rely on isInitialized
+			// Await server loading so child pages can rely on server data
 			if (promises.length > 0) await Promise.all(promises);
 		}
 

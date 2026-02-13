@@ -186,21 +186,139 @@ const channelsByCategory = useMemo(() => {
 
 ---
 
+### 🐛 Bug Fix #3: React Error #185 - Infinite Re-render Loop (CRITICAL)
+
+**Problem:** Multiple components had unstable dependencies in useEffect arrays causing infinite render loops.
+
+#### Issue 3.1: DOM Nodes in useEffect Dependencies
+
+**File:** `components/chat/scroll-to-bottom.tsx`
+
+**❌ WRONG:**
+```tsx
+useEffect(() => {
+  if (!scrollElement) return;
+
+  const handleScroll = () => {
+    setShowButton(distanceFromBottom > 200);
+  };
+
+  scrollElement.addEventListener('scroll', handleScroll);
+  return () => scrollElement.removeEventListener('scroll', handleScroll);
+}, [scrollElement]); // ❌ DOM node creates new reference on every parent render
+```
+
+**✅ CORRECT:**
+```tsx
+useEffect(() => {
+  if (!scrollElement) return;
+
+  const handleScroll = () => {
+    setShowButton(distanceFromBottom > 200);
+  };
+
+  scrollElement.addEventListener('scroll', handleScroll);
+  return () => scrollElement.removeEventListener('scroll', handleScroll);
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, []); // Empty deps - scrollElement captured in closure, effect only runs on mount
+```
+
+**Why it caused infinite loops:**
+1. Parent re-renders → new scrollElement ref (even if same DOM element)
+2. useEffect sees "new" dependency → runs effect
+3. Effect calls `setShowButton()` → state update
+4. Parent re-renders → back to step 1
+
+---
+
+#### Issue 3.2: Zustand Actions in useEffect Dependencies
+
+**Files:**
+- `components/chat/message-input.tsx`
+- `app/(main)/servers/[serverId]/[channelId]/page.tsx`
+
+**❌ WRONG:**
+```tsx
+const setTyping = useMessageStore((s) => s.setTyping);
+
+useEffect(() => {
+  if (content.length > 0) {
+    setTyping(channelId, username);
+  }
+}, [content, channelId, setTyping, username]); // ❌ Store action can get new refs
+```
+
+**✅ CORRECT:**
+```tsx
+const setTyping = useMessageStore((s) => s.setTyping);
+
+useEffect(() => {
+  if (content.length > 0) {
+    setTyping(channelId, username);
+  }
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, [content, channelId, username]); // Zustand actions are stable, exclude them
+```
+
+**Why it caused infinite loops:**
+1. Store updates (unrelated) → component re-renders
+2. Zustand selector returns "new" function reference
+3. useEffect sees changed dependency → runs
+4. Calls `setTyping()` → updates store
+5. Back to step 1
+
+---
+
+#### Issue 3.3: Destructuring Zustand Store (Anti-pattern)
+
+**Files:**
+- `components/chat/message.tsx` (fixed)
+- `components/chat/reaction-bar.tsx` (fixed)
+
+**❌ WRONG:**
+```tsx
+// Subscribes to ENTIRE store, not specific values
+const { addReaction, editMessage, deleteMessage } = useMessageStore();
+```
+
+**✅ CORRECT:**
+```tsx
+// Subscribes only to specific functions
+const addReaction = useMessageStore((state) => state.addReaction);
+const editMessage = useMessageStore((state) => state.editMessage);
+const deleteMessage = useMessageStore((state) => state.deleteMessage);
+```
+
+**Why it caused problems:**
+- Destructuring without selector subscribes to ALL store changes
+- Every message/reaction/typing update → component re-renders
+- Creates new function references → can trigger dependent effects
+- Massive performance hit + infinite loop potential
+
+---
+
 ### 📦 Zustand Store Patterns
 
 **✅ CORRECT Store Selection:**
 ```tsx
-// Select directly in useServerStore
+// Select specific values with arrow function
 const currentServer = useServerStore((state) => state.getCurrentServer());
 const currentChannelId = useServerStore((state) => state.currentChannelId);
+const addReaction = useMessageStore((state) => state.addReaction);
 ```
 
 **❌ AVOID:**
 ```tsx
-// This can cause unnecessary re-renders
+// This subscribes to ENTIRE store
 const { getCurrentServer, currentChannelId } = useServerStore();
 const currentServer = getCurrentServer();
+
+// This also subscribes to entire store
+const store = useMessageStore();
+store.addReaction(...);
 ```
+
+**CRITICAL RULE:** Always use selector functions `(state) => state.value` to subscribe to specific values only.
 
 ---
 
@@ -402,6 +520,9 @@ The app has dev mode enabled. Users can:
 - ❌ Import from `framer-motion` (use `motion/react`)
 - ❌ Update state during render (use `useEffect`)
 - ❌ Nest buttons inside buttons
+- ❌ Put DOM nodes in useEffect dependency arrays
+- ❌ Put Zustand actions in useEffect dependency arrays
+- ❌ Destructure Zustand stores without selectors
 - ❌ Use `git commit --amend` without explicit user request
 - ❌ Add features beyond what's requested
 - ❌ Create documentation files unless explicitly asked
@@ -413,6 +534,8 @@ The app has dev mode enabled. Users can:
 - ✅ Use `role="button"` for non-button clickable elements
 - ✅ Add `tabIndex` and keyboard handlers for accessibility
 - ✅ Use OKLCH colors for wider gamut
+- ✅ Always use Zustand selectors: `useStore((s) => s.value)`
+- ✅ Exclude unstable refs from useEffect deps (DOM nodes, store actions)
 - ✅ Prefer simple solutions over abstractions
 - ✅ Only add error handling at system boundaries
 - ✅ Delete unused code completely (no backwards-compatibility hacks)
@@ -458,9 +581,24 @@ The app has dev mode enabled. Users can:
 
 ## Troubleshooting
 
-### Issue: Infinite re-renders
-**Cause:** State updates during render
-**Fix:** Wrap in `useEffect`
+### Issue: React Error #185 - Infinite re-renders
+**Causes:**
+1. State updates during render (not in useEffect)
+2. DOM nodes in useEffect dependency arrays
+3. Zustand actions in useEffect dependency arrays
+4. Destructuring Zustand without selectors
+
+**Fixes:**
+1. Wrap state updates in `useEffect`
+2. Use empty deps `[]` for DOM event listeners (capture in closure)
+3. Exclude Zustand actions from deps with eslint-disable comment
+4. Always use selectors: `useStore((s) => s.value)`
+
+**How to diagnose:**
+- Open React DevTools Profiler
+- Watch for component rendering 100+ times/second
+- Check Console for "Maximum update depth exceeded"
+- Look for unstable dependencies in useEffect hooks
 
 ### Issue: Hydration mismatch
 **Cause:** Nested buttons or server/client mismatch
@@ -511,6 +649,12 @@ When uncertain about:
 
 ---
 
-**Last Updated:** 2026-02-11
-**Phase:** 2.3 Complete - Main Layout Implemented
-**Next:** Phase 3.1 - Message List with Virtual Scrolling
+**Last Updated:** 2026-02-13
+**Phase:** 3.1 In Progress - Chat System with Critical Bug Fixes
+**Next:** Complete Message List + Real-time Features
+
+**Recent Critical Fixes (2026-02-13):**
+- Fixed React Error #185 infinite loop in chat system
+- Resolved DOM node dependencies in useEffect
+- Fixed Zustand action dependencies causing cascade loops
+- Implemented proper Zustand selector patterns throughout chat
