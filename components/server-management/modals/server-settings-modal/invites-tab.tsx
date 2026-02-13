@@ -56,11 +56,12 @@ export function InvitesTab({ server }: InvitesTabProps) {
   }, [server.id]);
 
   // Set default channel
+  const firstChannelId = server.channels[0]?.id;
   useEffect(() => {
-    if (!selectedChannelId && server.channels.length > 0) {
-      setSelectedChannelId(server.channels[0].id);
+    if (!selectedChannelId && firstChannelId) {
+      setSelectedChannelId(firstChannelId);
     }
-  }, [server.channels]);
+  }, [firstChannelId, selectedChannelId]);
 
   const invites = getInvitesByServer(server.id);
 
@@ -73,7 +74,7 @@ export function InvitesTab({ server }: InvitesTabProps) {
     }));
 
   const handleCreate = async () => {
-    if (!selectedChannelId) return;
+    if (!selectedChannelId || isLoading) return;
 
     setIsLoading(true);
     try {
@@ -82,7 +83,7 @@ export function InvitesTab({ server }: InvitesTabProps) {
         selectedChannelId,
         "current-user",
         "You",
-        "👤",
+        "",
         {
           expiresAfter: expiresAfter as InviteExpirationOption,
           maxUses: Number.parseInt(maxUses) as InviteMaxUsesOption,
@@ -95,13 +96,19 @@ export function InvitesTab({ server }: InvitesTabProps) {
       setMaxUses("0");
       setTemporary(false);
       setIsCreating(false);
+    } catch (err) {
+      console.error("Error creating invite:", err);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleDelete = async (inviteId: string) => {
-    await deleteInvite(server.id, inviteId);
+    try {
+      await deleteInvite(server.id, inviteId);
+    } catch (err) {
+      console.error("Error deleting invite:", err);
+    }
   };
 
   return (

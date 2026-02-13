@@ -188,7 +188,7 @@ export function Dropdown({
   return (
     <div className={cn("relative w-full", className)} ref={dropdownRef}>
       {label && (
-        <span className="block text-sm font-medium mb-2 text-foreground">
+        <span className="block text-sm font-medium mb-2 text-slate-200">
           {label}
         </span>
       )}
@@ -202,8 +202,8 @@ export function Dropdown({
         className={cn(
           "w-full flex items-center justify-between",
           "px-4 py-2 rounded-lg",
-          "bg-background border border-border",
-          "text-foreground",
+          "bg-slate-900/50 border border-slate-700/50",
+          "text-slate-200",
           "transition-all duration-200",
           "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
           "disabled:opacity-50 disabled:cursor-not-allowed",
@@ -260,8 +260,8 @@ export function Dropdown({
                     placeholder={searchPlaceholder}
                     className={cn(
                       "w-full px-3 py-2 rounded-lg",
-                      "bg-background border border-border",
-                      "text-foreground placeholder:text-slate-500",
+                      "bg-slate-900/50 border border-slate-700/50",
+                      "text-slate-200 placeholder:text-slate-500",
                       "text-sm",
                       "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     )}

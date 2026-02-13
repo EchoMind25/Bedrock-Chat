@@ -157,31 +157,41 @@ export const useServerManagementStore = create<ServerManagementState>()(
 
         // Discovery operations
         searchDiscoverableServers: async (query) => {
-          const supabase = createClient();
+          try {
+            const supabase = createClient();
 
-          let q = supabase
-            .from("servers")
-            .select("id, name, description, category, member_count, icon_url, is_public, require_approval")
-            .eq("allow_discovery", true);
+            let q = supabase
+              .from("servers")
+              .select("id, name, description, category, member_count, icon_url, is_public, require_approval")
+              .eq("allow_discovery", true);
 
-          if (query.trim()) {
-            q = q.or(`name.ilike.%${query}%,description.ilike.%${query}%`);
-          }
+            if (query.trim()) {
+              // Escape SQL wildcards to prevent injection via LIKE patterns
+              const sanitized = query.trim().replace(/[%_\\]/g, "\\$&");
+              q = q.or(`name.ilike.%${sanitized}%,description.ilike.%${sanitized}%`);
+            }
 
-          const { data, error } = await q.limit(20);
+            const { data, error } = await q.limit(20);
 
-          if (error) {
-            console.error("Error searching servers:", error);
+            if (error) {
+              console.error("Error searching servers:", error);
+              return [];
+            }
+
+            return (data || []) as DiscoverableServer[];
+          } catch (err) {
+            console.error("Error searching servers:", err);
             return [];
           }
-
-          return (data || []) as DiscoverableServer[];
         },
 
         joinPublicServer: async (serverId) => {
           const supabase = createClient();
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) throw new Error("Not authenticated");
+          const { data: { user }, error: authError } = await supabase.auth.getUser();
+          if (authError || !user) {
+            toast.error("Not Authenticated", "Please log in to join a server");
+            throw new Error("Not authenticated");
+          }
 
           const { error } = await supabase
             .from("server_members")
@@ -192,7 +202,7 @@ export const useServerManagementStore = create<ServerManagementState>()(
               toast.info("Already Joined", "You are already a member of this server");
               return;
             }
-            toast.error("Error", "Could not join server");
+            toast.error("Join Failed", "Could not join server. Please try again.");
             throw error;
           }
 
@@ -201,8 +211,11 @@ export const useServerManagementStore = create<ServerManagementState>()(
 
         requestToJoinServer: async (serverId, message) => {
           const supabase = createClient();
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) throw new Error("Not authenticated");
+          const { data: { user }, error: authError } = await supabase.auth.getUser();
+          if (authError || !user) {
+            toast.error("Not Authenticated", "Please log in to request access");
+            throw new Error("Not authenticated");
+          }
 
           const { error } = await supabase
             .from("server_join_requests")
@@ -217,7 +230,7 @@ export const useServerManagementStore = create<ServerManagementState>()(
               toast.info("Already Requested", "You already have a pending request for this server");
               return;
             }
-            toast.error("Error", "Could not send join request");
+            toast.error("Request Failed", "Could not send join request. Please try again.");
             throw error;
           }
 
@@ -226,8 +239,11 @@ export const useServerManagementStore = create<ServerManagementState>()(
 
         joinServerByInvite: async (code) => {
           const supabase = createClient();
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) throw new Error("Not authenticated");
+          const { data: { user }, error: authError } = await supabase.auth.getUser();
+          if (authError || !user) {
+            toast.error("Not Authenticated", "Please log in to use an invite");
+            throw new Error("Not authenticated");
+          }
 
           // Look up the invite
           const { data: invite, error: inviteError } = await supabase
@@ -237,16 +253,19 @@ export const useServerManagementStore = create<ServerManagementState>()(
             .single();
 
           if (inviteError || !invite) {
+            toast.error("Invalid Invite", "This invite code is invalid or has expired");
             throw new Error("Invalid or expired invite code");
           }
 
           // Check expiration
           if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
+            toast.error("Expired Invite", "This invite link has expired");
             throw new Error("This invite has expired");
           }
 
           // Check max uses
           if (invite.max_uses > 0 && invite.uses >= invite.max_uses) {
+            toast.error("Invite Exhausted", "This invite has reached its maximum uses");
             throw new Error("This invite has reached its maximum uses");
           }
 
@@ -260,15 +279,19 @@ export const useServerManagementStore = create<ServerManagementState>()(
               toast.info("Already Joined", "You are already a member of this server");
               return;
             }
-            toast.error("Error", "Could not join server");
+            toast.error("Join Failed", "Could not join server. Please try again.");
             throw memberError;
           }
 
-          // Increment uses
-          await supabase
-            .from("server_invites")
-            .update({ uses: invite.uses + 1 })
-            .eq("id", invite.id);
+          // Increment uses (non-critical, don't let failure block the join)
+          try {
+            await supabase
+              .from("server_invites")
+              .update({ uses: invite.uses + 1 })
+              .eq("id", invite.id);
+          } catch {
+            // Invite use count is non-critical
+          }
 
           toast.success("Joined Server", "You have joined the server via invite");
         },

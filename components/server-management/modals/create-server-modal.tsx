@@ -168,11 +168,17 @@ export function CreateServerModal() {
       const serverId = serverData.id;
 
       // 2. Add creator as owner member
-      await supabase.from("server_members").insert({
+      const { error: memberError } = await supabase.from("server_members").insert({
         server_id: serverId,
         user_id: user.id,
         role: "owner",
       });
+
+      if (memberError) {
+        // Critical: clean up orphaned server
+        await supabase.from("servers").delete().eq("id", serverId);
+        throw memberError;
+      }
 
       // 3. Create categories
       const categoryNames = Array.from(new Set(template.channels.map((ch) => ch.category)));
@@ -182,10 +188,14 @@ export function CreateServerModal() {
         position: index,
       }));
 
-      const { data: categoriesData } = await supabase
+      const { data: categoriesData, error: catError } = await supabase
         .from("channel_categories")
         .insert(categoryInserts)
         .select();
+
+      if (catError) {
+        console.error("Error creating categories:", catError);
+      }
 
       // 4. Create channels
       const channelInserts = template.channels.map((ch, index) => {
@@ -199,20 +209,28 @@ export function CreateServerModal() {
         };
       });
 
-      const { data: channelsData } = await supabase
+      const { data: channelsData, error: chError } = await supabase
         .from("channels")
         .insert(channelInserts)
         .select();
 
-      // 5. Log audit entry
-      await supabase.from("audit_log").insert({
-        server_id: serverId,
-        actor_id: user.id,
-        action: "server_create",
-        target_id: serverId,
-        target_name: serverName.trim(),
-        target_type: "server",
-      });
+      if (chError) {
+        console.error("Error creating channels:", chError);
+      }
+
+      // 5. Log audit entry (non-critical, don't block creation)
+      try {
+        await supabase.from("audit_log").insert({
+          server_id: serverId,
+          actor_id: user.id,
+          action: "server_create",
+          target_id: serverId,
+          target_name: serverName.trim(),
+          target_type: "server",
+        });
+      } catch {
+        // Audit log failure is non-critical
+      }
 
       // 6. Build local server object and add to store
       const categories = (categoriesData || []).map((cat) => ({
@@ -270,6 +288,8 @@ export function CreateServerModal() {
       }
     } catch (err) {
       console.error("Error creating server:", err);
+      const message = err instanceof Error ? err.message : "Could not create server";
+      setError(message);
       toast.error("Creation Failed", "Could not create server. Please try again.");
     } finally {
       setIsLoading(false);

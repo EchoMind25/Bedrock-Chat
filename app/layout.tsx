@@ -1,6 +1,15 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import "./globals.css";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#7C3AED",
+};
 
 export const metadata: Metadata = {
   title: "Bedrock Chat - Privacy-First Communication Platform",
@@ -13,6 +22,15 @@ export const metadata: Metadata = {
     "encrypted messaging",
     "secure communication",
   ],
+  manifest: "/manifest.json",
+  icons: {
+    apple: "/icons/icon-192.svg",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Bedrock Chat",
+  },
   openGraph: {
     title: "Bedrock Chat - Privacy-First Communication",
     description:
@@ -28,7 +46,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <ServiceWorkerRegister />
+        {children}
+      </body>
     </html>
   );
 }

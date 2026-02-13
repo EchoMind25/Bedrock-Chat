@@ -7,6 +7,7 @@ import { useServerManagementStore } from "@/store/server-management.store";
 import { ChannelCategory } from "./channel-category";
 import { ChannelItem } from "./channel-item";
 import { DMList } from "@/components/dm/dm-list";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { motion } from "motion/react";
 
 // Lazy load modal components for better performance (30% smaller initial bundle)
@@ -35,7 +36,9 @@ export function ChannelList() {
 				<div className="h-8 bg-white/5 rounded animate-pulse" />
 				{/* AddServerModal must always render so the + button works even during load failures */}
 				<Suspense fallback={null}>
-					<AddServerModal />
+					<ErrorBoundary level="component" name="Modals">
+						<AddServerModal />
+					</ErrorBoundary>
 				</Suspense>
 			</div>
 		);
@@ -48,8 +51,10 @@ export function ChannelList() {
 				<DMList />
 				{/* Modals must always render so Add Server works from home screen */}
 				<Suspense fallback={null}>
-					<AddServerModal />
-					<CreateChannelModal />
+					<ErrorBoundary level="component" name="Modals">
+						<AddServerModal />
+						<CreateChannelModal />
+					</ErrorBoundary>
 				</Suspense>
 			</div>
 		);
@@ -164,10 +169,12 @@ export function ChannelList() {
 
 			{/* Modals - Lazy loaded for performance */}
 			<Suspense fallback={null}>
-				<ServerSettingsModal />
-				<AddServerModal />
-				<CreateChannelModal />
-				<ChannelSettingsModal />
+				<ErrorBoundary level="component" name="Modals">
+					<ServerSettingsModal />
+					<AddServerModal />
+					<CreateChannelModal />
+					<ChannelSettingsModal />
+				</ErrorBoundary>
 			</Suspense>
 		</div>
 	);

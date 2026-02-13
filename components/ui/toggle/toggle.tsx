@@ -156,7 +156,7 @@ export function Toggle({
       </div>
 
       {label && (
-        <span className="text-sm font-medium select-none">
+        <span className="text-sm font-medium select-none text-slate-200">
           {label}
         </span>
       )}

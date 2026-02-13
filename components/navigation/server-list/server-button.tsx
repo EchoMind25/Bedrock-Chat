@@ -38,6 +38,7 @@ export function ServerButton({
 
 			<motion.button
 				type="button"
+				layoutId={isActive ? "portal-server-icon" : undefined}
 				onClick={onClick}
 				className={cn(
 					"relative w-12 h-12 rounded-full transition-all duration-200 flex items-center justify-center text-2xl overflow-hidden group",

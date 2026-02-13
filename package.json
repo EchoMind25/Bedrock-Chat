@@ -18,6 +18,8 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@faker-js/faker": "^10.3.0",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.95.3",
     "@tanstack/react-virtual": "^3.13.18",
@@ -26,6 +28,7 @@
     "next": "^16.1.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "three": "^0.182.0",
     "zustand": "^5.0.0"
   },
   "devDependencies": {
@@ -33,6 +36,7 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/three": "^0.182.0",
     "autoprefixer": "^10.4.24",
     "babel-plugin-react-compiler": "^1.0.0",
     "postcss": "^8.5.6",

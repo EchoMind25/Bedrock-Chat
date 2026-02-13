@@ -200,7 +200,7 @@ export function Modal({
                   {title && (
                     <h2
                       id="modal-title"
-                      className="text-2xl font-semibold text-foreground mb-2"
+                      className="text-2xl font-semibold text-slate-50 mb-2"
                     >
                       {title}
                     </h2>
@@ -218,7 +218,7 @@ export function Modal({
 
               {/* Content */}
               <div className={cn(
-                "flex-1 overflow-y-auto px-6 text-foreground settings-scrollbar",
+                "flex-1 overflow-y-auto px-6 text-slate-200 settings-scrollbar",
                 !(title || description) && "pt-6",
                 !footer && "pb-6",
               )}>
@@ -239,8 +239,8 @@ export function Modal({
                 className={cn(
                   "absolute top-4 right-4",
                   "p-2 rounded-lg",
-                  "text-slate-400 hover:text-foreground",
-                  "hover:bg-muted/50",
+                  "text-slate-400 hover:text-slate-100",
+                  "hover:bg-slate-700/50",
                   "transition-all duration-200",
                   "focus:outline-none focus:ring-2 focus:ring-primary"
                 )}

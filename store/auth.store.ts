@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { devtools, persist } from "zustand/middleware";
+import { persist } from "zustand/middleware";
 import { conditionalDevtools } from "@/lib/utils/devtools-config";
 import { createClient } from "@/lib/supabase/client";
 
@@ -27,6 +27,7 @@ interface AuthState {
 	user: User | null;
 	isAuthenticated: boolean;
 	isLoading: boolean;
+	isInitializing: boolean;
 	error: string | null;
 
 	// Pending signup data (stored between signUp and email confirmation)
@@ -41,6 +42,7 @@ interface AuthState {
 	clearError: () => void;
 	updateUser: (updates: Partial<User>) => void;
 	checkAuth: () => Promise<void>;
+	initAuthListener: () => () => void;
 	setPendingSignup: (data: SignupData | null) => void;
 }
 
@@ -77,6 +79,7 @@ export const useAuthStore = create<AuthState>()(
 				user: null,
 				isAuthenticated: false,
 				isLoading: false,
+				isInitializing: true,
 				error: null,
 				pendingSignup: null,
 
@@ -103,18 +106,18 @@ export const useAuthStore = create<AuthState>()(
 								.single();
 
 							if (profile) {
-								// Store rememberMe preference so checkAuth can respect it
+								// Store rememberMe as UI preference only
 								if (rememberMe) {
 									localStorage.setItem("bedrock-remember-me", "true");
 								} else {
 									localStorage.removeItem("bedrock-remember-me");
-									sessionStorage.setItem("bedrock-session-active", "true");
 								}
 
 								set({
 									user: profileToUser(profile, email),
 									isAuthenticated: true,
 									isLoading: false,
+									isInitializing: false,
 								});
 								return true;
 							}
@@ -266,6 +269,7 @@ export const useAuthStore = create<AuthState>()(
 								user: profileToUser(profile, user.email || ""),
 								isAuthenticated: true,
 								isLoading: false,
+								isInitializing: false,
 								pendingSignup: null,
 							});
 							return true;
@@ -315,6 +319,7 @@ export const useAuthStore = create<AuthState>()(
 							},
 							isAuthenticated: true,
 							isLoading: false,
+							isInitializing: false,
 							pendingSignup: null,
 						});
 						return true;
@@ -335,8 +340,13 @@ export const useAuthStore = create<AuthState>()(
 						// Ignore signout errors
 					}
 					localStorage.removeItem("bedrock-remember-me");
-					sessionStorage.removeItem("bedrock-session-active");
-					set({ user: null, isAuthenticated: false, error: null, pendingSignup: null });
+					set({
+						user: null,
+						isAuthenticated: false,
+						isInitializing: false,
+						error: null,
+						pendingSignup: null,
+					});
 				},
 
 				clearError: () => set({ error: null }),
@@ -365,20 +375,12 @@ export const useAuthStore = create<AuthState>()(
 
 				setPendingSignup: (data) => set({ pendingSignup: data }),
 
+				// Checks Supabase for a valid session. No client-side gatekeeping —
+				// proxy.ts refreshes the session cookie on every request, so if
+				// getUser() returns a user the session is valid.
 				checkAuth: async () => {
 					try {
 						const supabase = createClient();
-
-						// If user didn't check "Remember me", sign out on new browser session
-						const remembered = localStorage.getItem("bedrock-remember-me");
-						const sessionActive = sessionStorage.getItem("bedrock-session-active");
-						if (!remembered && !sessionActive) {
-							// New browser session without rememberMe — sign out
-							await supabase.auth.signOut();
-							set({ user: null, isAuthenticated: false, isLoading: false });
-							return;
-						}
-
 						const {
 							data: { user },
 						} = await supabase.auth.getUser();
@@ -395,15 +397,55 @@ export const useAuthStore = create<AuthState>()(
 									user: profileToUser(profile, user.email || ""),
 									isAuthenticated: true,
 									isLoading: false,
+									isInitializing: false,
 								});
 								return;
 							}
 						}
 					} catch {
-						// Auth check failed
+						// Auth check failed silently
 					}
 
-					set({ user: null, isAuthenticated: false, isLoading: false });
+					set({ user: null, isAuthenticated: false, isLoading: false, isInitializing: false });
+				},
+
+				// Sets up a Supabase auth state change listener. Returns an
+				// unsubscribe function for cleanup.
+				initAuthListener: () => {
+					const supabase = createClient();
+					const {
+						data: { subscription },
+					} = supabase.auth.onAuthStateChange(async (event, session) => {
+						if (event === "SIGNED_OUT" || !session) {
+							set({
+								user: null,
+								isAuthenticated: false,
+								isInitializing: false,
+							});
+						} else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+							if (session.user) {
+								try {
+									const { data: profile } = await supabase
+										.from("profiles")
+										.select("*")
+										.eq("id", session.user.id)
+										.single();
+
+									if (profile) {
+										set({
+											user: profileToUser(profile, session.user.email || ""),
+											isAuthenticated: true,
+											isInitializing: false,
+										});
+									}
+								} catch {
+									// Profile fetch failed, keep current state
+								}
+							}
+						}
+					});
+
+					return () => subscription.unsubscribe();
 				},
 			}),
 			{
@@ -424,6 +466,8 @@ export const useAuthStore = create<AuthState>()(
 					user: state.user,
 					isAuthenticated: state.isAuthenticated,
 					pendingSignup: state.pendingSignup,
+					// isInitializing is intentionally NOT persisted —
+					// it always starts as true on fresh page loads
 				}),
 			},
 		),

@@ -88,7 +88,7 @@ export function Input({
     <div className="w-full">
       {label && (
         <label
-          className={cn("block text-sm font-medium mb-2", labelClassName || "text-foreground")}
+          className={cn("block text-sm font-medium mb-2", labelClassName || "text-slate-200")}
           htmlFor={props.id}
         >
           {label}
@@ -193,7 +193,7 @@ export function Textarea({
     <div className="w-full">
       {label && (
         <label
-          className="block text-sm font-medium mb-2 text-foreground"
+          className="block text-sm font-medium mb-2 text-slate-200"
           htmlFor={props.id}
         >
           {label}

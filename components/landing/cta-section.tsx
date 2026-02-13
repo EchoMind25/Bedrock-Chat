@@ -13,7 +13,7 @@ export function CTASection() {
   return (
     <section
       ref={ref}
-      className="py-24 px-6 bg-gradient-to-b from-background-dark to-background-dark/95"
+      className="py-24 px-6 bg-gradient-to-b from-background-dark/95 to-background-dark"
     >
       <div className="max-w-4xl mx-auto">
         <motion.div
@@ -24,12 +24,15 @@ export function CTASection() {
           transition={{ duration: 0.6 }}
         >
           <Glass
-            variant="strong"
-            border="medium"
-            className="p-12 text-center relative overflow-hidden"
+            variant="liquid-elevated"
+            border="liquid"
+            className="p-12 md:p-16 text-center relative overflow-hidden rounded-2xl"
           >
-            {/* Background glow effect */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10 pointer-events-none" />
+            {/* Animated glow ring */}
+            <div className="absolute inset-0 rounded-2xl glow-pulse pointer-events-none" />
+
+            {/* Background gradient */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10 pointer-events-none" />
 
             <motion.div
               className="relative z-10"
@@ -40,8 +43,8 @@ export function CTASection() {
               <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
                 Ready to take back your privacy?
               </h2>
-              <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-                Join thousands of users who've already made the switch to a
+              <p className="text-xl text-gray-300 mb-10 max-w-2xl mx-auto leading-relaxed">
+                Join thousands of families who've already made the switch to a
                 communication platform that respects their rights.
               </p>
 
@@ -50,19 +53,31 @@ export function CTASection() {
                   size="lg"
                   className="text-xl px-12 py-6 shadow-2xl shadow-primary/30 hover:shadow-primary/50 transition-shadow"
                 >
-                  Create Free Account
+                  Start Your Private Server
                 </Button>
               </Link>
 
-              <p className="text-sm text-gray-400 mt-6">
-                No credit card required. No data harvesting.{" "}
+              <p className="text-sm text-gray-400 mt-8">
+                No credit card. No data harvesting. No government ID.{" "}
                 <span className="font-semibold text-white">Ever.</span>
               </p>
+
+              {/* Compliance row */}
+              <div className="flex flex-wrap justify-center gap-3 mt-6">
+                {["COPPA", "GDPR", "CCPA"].map((badge) => (
+                  <span
+                    key={badge}
+                    className="px-3 py-1 text-xs font-medium rounded-full border border-white/10 text-gray-400"
+                  >
+                    {badge} Compliant
+                  </span>
+                ))}
+              </div>
             </motion.div>
 
-            {/* Decorative elements */}
+            {/* Decorative orbs */}
             <motion.div
-              className="absolute -top-10 -right-10 w-32 h-32 bg-primary/20 rounded-full blur-3xl"
+              className="absolute -top-12 -right-12 w-40 h-40 bg-primary/15 rounded-full blur-3xl pointer-events-none"
               animate={{
                 scale: [1, 1.2, 1],
                 opacity: [0.3, 0.5, 0.3],
@@ -74,7 +89,7 @@ export function CTASection() {
               }}
             />
             <motion.div
-              className="absolute -bottom-10 -left-10 w-32 h-32 bg-secondary/20 rounded-full blur-3xl"
+              className="absolute -bottom-12 -left-12 w-40 h-40 bg-accent/15 rounded-full blur-3xl pointer-events-none"
               animate={{
                 scale: [1, 1.3, 1],
                 opacity: [0.3, 0.5, 0.3],

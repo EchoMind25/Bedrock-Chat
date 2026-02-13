@@ -55,6 +55,8 @@ export interface Server {
 	settings?: ServerSettings;
 	banner?: string | null;
 	description?: string;
+	// Visual theming (OKLCH format, e.g. "oklch(0.65 0.25 265)")
+	themeColor?: string;
 }
 
 export interface ServerMember {

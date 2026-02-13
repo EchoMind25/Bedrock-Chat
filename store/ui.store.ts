@@ -14,12 +14,28 @@ interface UIState {
 	// Theme
 	theme: "dark" | "light";
 
+	// Idle detection (set by main layout, read by components)
+	isIdle: boolean;
+
+	// Portal transition state
+	isPortalTransitioning: boolean;
+	portalTargetServerId: string | null;
+	portalSourceColor: string | null;
+	portalTargetColor: string | null;
+
 	// Actions
 	toggleServerList: () => void;
 	toggleChannelList: () => void;
 	setMobile: (isMobile: boolean) => void;
 	toggleMobileMenu: () => void;
 	setTheme: (theme: "dark" | "light") => void;
+	setIdle: (isIdle: boolean) => void;
+	startPortalTransition: (
+		targetServerId: string,
+		sourceColor: string,
+		targetColor: string,
+	) => void;
+	endPortalTransition: () => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -32,6 +48,11 @@ export const useUIStore = create<UIState>()(
 				isMobile: false,
 				isMobileMenuOpen: false,
 				theme: "dark",
+				isIdle: false,
+				isPortalTransitioning: false,
+				portalTargetServerId: null,
+				portalSourceColor: null,
+				portalTargetColor: null,
 
 				// Actions
 				toggleServerList: () =>
@@ -50,6 +71,24 @@ export const useUIStore = create<UIState>()(
 					set((state) => ({ isMobileMenuOpen: !state.isMobileMenuOpen })),
 
 				setTheme: (theme) => set({ theme }),
+
+				setIdle: (isIdle) => set({ isIdle }),
+
+				startPortalTransition: (targetServerId, sourceColor, targetColor) =>
+					set({
+						isPortalTransitioning: true,
+						portalTargetServerId: targetServerId,
+						portalSourceColor: sourceColor,
+						portalTargetColor: targetColor,
+					}),
+
+				endPortalTransition: () =>
+					set({
+						isPortalTransitioning: false,
+						portalTargetServerId: null,
+						portalSourceColor: null,
+						portalTargetColor: null,
+					}),
 			}),
 			{
 				name: "bedrock-ui",

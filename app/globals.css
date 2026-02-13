@@ -352,3 +352,15 @@
     }
   }
 }
+
+/* ── Idle State: pause CSS animations to save CPU ──────── */
+
+html.idle .animated-gradient,
+html.idle .liquid-glass,
+html.idle .liquid-border::before {
+  animation-play-state: paused !important;
+}
+
+html.idle .glow-pulse {
+  animation-play-state: paused !important;
+}

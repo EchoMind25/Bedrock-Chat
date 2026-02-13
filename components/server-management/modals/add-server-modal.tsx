@@ -114,21 +114,31 @@ export function AddServerModal() {
       const serverId = serverData.id;
 
       // 2. Add creator as owner
-      await supabase.from("server_members").insert({
+      const { error: memberError } = await supabase.from("server_members").insert({
         server_id: serverId,
         user_id: user.id,
         role: "owner",
       });
 
+      if (memberError) {
+        // Critical: clean up orphaned server
+        await supabase.from("servers").delete().eq("id", serverId);
+        throw memberError;
+      }
+
       // 3. Create default category + channel
-      const { data: categoriesData } = await supabase
+      const { data: categoriesData, error: catError } = await supabase
         .from("channel_categories")
         .insert([{ server_id: serverId, name: "TEXT CHANNELS", position: 0 }])
         .select();
 
+      if (catError) {
+        console.error("Error creating categories:", catError);
+      }
+
       const defaultCategoryId = categoriesData?.[0]?.id || null;
 
-      const { data: channelsData } = await supabase
+      const { data: channelsData, error: chError } = await supabase
         .from("channels")
         .insert([
           {
@@ -141,15 +151,23 @@ export function AddServerModal() {
         ])
         .select();
 
-      // 4. Audit log
-      await supabase.from("audit_log").insert({
-        server_id: serverId,
-        actor_id: user.id,
-        action: "server_create",
-        target_id: serverId,
-        target_name: serverName.trim(),
-        target_type: "server",
-      });
+      if (chError) {
+        console.error("Error creating channels:", chError);
+      }
+
+      // 4. Audit log (non-critical, don't block creation)
+      try {
+        await supabase.from("audit_log").insert({
+          server_id: serverId,
+          actor_id: user.id,
+          action: "server_create",
+          target_id: serverId,
+          target_name: serverName.trim(),
+          target_type: "server",
+        });
+      } catch {
+        // Audit log failure is non-critical
+      }
 
       // 5. Build local server and add to store
       const categories = (categoriesData || []).map((cat) => ({
@@ -199,15 +217,28 @@ export function AddServerModal() {
         currentChannelId: channels[0]?.id || null,
       }));
 
-      toast.success("Server Created", `${serverName} has been created successfully`);
+      // Close modal before navigation to prevent state conflicts
       handleClose();
+
+      // Verify the server was actually added to the store
+      const createdServer = useServerStore.getState().servers.find((s) => s.id === serverId);
+      if (!createdServer) {
+        toast.error("Server Error", "Server was created but could not be loaded. Please refresh.");
+        return;
+      }
 
       const firstChannel = channels[0];
       if (firstChannel) {
+        toast.success("Server Created", `${serverName} has been created successfully`);
         router.push(`/servers/${serverId}/${firstChannel.id}`);
+      } else {
+        toast.success("Server Created", `${serverName} was created. Add channels in server settings.`);
+        router.push("/friends");
       }
     } catch (err) {
       console.error("Error creating server:", err);
+      const message = err instanceof Error ? err.message : "Could not create server";
+      setError(message);
       toast.error("Creation Failed", "Could not create server. Please try again.");
     } finally {
       setIsLoading(false);

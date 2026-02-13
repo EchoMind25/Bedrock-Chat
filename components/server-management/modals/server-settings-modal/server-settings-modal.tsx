@@ -85,7 +85,8 @@ export function ServerSettingsModal() {
       toast.success("Settings Saved", "Your server settings have been updated");
       setHasChanges(false);
       setEditedServer({});
-    } catch (error) {
+    } catch (err) {
+      console.error("Error saving server settings:", err);
       toast.error("Save Failed", "Could not save settings. Please try again.");
     } finally {
       setIsSaving(false);
