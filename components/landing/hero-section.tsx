@@ -16,12 +16,15 @@ const Hero3DScene = dynamic(() => import("./hero-3d-scene"), {
 });
 
 export function HeroSection() {
-  const [tier, setTier] = useState<PerformanceTier>("low");
+  // TEMPORARY: Force high tier to always show 3D scene for testing
+  const [tier, setTier] = useState<PerformanceTier>("high");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    setTier(getPerformanceTier());
+    // Force high tier for now - remove this to use auto-detection
+    setTier("high");
+    // setTier(getPerformanceTier()); // Uncomment to restore auto-detection
   }, []);
 
   const scrollToFeatures = () => {

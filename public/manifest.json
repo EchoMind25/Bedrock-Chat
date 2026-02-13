@@ -3,6 +3,7 @@
   "short_name": "Bedrock",
   "description": "Privacy-first communication that respects your rights",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0D0D14",
   "theme_color": "#7C3AED",

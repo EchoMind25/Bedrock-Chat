@@ -66,12 +66,27 @@ export function getPerformanceTier(): PerformanceTier {
   const hasWebGL1 = checkWebGL(1);
   const mobile = isMobileDevice();
 
-  if (hasWebGL2 && cores >= 4 && !mobile) {
+  // Relaxed requirements for better 3D scene visibility
+  // Original: WebGL2 + 4 cores + !mobile for high tier
+  // New: WebGL1/2 + 2 cores for high tier (allow mobile tablets)
+  if ((hasWebGL2 || hasWebGL1) && cores >= 2) {
     cachedTier = "high";
-  } else if (hasWebGL1 && cores >= 2) {
+  } else if (hasWebGL1 && cores >= 1) {
     cachedTier = "medium";
   } else {
     cachedTier = "low";
+  }
+
+  // Debug logging
+  if (typeof window !== "undefined") {
+    console.log("🎨 Performance Tier Detection:", {
+      tier: cachedTier,
+      cores,
+      hasWebGL2,
+      hasWebGL1,
+      mobile,
+      userAgent: navigator.userAgent.slice(0, 50) + "...",
+    });
   }
 
   return cachedTier;

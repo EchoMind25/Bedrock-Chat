@@ -87,6 +87,14 @@ export const useAuthStore = create<AuthState>()(
 					set({ isLoading: true, error: null });
 
 					try {
+						// CRITICAL: Set rememberMe flag BEFORE creating Supabase client
+						// This ensures the client uses the correct storage (localStorage vs sessionStorage)
+						if (rememberMe) {
+							localStorage.setItem("bedrock-remember-me", "true");
+						} else {
+							localStorage.setItem("bedrock-remember-me", "false");
+						}
+
 						const supabase = createClient();
 						const { data, error } = await supabase.auth.signInWithPassword({
 							email,
@@ -106,12 +114,6 @@ export const useAuthStore = create<AuthState>()(
 								.single();
 
 							if (profile) {
-								// Store rememberMe as UI preference only
-								if (rememberMe) {
-									localStorage.setItem("bedrock-remember-me", "true");
-								} else {
-									localStorage.removeItem("bedrock-remember-me");
-								}
 
 								set({
 									user: profileToUser(profile, email),
