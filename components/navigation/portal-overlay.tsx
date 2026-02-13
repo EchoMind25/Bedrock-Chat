@@ -88,7 +88,7 @@ export function PortalOverlay() {
 							style={{ perspective: "800px" }}
 						>
 							<motion.div
-								className="w-40 h-40 rounded-3xl"
+								className="w-32 h-32 sm:w-40 sm:h-40 rounded-2xl sm:rounded-3xl"
 								style={{
 									background: `linear-gradient(135deg, ${targetColor || "oklch(0.65 0.25 265)"}, oklch(0.15 0.02 285 / 0.7))`,
 									backdropFilter: "blur(28px) saturate(200%)",
@@ -129,11 +129,14 @@ export function PortalOverlay() {
 
 /**
  * Burst of particles that scatter outward from center.
+ * Mobile-optimized: fewer particles on small screens.
  */
 function ScatterParticles({ color }: { color: string | null }) {
 	const particles = useMemo(() => {
-		return Array.from({ length: 20 }, (_, i) => {
-			const angle = (i / 20) * Math.PI * 2;
+		const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+		const count = isMobile ? 12 : 20; // Reduced particle count on mobile
+		return Array.from({ length: count }, (_, i) => {
+			const angle = (i / count) * Math.PI * 2;
 			const distance = 100 + Math.random() * 200;
 			return {
 				id: i,
