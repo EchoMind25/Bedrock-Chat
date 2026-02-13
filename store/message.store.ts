@@ -8,9 +8,12 @@ interface MessageState {
   messages: Record<string, Message[]>; // channelId -> messages
   isLoading: boolean;
   typingUsers: Record<string, string[]>; // channelId -> usernames
+  subscriptions: Record<string, () => void>; // channelId -> cleanup function
 
   // Actions
   loadMessages: (channelId: string) => Promise<void>;
+  subscribeToChannel: (channelId: string) => void;
+  unsubscribeFromChannel: (channelId: string) => void;
   sendMessage: (channelId: string, content: string) => void;
   addReaction: (channelId: string, messageId: string, emoji: string) => void;
   removeReaction: (channelId: string, messageId: string, emoji: string) => void;
@@ -25,6 +28,131 @@ export const useMessageStore = create<MessageState>()(
       messages: {},
       isLoading: false,
       typingUsers: {},
+      subscriptions: {},
+
+      subscribeToChannel: (channelId) => {
+        // Don't subscribe twice
+        if (get().subscriptions[channelId]) return;
+
+        const supabase = createClient();
+        const channel = supabase
+          .channel(`messages:${channelId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'messages',
+              filter: `channel_id=eq.${channelId}`,
+            },
+            async (payload) => {
+              // Fetch full message data with user profile
+              const { data: messageData } = await supabase
+                .from('messages')
+                .select(`
+                  *,
+                  user:profiles(id, username, display_name, avatar_url)
+                `)
+                .eq('id', payload.new.id)
+                .single();
+
+              if (!messageData) return;
+
+              const newMessage: Message = {
+                id: messageData.id as string,
+                content: messageData.content as string,
+                author: {
+                  id: (messageData.user as Record<string, unknown>)?.id as string || messageData.user_id as string,
+                  username: (messageData.user as Record<string, unknown>)?.username as string || 'Unknown',
+                  displayName: (messageData.user as Record<string, unknown>)?.display_name as string || 'Unknown',
+                  avatar: (messageData.user as Record<string, unknown>)?.avatar_url as string || '',
+                  isBot: false,
+                },
+                timestamp: new Date(messageData.created_at as string),
+                reactions: [],
+                attachments: [],
+                embeds: [],
+                isPinned: messageData.is_pinned as boolean,
+                type: (messageData.type as Message['type']) || 'default',
+              };
+
+              // Only add if it's not from current user (optimistic update already added it)
+              const currentUserId = useAuthStore.getState().user?.id;
+              if (messageData.user_id !== currentUserId) {
+                set((state) => ({
+                  messages: {
+                    ...state.messages,
+                    [channelId]: [...(state.messages[channelId] || []), newMessage],
+                  },
+                }));
+              }
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'messages',
+              filter: `channel_id=eq.${channelId}`,
+            },
+            (payload) => {
+              set((state) => ({
+                messages: {
+                  ...state.messages,
+                  [channelId]: state.messages[channelId]?.map((msg) =>
+                    msg.id === payload.new.id
+                      ? {
+                          ...msg,
+                          content: payload.new.content as string,
+                          editedAt: payload.new.edited_at ? new Date(payload.new.edited_at as string) : undefined,
+                        }
+                      : msg
+                  ) || [],
+                },
+              }));
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'DELETE',
+              schema: 'public',
+              table: 'messages',
+              filter: `channel_id=eq.${channelId}`,
+            },
+            (payload) => {
+              set((state) => ({
+                messages: {
+                  ...state.messages,
+                  [channelId]: state.messages[channelId]?.filter((msg) => msg.id !== payload.old.id) || [],
+                },
+              }));
+            }
+          )
+          .subscribe();
+
+        // Store cleanup function
+        set((state) => ({
+          subscriptions: {
+            ...state.subscriptions,
+            [channelId]: () => {
+              channel.unsubscribe();
+            },
+          },
+        }));
+      },
+
+      unsubscribeFromChannel: (channelId) => {
+        const cleanup = get().subscriptions[channelId];
+        if (cleanup) {
+          cleanup();
+          set((state) => {
+            const { [channelId]: _, ...rest } = state.subscriptions;
+            return { subscriptions: rest };
+          });
+        }
+      },
 
       loadMessages: async (channelId) => {
         if (get().messages[channelId]) return;

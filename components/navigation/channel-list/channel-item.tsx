@@ -85,9 +85,14 @@ export function ChannelItem({ channel, isActive }: ChannelItemProps) {
 	const handleChannelClick = () => {
 		setCurrentChannel(channel.id);
 
-		// Navigate to voice channel page if it's a voice channel
-		if (isVoice && currentServerId) {
-			router.push(`/channels/${currentServerId}/voice/${channel.id}`);
+		// Navigate to appropriate channel page based on type
+		if (currentServerId) {
+			if (isVoice) {
+				router.push(`/channels/${currentServerId}/voice/${channel.id}`);
+			} else {
+				// Navigate to text channel
+				router.push(`/servers/${currentServerId}/${channel.id}`);
+			}
 		}
 	};
 

@@ -20,10 +20,19 @@ export function MessageList({ channelId }: MessageListProps) {
 	const channelMessages = messages[channelId] || [];
 	const typing = typingUsers[channelId] || [];
 
-	// Load messages on mount
+	// Load messages and subscribe to real-time updates
+	const subscribeToChannel = useMessageStore((s) => s.subscribeToChannel);
+	const unsubscribeFromChannel = useMessageStore((s) => s.unsubscribeFromChannel);
+
 	useEffect(() => {
 		loadMessages(channelId);
-	}, [channelId, loadMessages]);
+		subscribeToChannel(channelId);
+
+		// Cleanup subscription when channel changes or component unmounts
+		return () => {
+			unsubscribeFromChannel(channelId);
+		};
+	}, [channelId, loadMessages, subscribeToChannel, unsubscribeFromChannel]);
 
 	// Virtual scrolling - CRITICAL: useFlushSync: false for React 19
 	const virtualizer = useVirtualizer({
