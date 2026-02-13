@@ -210,7 +210,16 @@ export const useMessageStore = create<MessageState>()(
 
       sendMessage: async (channelId, content) => {
         const user = useAuthStore.getState().user;
-        if (!user || !content.trim()) return;
+        if (!user) {
+          console.error('[MessageStore] No user found');
+          return;
+        }
+        if (!content.trim()) {
+          console.warn('[MessageStore] Empty message content');
+          return;
+        }
+
+        console.log('[MessageStore] Sending message:', { channelId, content: content.trim(), userId: user.id });
 
         try {
           const supabase = createClient();
@@ -220,7 +229,12 @@ export const useMessageStore = create<MessageState>()(
             content: content.trim(),
           }).select().single();
 
-          if (error) throw error;
+          if (error) {
+            console.error('[MessageStore] Supabase error:', error);
+            throw error;
+          }
+
+          console.log('[MessageStore] Message inserted into DB:', data);
 
           const newMessage: Message = {
             id: data.id,
@@ -240,14 +254,16 @@ export const useMessageStore = create<MessageState>()(
             type: 'default',
           };
 
+          console.log('[MessageStore] Adding message optimistically to state');
           set((state) => ({
             messages: {
               ...state.messages,
               [channelId]: [...(state.messages[channelId] || []), newMessage],
             },
           }));
+          console.log('[MessageStore] Message added to state successfully');
         } catch (err) {
-          console.error('Error sending message:', err);
+          console.error('[MessageStore] Error sending message:', err);
         }
       },
 

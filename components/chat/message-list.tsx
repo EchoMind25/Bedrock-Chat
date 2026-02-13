@@ -15,23 +15,21 @@ export function MessageList({ channelId }: MessageListProps) {
 	const parentRef = useRef<HTMLDivElement>(null);
 	const messages = useMessageStore((s) => s.messages);
 	const isLoading = useMessageStore((s) => s.isLoading);
-	const loadMessages = useMessageStore((s) => s.loadMessages);
 	const typingUsers = useMessageStore((s) => s.typingUsers);
 	const channelMessages = messages[channelId] || [];
 	const typing = typingUsers[channelId] || [];
 
 	// Load messages and subscribe to real-time updates
 	useEffect(() => {
-		loadMessages(channelId);
-
-		// Subscribe to real-time updates
+		// Call store methods directly to avoid unstable references
+		useMessageStore.getState().loadMessages(channelId);
 		useMessageStore.getState().subscribeToChannel(channelId);
 
 		// Cleanup subscription when channel changes or component unmounts
 		return () => {
 			useMessageStore.getState().unsubscribeFromChannel(channelId);
 		};
-	}, [channelId, loadMessages]);
+	}, [channelId]); // Only depend on channelId
 
 	// Virtual scrolling - CRITICAL: useFlushSync: false for React 19
 	const virtualizer = useVirtualizer({
