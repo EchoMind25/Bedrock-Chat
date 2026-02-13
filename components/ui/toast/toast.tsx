@@ -208,7 +208,9 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
  * Zustand-managed with swipe dismiss and progress bar
  */
 export function ToastContainer() {
-  const { toasts, removeToast } = useToastStore();
+  // ✅ Use selectors to subscribe only to specific values, not entire store
+  const toasts = useToastStore((state) => state.toasts);
+  const removeToast = useToastStore((state) => state.removeToast);
 
   return (
     <div

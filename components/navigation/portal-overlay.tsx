@@ -34,7 +34,8 @@ export function PortalOverlay() {
 
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [isTransitioning, endPortalTransition]);
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [isTransitioning]); // Exclude endPortalTransition - stable Zustand action
 
 	const handleAnimationComplete = useCallback(() => {
 		endPortalTransition();

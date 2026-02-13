@@ -82,7 +82,9 @@ const CATEGORIES = [
 
 export function CreateServerModal() {
   const router = useRouter();
-  const { isCreateServerOpen, closeCreateServer } = useServerManagementStore();
+  // ✅ Use selectors to subscribe only to specific values, not entire store
+  const isCreateServerOpen = useServerManagementStore((state) => state.isCreateServerOpen);
+  const closeCreateServer = useServerManagementStore((state) => state.closeCreateServer);
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedTemplate, setSelectedTemplate] = useState<ServerTemplate>("friends");

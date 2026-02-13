@@ -34,7 +34,8 @@ export default function FamilyLayout({
 		if (user && !isInitialized) {
 			init(user.id, user.accountType);
 		}
-	}, [user, isInitialized, init]);
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [user, isInitialized]); // Exclude init - stable Zustand action
 
 	// Redirect if not authenticated or not a parent
 	useEffect(() => {

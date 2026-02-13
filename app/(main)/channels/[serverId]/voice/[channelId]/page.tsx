@@ -26,7 +26,8 @@ export default function VoiceChannelPage({ params }: VoiceChannelPageProps) {
       setCurrentServer(serverId);
       setCurrentChannel(channelId);
     }
-  }, [serverId, channelId, setCurrentServer, setCurrentChannel]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverId, channelId]); // Exclude store actions - stable Zustand actions
 
   // Look up channel from params directly to avoid race conditions
   const server = servers.find((s) => s.id === serverId);

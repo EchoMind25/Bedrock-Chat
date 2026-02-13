@@ -42,7 +42,10 @@ const CHANNEL_TYPES: Array<{
 ];
 
 export function CreateChannelModal() {
-  const { isCreateChannelOpen, closeCreateChannel, preselectedCategoryId } = useServerManagementStore();
+  // ✅ Use selectors to subscribe only to specific values, not entire store
+  const isCreateChannelOpen = useServerManagementStore((state) => state.isCreateChannelOpen);
+  const closeCreateChannel = useServerManagementStore((state) => state.closeCreateChannel);
+  const preselectedCategoryId = useServerManagementStore((state) => state.preselectedCategoryId);
   const servers = useServerStore((s) => s.servers);
   const currentServerId = useServerStore((s) => s.currentServerId);
 

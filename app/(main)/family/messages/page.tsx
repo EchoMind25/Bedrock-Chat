@@ -40,7 +40,8 @@ export default function FamilyMessagesPage() {
 		if (selectedChannelId) {
 			loadMessages(selectedChannelId);
 		}
-	}, [selectedChannelId, loadMessages]);
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [selectedChannelId]); // Exclude loadMessages - stable Zustand action
 
 	// Log access when viewing messages
 	const handleViewChannel = (channelId: string, channelName: string) => {

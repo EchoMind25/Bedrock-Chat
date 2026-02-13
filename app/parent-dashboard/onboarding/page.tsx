@@ -27,8 +27,12 @@ const STEPS = [
 
 export default function OnboardingPage() {
 	const router = useRouter();
-	const { teenAccounts, setMonitoringLevel, addKeywordAlert, setTimeLimit } = useFamilyStore();
-	const { setOnboardingComplete } = useParentDashboardStore();
+	// ✅ Use selectors to subscribe only to specific values, not entire stores
+	const teenAccounts = useFamilyStore((state) => state.teenAccounts);
+	const setMonitoringLevel = useFamilyStore((state) => state.setMonitoringLevel);
+	const addKeywordAlert = useFamilyStore((state) => state.addKeywordAlert);
+	const setTimeLimit = useFamilyStore((state) => state.setTimeLimit);
+	const setOnboardingComplete = useParentDashboardStore((state) => state.setOnboardingComplete);
 
 	const [step, setStep] = useState(0);
 	const [selectedLevels, setSelectedLevels] = useState<Record<string, MonitoringLevel>>(() => {

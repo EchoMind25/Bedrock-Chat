@@ -16,7 +16,8 @@ export function ChannelCategory({
 	isCollapsed,
 	onToggle,
 }: ChannelCategoryProps) {
-	const { openCreateChannel } = useServerManagementStore();
+	// ✅ Use selector to subscribe only to specific value, not entire store
+	const openCreateChannel = useServerManagementStore((state) => state.openCreateChannel);
 
 	return (
 		<div className="w-full px-2 py-1 flex items-center gap-1 text-xs font-semibold text-white/60 hover:text-white/80 uppercase tracking-wide group">

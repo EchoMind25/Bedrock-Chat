@@ -11,7 +11,9 @@ import { useAuthStore } from "@/store/auth.store";
  */
 export function useAuthGuard(requireAuth = true) {
 	const router = useRouter();
-	const { isAuthenticated, isLoading } = useAuthStore();
+	// ✅ Use selectors to subscribe only to specific values, not entire store
+	const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+	const isLoading = useAuthStore((state) => state.isLoading);
 
 	useEffect(() => {
 		if (isLoading) return;

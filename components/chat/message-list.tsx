@@ -14,11 +14,11 @@ interface MessageListProps {
 export function MessageList({ channelId }: MessageListProps) {
 	const parentRef = useRef<HTMLDivElement>(null);
 	const initializedRef = useRef<Set<string>>(new Set());
-	const messages = useMessageStore((s) => s.messages);
+	// ✅ CRITICAL FIX: Subscribe ONLY to this channel's messages, not ALL channels
+	// This prevents re-renders from messages in other channels (scales to 1000s of servers)
+	const channelMessages = useMessageStore((s) => s.messages[channelId] || []);
 	const isLoading = useMessageStore((s) => s.isLoading);
-	const typingUsers = useMessageStore((s) => s.typingUsers);
-	const channelMessages = messages[channelId] || [];
-	const typing = typingUsers[channelId] || [];
+	const typing = useMessageStore((s) => s.typingUsers[channelId] || []);
 
 	// Load messages and subscribe to real-time updates
 	useEffect(() => {
