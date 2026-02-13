@@ -30,7 +30,7 @@ export function HeroSection() {
   };
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-background-dark px-4 sm:px-6">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-background-dark">
       {/* Background layer - progressive enhancement */}
       {mounted && tier === "high" ? (
         <Suspense fallback={<HeroFallback />}>
@@ -43,7 +43,7 @@ export function HeroSection() {
       )}
 
       {/* Content overlay - always SSR rendered for fast LCP */}
-      <div className="relative z-10 max-w-6xl mx-auto w-full text-center">
+      <div className="relative z-10 max-w-6xl mx-auto px-6 text-center">
         <motion.div
           className="inline-block mb-6"
           initial={{ opacity: 0, y: -10 }}

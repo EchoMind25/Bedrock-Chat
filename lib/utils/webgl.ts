@@ -66,10 +66,7 @@ export function getPerformanceTier(): PerformanceTier {
   const hasWebGL1 = checkWebGL(1);
   const mobile = isMobileDevice();
 
-  // Allow high tier on capable mobile devices (6+ cores with WebGL2)
-  // Desktop: WebGL2 + 4+ cores
-  // Mobile: WebGL2 + 6+ cores (flagship phones)
-  if (hasWebGL2 && ((mobile && cores >= 6) || (!mobile && cores >= 4))) {
+  if (hasWebGL2 && cores >= 4 && !mobile) {
     cachedTier = "high";
   } else if (hasWebGL1 && cores >= 2) {
     cachedTier = "medium";
