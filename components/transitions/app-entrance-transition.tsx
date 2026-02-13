@@ -185,7 +185,7 @@ export function AppEntranceTransition({
                 delay: 0.5,
                 ease: "easeInOut",
               }}
-              style={{ transformSkewX: "-20deg" }}
+              style={{ transform: "skewX(-20deg)" }}
             />
           </motion.div>
 
