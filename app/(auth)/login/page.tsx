@@ -28,6 +28,11 @@ export default function LoginPage() {
 	// Determine effective preference: first visit = full, returning = stored
 	const effectivePreference = hasSeenIntro ? introPreference : "full";
 
+	// Clear any stale entrance transition state on mount
+	useEffect(() => {
+		completeEntranceTransition();
+	}, [completeEntranceTransition]);
+
 	useEffect(() => {
 		if (effectivePreference === "skip") {
 			setShowForm(true);
