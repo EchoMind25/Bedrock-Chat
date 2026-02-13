@@ -8,15 +8,19 @@ export default function MainPage() {
 	const router = useRouter();
 	const currentServerId = useServerStore((s) => s.currentServerId);
 	const currentChannelId = useServerStore((s) => s.currentChannelId);
+	const isInitialized = useServerStore((s) => s.isInitialized);
 
 	useEffect(() => {
+		// Wait for store to initialize before redirecting
+		if (!isInitialized) return;
+
 		// Redirect to current server/channel or default
 		if (currentServerId && currentChannelId && currentServerId !== "home") {
 			router.push(`/servers/${currentServerId}/${currentChannelId}`);
 		} else {
 			router.push("/friends");
 		}
-	}, [currentServerId, currentChannelId, router]);
+	}, [currentServerId, currentChannelId, isInitialized, router]);
 
 	return (
 		<div className="flex-1 flex items-center justify-center bg-[oklch(0.14_0.02_250)]">

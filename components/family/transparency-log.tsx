@@ -25,7 +25,7 @@ interface TransparencyLogProps {
 	compact?: boolean;
 }
 
-const actionIcons = {
+const actionIcons: Record<string, string> = {
 	viewed_messages: "👁️",
 	viewed_friends: "👥",
 	viewed_servers: "🏰",
@@ -35,9 +35,19 @@ const actionIcons = {
 	denied_server: "❌",
 	approved_friend: "✅",
 	denied_friend: "❌",
+	added_keyword_alert: "🔍",
+	removed_keyword_alert: "🔍",
+	changed_time_limit: "⏰",
+	blocked_category: "🚫",
+	unblocked_category: "🚫",
+	viewed_voice_metadata: "🎙️",
+	exported_activity_log: "📤",
+	changed_data_retention: "🗄️",
+	restricted_server: "🔒",
+	unrestricted_server: "🔓",
 };
 
-const actionColors = {
+const actionColors: Record<string, string> = {
 	viewed_messages: "text-blue-400",
 	viewed_friends: "text-green-400",
 	viewed_servers: "text-purple-400",
@@ -47,6 +57,16 @@ const actionColors = {
 	denied_server: "text-red-400",
 	approved_friend: "text-green-400",
 	denied_friend: "text-red-400",
+	added_keyword_alert: "text-cyan-400",
+	removed_keyword_alert: "text-cyan-400",
+	changed_time_limit: "text-amber-400",
+	blocked_category: "text-red-400",
+	unblocked_category: "text-green-400",
+	viewed_voice_metadata: "text-indigo-400",
+	exported_activity_log: "text-blue-400",
+	changed_data_retention: "text-gray-400",
+	restricted_server: "text-red-400",
+	unrestricted_server: "text-green-400",
 };
 
 /**

@@ -9,12 +9,12 @@ import { createClient } from "@/lib/supabase/server";
  * 2. Supabase verifies the token and redirects here with a `code` param
  * 3. We exchange the code for a session (sets auth cookies)
  * 4. We create the user's profile if it doesn't exist yet
- * 5. We redirect to the main app
+ * 5. We redirect to the main app (onboarding for new users, /friends for returning)
  */
 export async function GET(request: Request) {
 	const { searchParams, origin } = new URL(request.url);
 	const code = searchParams.get("code");
-	const next = searchParams.get("next") ?? "/friends";
+	const next = searchParams.get("next");
 
 	if (code) {
 		const supabase = await createClient();
@@ -26,6 +26,8 @@ export async function GET(request: Request) {
 				data: { user },
 			} = await supabase.auth.getUser();
 
+			let isNewUser = false;
+
 			if (user) {
 				const { data: existingProfile } = await supabase
 					.from("profiles")
@@ -34,6 +36,7 @@ export async function GET(request: Request) {
 					.maybeSingle();
 
 				if (!existingProfile) {
+					isNewUser = true;
 					const metadata = user.user_metadata;
 					const username =
 						metadata?.username ||
@@ -49,9 +52,9 @@ export async function GET(request: Request) {
 				}
 			}
 
-			// Redirect to the app — the main layout will call checkAuth()
-			// which reads the session from cookies and loads the profile
-			return NextResponse.redirect(`${origin}${next}`);
+			// Redirect: new users go to onboarding, returning users to main app
+			const redirectTo = next ?? (isNewUser ? "/onboarding" : "/friends");
+			return NextResponse.redirect(`${origin}${redirectTo}`);
 		}
 	}
 

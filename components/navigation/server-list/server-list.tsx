@@ -36,7 +36,7 @@ export function ServerList() {
 					isActive={currentServerId === "home"}
 					onClick={() => {
 						setCurrentServer("home");
-						router.push("/channels/@me");
+						router.push("/friends");
 					}}
 					isHome
 				/>

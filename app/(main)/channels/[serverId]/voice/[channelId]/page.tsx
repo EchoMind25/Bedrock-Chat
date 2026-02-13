@@ -15,18 +15,31 @@ interface VoiceChannelPageProps {
 export default function VoiceChannelPage({ params }: VoiceChannelPageProps) {
   const { serverId, channelId } = use(params);
   const router = useRouter();
+  const setCurrentServer = useServerStore((state) => state.setCurrentServer);
   const setCurrentChannel = useServerStore((state) => state.setCurrentChannel);
-  const getCurrentChannel = useServerStore((state) => state.getCurrentChannel);
+  const servers = useServerStore((state) => state.servers);
+  const isInitialized = useServerStore((state) => state.isInitialized);
 
   // Update Zustand store when route changes (wrapped in useEffect)
   useEffect(() => {
-    if (channelId) {
+    if (serverId && channelId) {
+      setCurrentServer(serverId);
       setCurrentChannel(channelId);
     }
-  }, [channelId, setCurrentChannel]);
+  }, [serverId, channelId, setCurrentServer, setCurrentChannel]);
 
-  const currentChannel = getCurrentChannel();
+  // Look up channel from params directly to avoid race conditions
+  const server = servers.find((s) => s.id === serverId);
+  const currentChannel = server?.channels.find((c) => c.id === channelId);
   const channelName = currentChannel?.name || "Voice Channel";
+
+  if (!isInitialized) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-[oklch(0.14_0.02_250)]">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   const handleLeave = () => {
     // Navigate back to the text channel version of the same server/channel

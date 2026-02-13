@@ -15,9 +15,12 @@ import { Avatar } from "@/components/ui/avatar/avatar";
 import { motion } from "motion/react";
 
 export default function FamilyMessagesPage() {
-	const { getSelectedTeenAccount, viewMessages } = useFamilyStore();
-	const { servers } = useServerStore();
-	const { messages, loadMessages, isLoading } = useMessageStore();
+	const getSelectedTeenAccount = useFamilyStore((s) => s.getSelectedTeenAccount);
+	const viewMessages = useFamilyStore((s) => s.viewMessages);
+	const servers = useServerStore((s) => s.servers);
+	const messages = useMessageStore((s) => s.messages);
+	const loadMessages = useMessageStore((s) => s.loadMessages);
+	const isLoading = useMessageStore((s) => s.isLoading);
 
 	const teenAccount = getSelectedTeenAccount();
 

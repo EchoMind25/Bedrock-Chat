@@ -22,8 +22,12 @@ export default function FamilyLayout({
 }) {
 	const router = useRouter();
 	const pathname = usePathname();
-	const { isAuthenticated, user } = useAuthStore();
-	const { isParent, isInitialized, init } = useFamilyStore();
+	const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+	const user = useAuthStore((s) => s.user);
+	const isAuthInitializing = useAuthStore((s) => s.isInitializing);
+	const isParent = useFamilyStore((s) => s.isParent);
+	const isInitialized = useFamilyStore((s) => s.isInitialized);
+	const init = useFamilyStore((s) => s.init);
 
 	// Initialize family store
 	useEffect(() => {
@@ -34,12 +38,15 @@ export default function FamilyLayout({
 
 	// Redirect if not authenticated or not a parent
 	useEffect(() => {
+		// Wait for auth check to complete before redirecting
+		if (isAuthInitializing) return;
+
 		if (!isAuthenticated) {
 			router.push("/login");
 		} else if (isInitialized && !isParent) {
 			router.push("/channels");
 		}
-	}, [isAuthenticated, isInitialized, isParent, router]);
+	}, [isAuthenticated, isAuthInitializing, isInitialized, isParent, router]);
 
 	if (!isAuthenticated || !user || !isInitialized || !isParent) {
 		return (

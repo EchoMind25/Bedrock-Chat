@@ -24,7 +24,7 @@ export function FriendCard({ friend }: FriendCardProps) {
 		// Create or get existing DM
 		const dm = createDm(friend.userId);
 		if (dm) {
-			router.push(`/channels/@me/${dm.id}`);
+			router.push(`/dms/${dm.id}`);
 		}
 	};
 

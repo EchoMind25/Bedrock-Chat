@@ -1,137 +1,82 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "motion/react";
-import { useAuthStore } from "@/store/auth.store";
-import { Glass } from "@/components/ui/glass/glass";
-import { Button } from "@/components/ui/button/button";
-import { Input } from "@/components/ui/input/input";
-import { Toggle } from "@/components/ui/toggle/toggle";
-import Link from "next/link";
+import { AnimatePresence } from "motion/react";
+import { useOnboardingStore } from "@/store/onboarding.store";
+import { WorldFormation } from "@/components/login/world-formation/world-formation";
+import { LoginForm } from "@/components/login/login-form";
+import { SkipIntroButton } from "@/components/login/skip-intro-button";
 
 export default function LoginPage() {
 	const router = useRouter();
-	const { login, isLoading, error, clearError } = useAuthStore();
+	const introPreference = useOnboardingStore((s) => s.introPreference);
+	const hasSeenIntro = useOnboardingStore((s) => s.hasSeenIntro);
+	const markIntroSeen = useOnboardingStore((s) => s.markIntroSeen);
+	const isOnboardingComplete = useOnboardingStore(
+		(s) => s.isOnboardingComplete,
+	);
 
-	const [email, setEmail] = useState("");
-	const [password, setPassword] = useState("");
-	const [showPassword, setShowPassword] = useState(false);
-	const [rememberMe, setRememberMe] = useState(false);
+	const [showForm, setShowForm] = useState(false);
+	const [introActive, setIntroActive] = useState(false);
+	const [statusMessage, setStatusMessage] = useState("Loading Bedrock Chat");
 
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-		clearError();
+	// Determine effective preference: first visit = full, returning = stored
+	const effectivePreference = hasSeenIntro ? introPreference : "full";
 
-		const success = await login(email, password, rememberMe);
-		if (success) {
-			router.push("/friends");
+	useEffect(() => {
+		if (effectivePreference === "skip") {
+			setShowForm(true);
+			setStatusMessage("Login form ready");
+		} else {
+			setIntroActive(true);
 		}
-	};
+	}, [effectivePreference]);
+
+	const handleWorldComplete = useCallback(() => {
+		setIntroActive(false);
+		setShowForm(true);
+		setStatusMessage("Login form ready");
+		markIntroSeen();
+	}, [markIntroSeen]);
+
+	const handleSkip = useCallback(() => {
+		setIntroActive(false);
+		setShowForm(true);
+		setStatusMessage("Login form ready");
+		markIntroSeen();
+	}, [markIntroSeen]);
+
+	const handleLoginSuccess = useCallback(() => {
+		if (isOnboardingComplete) {
+			router.push("/friends");
+		} else {
+			router.push("/onboarding");
+		}
+	}, [isOnboardingComplete, router]);
 
 	return (
-		<div className="min-h-screen animated-gradient flex items-center justify-center p-4">
-			<motion.div
-				initial={{ opacity: 0, y: 20 }}
-				animate={{ opacity: 1, y: 0 }}
-				transition={{ type: "spring", stiffness: 260, damping: 20 }}
-			>
-				<Glass variant="strong" border="medium" className="w-full max-w-[420px] p-8">
-					{/* Logo */}
-					<div className="text-center mb-8">
-						<h1 className="text-2xl font-bold text-blue-400">Welcome Back</h1>
-						<p className="text-blue-300/60 mt-2">
-							Sign in to continue to Bedrock Chat
-						</p>
-					</div>
+		<div className="min-h-screen relative overflow-hidden bg-black">
+			{/* Screen reader status announcements */}
+			<div className="sr-only" role="status" aria-live="polite">
+				{statusMessage}
+			</div>
 
-					{/* Error Display */}
-					<AnimatePresence>
-						{error && (
-							<motion.div
-								initial={{ opacity: 0, x: -10 }}
-								animate={{ opacity: 1, x: 0 }}
-								exit={{ opacity: 0 }}
-								className="bg-red-500/20 border border-red-500/50 rounded-lg p-3 mb-6"
-							>
-								<p className="text-red-400 text-sm">{error}</p>
-							</motion.div>
-						)}
-					</AnimatePresence>
+			{/* World Formation Background */}
+			{introActive && (
+				<>
+					<WorldFormation
+						preference={effectivePreference}
+						onComplete={handleWorldComplete}
+					/>
+					<SkipIntroButton onSkip={handleSkip} />
+				</>
+			)}
 
-					{/* Form */}
-					<form onSubmit={handleSubmit} className="space-y-6">
-						<Input
-							type="email"
-							label="Email"
-							labelClassName="text-blue-400"
-							value={email}
-							onChange={(e) => setEmail(e.target.value)}
-							placeholder="you@example.com"
-							required
-							autoComplete="email"
-							id="email"
-						/>
-
-						<div>
-							<Input
-								type={showPassword ? "text" : "password"}
-								label="Password"
-								labelClassName="text-blue-400"
-								value={password}
-								onChange={(e) => setPassword(e.target.value)}
-								placeholder="••••••••"
-								required
-								autoComplete="current-password"
-								id="password"
-							/>
-							<button
-								type="button"
-								onClick={() => setShowPassword(!showPassword)}
-								className="text-sm text-blue-400 hover:text-blue-300 mt-1"
-							>
-								{showPassword ? "Hide" : "Show"} password
-							</button>
-						</div>
-
-						<div className="flex items-center justify-between">
-							<Toggle
-								checked={rememberMe}
-								onChange={(e) => setRememberMe(e.target.checked)}
-								label="Remember me"
-								className="text-blue-300/80"
-							/>
-							<button
-								type="button"
-								className="text-sm text-blue-400 hover:text-blue-300"
-							>
-								Forgot password?
-							</button>
-						</div>
-
-						<Button
-							type="submit"
-							variant="primary"
-							size="lg"
-							className="w-full"
-							loading={isLoading}
-						>
-							Sign In
-						</Button>
-					</form>
-
-					{/* Signup Link */}
-					<p className="text-center mt-6 text-blue-300/60">
-						Don't have an account?{" "}
-						<Link
-							href="/signup"
-							className="text-blue-400 hover:text-blue-300"
-						>
-							Create one free
-						</Link>
-					</p>
-				</Glass>
-			</motion.div>
+			{/* Auth Form */}
+			<AnimatePresence>
+				{showForm && <LoginForm onSuccess={handleLoginSuccess} />}
+			</AnimatePresence>
 		</div>
 	);
 }

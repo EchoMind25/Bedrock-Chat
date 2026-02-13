@@ -69,7 +69,17 @@ export type TransparencyLogAction =
 	| "approved_server"
 	| "denied_server"
 	| "approved_friend"
-	| "denied_friend";
+	| "denied_friend"
+	| "added_keyword_alert"
+	| "removed_keyword_alert"
+	| "changed_time_limit"
+	| "blocked_category"
+	| "unblocked_category"
+	| "viewed_voice_metadata"
+	| "exported_activity_log"
+	| "changed_data_retention"
+	| "restricted_server"
+	| "unrestricted_server";
 
 export interface TransparencyLogEntry {
 	id: string;
@@ -99,9 +109,17 @@ export interface TeenAccount {
 	pendingFriends: FriendApproval[];
 	transparencyLog: TransparencyLogEntry[];
 	restrictions: {
-		serverWhitelist?: string[]; // Only for level 4
-		timeLimit?: number; // Hours per day, only for level 4
-		allowedHours?: { start: number; end: number }; // Only for level 4
+		serverWhitelist?: string[];
+		timeLimit?: number;
+		allowedHours?: { start: number; end: number };
+		keywordAlerts?: KeywordAlert[];
+		keywordAlertMatches?: KeywordAlertMatch[];
+		blockedCategories?: BlockedCategory[];
+		timeLimitConfig?: TimeLimitConfig;
+		screenTimeHistory?: ScreenTimeEntry[];
+		voiceCallHistory?: VoiceCallMetadata[];
+		dashboardSettings?: ParentDashboardSettings;
+		restrictedServers?: string[];
 	};
 	createdAt: Date;
 	lastActivityAt: Date;
@@ -113,6 +131,93 @@ export interface MonitoringLevelInfo {
 	description: string;
 	features: string[];
 	color: string; // OKLCH color
+}
+
+// Voice call metadata (NO audio content - privacy first)
+export interface VoiceCallMetadata {
+	id: string;
+	channelId: string;
+	channelName: string;
+	serverId: string;
+	serverName: string;
+	startTime: Date;
+	endTime: Date;
+	duration: number; // seconds
+	participants: Array<{
+		userId: string;
+		username: string;
+		displayName: string;
+		joinedAt: Date;
+		leftAt: Date;
+	}>;
+}
+
+export interface KeywordAlert {
+	id: string;
+	keyword: string;
+	isRegex: boolean;
+	isActive: boolean;
+	severity: "low" | "medium" | "high";
+	createdAt: Date;
+	matchCount: number;
+	lastMatchAt?: Date;
+}
+
+export interface KeywordAlertMatch {
+	id: string;
+	alertId: string;
+	keyword: string;
+	channelId: string;
+	channelName: string;
+	serverId: string;
+	serverName: string;
+	snippet: string;
+	timestamp: Date;
+	dismissed: boolean;
+}
+
+export interface BlockedCategory {
+	id: string;
+	name: string;
+	description: string;
+	isActive: boolean;
+	icon: string;
+}
+
+export interface TimeLimitConfig {
+	dailyLimitMinutes: number;
+	weekdaySchedule: { start: string; end: string } | null; // "HH:MM"
+	weekendSchedule: { start: string; end: string } | null;
+	isActive: boolean;
+	overrideUntil?: Date;
+}
+
+export interface ScreenTimeEntry {
+	date: string; // ISO date
+	totalMinutes: number;
+	activeMinutes: number;
+	idleMinutes: number;
+	serverBreakdown: Array<{
+		serverId: string;
+		serverName: string;
+		minutes: number;
+	}>;
+	voiceTotalMinutes: number;
+}
+
+export interface DataRetentionSettings {
+	activityLogRetentionDays: number;
+	messageAccessRetentionDays: number;
+	voiceMetadataRetentionDays: number;
+	autoDeleteEnabled: boolean;
+}
+
+export interface ParentDashboardSettings {
+	emailNotifications: boolean;
+	pushNotifications: boolean;
+	dailyDigest: boolean;
+	alertThreshold: "all" | "medium-high" | "high-only";
+	dataRetention: DataRetentionSettings;
 }
 
 export const MONITORING_LEVELS: Record<MonitoringLevel, MonitoringLevelInfo> = {

@@ -22,7 +22,7 @@ export function DMItem({ dm, isActive }: DMItemProps) {
 
 	const handleClick = () => {
 		setCurrentDm(dm.id);
-		router.push(`/channels/@me/${dm.id}`);
+		router.push(`/dms/${dm.id}`);
 	};
 
 	// Format last message timestamp
@@ -122,6 +122,7 @@ export function DMItem({ dm, isActive }: DMItemProps) {
 			<div
 				role="button"
 				tabIndex={0}
+				aria-label={`Close conversation with ${dm.participants[0]?.username || "user"}`}
 				className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
 				onClick={(e) => {
 					e.stopPropagation();

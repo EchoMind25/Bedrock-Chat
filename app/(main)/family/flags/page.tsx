@@ -28,7 +28,9 @@ const flagTypeIcons = {
 };
 
 export default function FamilyFlagsPage() {
-	const { getSelectedTeenAccount, dismissFlag, addressFlag } = useFamilyStore();
+	const getSelectedTeenAccount = useFamilyStore((s) => s.getSelectedTeenAccount);
+	const dismissFlag = useFamilyStore((s) => s.dismissFlag);
+	const addressFlag = useFamilyStore((s) => s.addressFlag);
 
 	const teenAccount = getSelectedTeenAccount();
 

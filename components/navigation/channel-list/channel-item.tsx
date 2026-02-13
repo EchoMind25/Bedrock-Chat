@@ -141,6 +141,7 @@ export function ChannelItem({ channel, isActive }: ChannelItemProps) {
 					<div
 						role="button"
 						tabIndex={0}
+						aria-label={`Settings for ${channel.name}`}
 						className="p-1 hover:bg-white/10 rounded transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
 						onClick={(e) => {
 							e.stopPropagation();

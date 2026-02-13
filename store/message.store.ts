@@ -229,26 +229,24 @@ export const useMessageStore = create<MessageState>()(
       },
 
       setTyping: (channelId, username) => {
-        set((state) => {
-          const current = state.typingUsers[channelId] || [];
-          if (current.includes(username)) return state;
+        const current = get().typingUsers[channelId] || [];
+        if (current.includes(username)) return;
 
-          setTimeout(() => {
-            set((s) => ({
-              typingUsers: {
-                ...s.typingUsers,
-                [channelId]: (s.typingUsers[channelId] || []).filter(u => u !== username),
-              },
-            }));
-          }, 3000);
+        set((state) => ({
+          typingUsers: {
+            ...state.typingUsers,
+            [channelId]: [...(state.typingUsers[channelId] || []), username],
+          },
+        }));
 
-          return {
+        setTimeout(() => {
+          set((s) => ({
             typingUsers: {
-              ...state.typingUsers,
-              [channelId]: [...current, username],
+              ...s.typingUsers,
+              [channelId]: (s.typingUsers[channelId] || []).filter(u => u !== username),
             },
-          };
-        });
+          }));
+        }, 3000);
       },
     }),
     { name: 'MessageStore' }

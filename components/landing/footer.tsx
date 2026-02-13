@@ -6,21 +6,21 @@ import Link from "next/link";
 const footerLinks = {
   product: [
     { label: "Features", href: "#features" },
-    { label: "Pricing", href: "/pricing" },
-    { label: "Roadmap", href: "/roadmap" },
-    { label: "Changelog", href: "/changelog" },
+    { label: "Pricing", href: "#" },
+    { label: "Roadmap", href: "#" },
+    { label: "Changelog", href: "#" },
   ],
   legal: [
-    { label: "Privacy Policy", href: "/privacy" },
-    { label: "Terms of Service", href: "/terms" },
-    { label: "Cookie Policy", href: "/cookies" },
-    { label: "GDPR", href: "/gdpr" },
+    { label: "Privacy Policy", href: "#" },
+    { label: "Terms of Service", href: "#" },
+    { label: "Cookie Policy", href: "#" },
+    { label: "GDPR", href: "#" },
   ],
   community: [
     { label: "Open Source", href: "https://github.com" },
-    { label: "Documentation", href: "/docs" },
-    { label: "Blog", href: "/blog" },
-    { label: "Contact", href: "/contact" },
+    { label: "Documentation", href: "#" },
+    { label: "Blog", href: "#" },
+    { label: "Contact", href: "#" },
   ],
 };
 

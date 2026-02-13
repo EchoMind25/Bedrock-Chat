@@ -14,6 +14,10 @@ import { PortalOverlay } from "@/components/navigation/portal-overlay";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { useIdleDetection } from "@/lib/hooks/use-idle-detection";
 import { usePerformanceMonitor } from "@/lib/hooks/use-performance-monitor";
+import { initPerformanceMonitoring } from "@/store/performance.store";
+import { PerformanceMonitor } from "@/lib/performance/monitoring";
+import { PerformanceOverlay } from "@/components/performance/PerformanceOverlay";
+import { PerformanceDashboard } from "@/components/performance/PerformanceDashboard";
 
 export default function MainLayout({
 	children,
@@ -31,6 +35,12 @@ export default function MainLayout({
 	const isIdle = useIdleDetection();
 	usePerformanceMonitor();
 
+	// Initialize enhanced performance monitoring pipeline
+	useEffect(() => {
+		const cleanup = initPerformanceMonitoring();
+		return cleanup;
+	}, []);
+
 	useEffect(() => {
 		const root = document.documentElement;
 		if (isIdle) {
@@ -39,6 +49,9 @@ export default function MainLayout({
 			root.classList.remove("idle");
 		}
 		useUIStore.getState().setIdle(isIdle);
+
+		// Sync idle state to performance monitor for threshold switching
+		PerformanceMonitor.getInstance().setIdleState(isIdle);
 	}, [isIdle]);
 
 	// Coordinated initialization: auth first, then data stores
@@ -54,14 +67,18 @@ export default function MainLayout({
 			const { isAuthenticated: authed } = useAuthStore.getState();
 			if (!authed) return;
 
-			// Step 3: Init stores in parallel via getState() (no subscriptions needed)
+			// Step 3: Init stores in parallel and await them
 			const serverState = useServerStore.getState();
 			const friendsState = useFriendsStore.getState();
 			const dmState = useDMStore.getState();
 
-			if (!serverState.isInitialized) serverState.init();
-			if (!friendsState.isInitialized) friendsState.init();
-			if (!dmState.isInitialized) dmState.init();
+			const promises: Promise<void>[] = [];
+			if (!serverState.isInitialized) promises.push(serverState.loadServers());
+			if (!friendsState.isInitialized) { friendsState.init(); }
+			if (!dmState.isInitialized) { dmState.init(); }
+
+			// Await server loading so child pages can rely on isInitialized
+			if (promises.length > 0) await Promise.all(promises);
 		}
 
 		initialize();
@@ -112,6 +129,14 @@ export default function MainLayout({
 
 	return (
 		<div className="flex h-screen overflow-hidden bg-[oklch(0.12_0.02_250)]">
+			{/* Skip to main content link for keyboard users */}
+			<a
+				href="#main-content"
+				className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded-lg focus:text-sm focus:font-medium"
+			>
+				Skip to main content
+			</a>
+
 			{/* Server List - 72px */}
 			<ErrorBoundary level="feature" name="ServerList">
 				<div className="relative z-10">
@@ -129,11 +154,15 @@ export default function MainLayout({
 
 			{/* Main Content Area - Flexible */}
 			<ErrorBoundary level="page" name="MainContent">
-				<main className="relative z-20 flex-1 flex flex-col overflow-hidden">{children}</main>
+				<main id="main-content" className="relative z-20 flex-1 flex flex-col overflow-hidden">{children}</main>
 			</ErrorBoundary>
 
 			{/* Portal transition overlay */}
 			<PortalOverlay />
+
+			{/* Performance monitoring overlays */}
+			<PerformanceOverlay />
+			<PerformanceDashboard />
 		</div>
 	);
 }

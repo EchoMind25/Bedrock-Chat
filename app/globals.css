@@ -327,6 +327,120 @@
   background: oklch(0.4 0.02 265 / 0.6);
 }
 
+/* ============================================
+   World Formation Login Sequence
+   ============================================ */
+
+@keyframes structure-rise {
+  from {
+    transform: translateY(100%) scaleY(0.5);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes light-bloom {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+    filter: blur(30px);
+  }
+  to {
+    opacity: 0.6;
+    transform: scale(1);
+    filter: blur(20px);
+  }
+}
+
+@keyframes mist-drift {
+  0%,
+  100% {
+    transform: translateX(-5%);
+  }
+  50% {
+    transform: translateX(5%);
+  }
+}
+
+@keyframes portal-ring-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 40px oklch(0.55 0.25 265 / 0.4),
+      0 0 80px oklch(0.55 0.25 265 / 0.2);
+  }
+  50% {
+    box-shadow: 0 0 60px oklch(0.55 0.25 265 / 0.6),
+      0 0 120px oklch(0.55 0.25 265 / 0.3);
+  }
+}
+
+@keyframes star-twinkle {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ── Points System Keyframes ────────────────────────────── */
+
+@keyframes points-pop {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes points-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes points-float-up {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-40px) scale(0.8);
+    opacity: 0;
+  }
+}
+
+@keyframes ring-fill {
+  from {
+    stroke-dashoffset: var(--ring-circumference, 88);
+  }
+  to {
+    stroke-dashoffset: var(--ring-offset, 0);
+  }
+}
+
+@keyframes hint-pulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animated-gradient,
   .liquid-glass,
@@ -351,6 +465,65 @@
       opacity: 0.7;
     }
   }
+
+  @keyframes structure-rise {
+    from, to {
+      transform: none;
+      opacity: 1;
+    }
+  }
+
+  @keyframes light-bloom {
+    from, to {
+      opacity: 0.6;
+      transform: none;
+      filter: none;
+    }
+  }
+
+  @keyframes mist-drift {
+    from, to {
+      transform: none;
+    }
+  }
+
+  @keyframes portal-ring-glow {
+    from, to {
+      box-shadow: 0 0 40px oklch(0.55 0.25 265 / 0.4);
+    }
+  }
+
+  @keyframes star-twinkle {
+    from, to {
+      opacity: 0.7;
+    }
+  }
+
+  @keyframes points-pop {
+    from, to {
+      transform: none;
+      opacity: 1;
+    }
+  }
+
+  @keyframes points-shimmer {
+    from, to {
+      background-position: center;
+    }
+  }
+
+  @keyframes points-float-up {
+    from, to {
+      transform: none;
+      opacity: 1;
+    }
+  }
+
+  @keyframes hint-pulse {
+    from, to {
+      opacity: 0.5;
+    }
+  }
 }
 
 /* ── Idle State: pause CSS animations to save CPU ──────── */
@@ -363,4 +536,112 @@ html.idle .liquid-border::before {
 
 html.idle .glow-pulse {
   animation-play-state: paused !important;
+}
+
+/* Pause points system animations when idle */
+html.idle [data-points-animation],
+html.idle [data-presence-trail] {
+  animation-play-state: paused !important;
+  transition: none !important;
+}
+
+/* Reduce will-change and compositing layers when idle */
+html.idle .will-change-transform {
+  will-change: auto !important;
+}
+
+/* ============================================
+   Parent Dashboard - Light Theme
+   ============================================ */
+
+.parent-dashboard {
+  --pd-bg: oklch(0.97 0.005 250);
+  --pd-bg-secondary: oklch(0.94 0.008 250);
+  --pd-surface: oklch(1.0 0 0);
+  --pd-text: oklch(0.20 0.02 250);
+  --pd-text-secondary: oklch(0.35 0.015 250);
+  --pd-text-muted: oklch(0.50 0.015 250);
+  --pd-border: oklch(0.88 0.01 250);
+  --pd-border-hover: oklch(0.80 0.015 250);
+  --pd-primary: oklch(0.55 0.15 240);
+  --pd-primary-light: oklch(0.92 0.04 240);
+  --pd-primary-hover: oklch(0.50 0.15 240);
+  --pd-success: oklch(0.55 0.15 155);
+  --pd-success-light: oklch(0.92 0.04 155);
+  --pd-warning: oklch(0.60 0.15 85);
+  --pd-warning-light: oklch(0.92 0.04 85);
+  --pd-danger: oklch(0.55 0.18 25);
+  --pd-danger-light: oklch(0.92 0.04 25);
+  --pd-accent: oklch(0.55 0.12 170);
+  --pd-sidebar: oklch(0.99 0.003 250);
+  --pd-sidebar-active: oklch(0.94 0.02 240);
+
+  background-color: var(--pd-bg);
+  color: var(--pd-text);
+  min-height: 100vh;
+}
+
+.parent-dashboard.pd-dark {
+  --pd-bg: oklch(0.13 0.01 250);
+  --pd-bg-secondary: oklch(0.10 0.01 250);
+  --pd-surface: oklch(0.17 0.01 250);
+  --pd-text: oklch(0.92 0.005 250);
+  --pd-text-secondary: oklch(0.75 0.008 250);
+  --pd-text-muted: oklch(0.58 0.01 250);
+  --pd-border: oklch(0.25 0.01 250);
+  --pd-border-hover: oklch(0.32 0.015 250);
+  --pd-primary: oklch(0.60 0.15 240);
+  --pd-primary-light: oklch(0.22 0.04 240);
+  --pd-primary-hover: oklch(0.65 0.15 240);
+  --pd-success: oklch(0.60 0.15 155);
+  --pd-success-light: oklch(0.20 0.04 155);
+  --pd-warning: oklch(0.65 0.15 85);
+  --pd-warning-light: oklch(0.20 0.04 85);
+  --pd-danger: oklch(0.60 0.18 25);
+  --pd-danger-light: oklch(0.20 0.04 25);
+  --pd-accent: oklch(0.60 0.12 170);
+  --pd-sidebar: oklch(0.15 0.008 250);
+  --pd-sidebar-active: oklch(0.22 0.02 240);
+}
+
+.pd-card {
+  background-color: var(--pd-surface);
+  border: 1px solid var(--pd-border);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px oklch(0 0 0 / 0.05), 0 1px 2px oklch(0 0 0 / 0.03);
+  transition: box-shadow 0.2s ease;
+}
+
+.pd-card-hover:hover {
+  box-shadow: 0 4px 12px oklch(0 0 0 / 0.08), 0 2px 4px oklch(0 0 0 / 0.04);
+}
+
+.pd-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.pd-scrollbar::-webkit-scrollbar-track {
+  background: var(--pd-bg-secondary);
+  border-radius: 3px;
+}
+.pd-scrollbar::-webkit-scrollbar-thumb {
+  background: oklch(0.78 0.01 250);
+  border-radius: 3px;
+}
+.pd-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.68 0.01 250);
+}
+
+@media print {
+  .parent-dashboard .pd-no-print {
+    display: none !important;
+  }
+  .parent-dashboard {
+    background: white !important;
+    color: black !important;
+  }
+  .pd-card {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+    break-inside: avoid;
+  }
 }

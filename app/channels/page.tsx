@@ -6,16 +6,20 @@ import { useAuthStore } from "@/store/auth.store";
 
 export default function ChannelsPage() {
 	const router = useRouter();
-	const { isAuthenticated } = useAuthStore();
+	const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+	const isInitializing = useAuthStore((s) => s.isInitializing);
 
 	useEffect(() => {
+		// Wait for auth check to complete before deciding where to redirect
+		if (isInitializing) return;
+
 		if (!isAuthenticated) {
 			router.push("/login");
 		} else {
 			// Redirect to main app layout
 			router.push("/friends");
 		}
-	}, [isAuthenticated, router]);
+	}, [isAuthenticated, isInitializing, router]);
 
 	return (
 		<div className="min-h-screen bg-[oklch(0.12_0.02_250)] flex items-center justify-center">

@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useCallback } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { useUIStore } from "@/store/ui.store";
 import { getPerformanceTier } from "@/lib/utils/webgl";
 
+const PORTAL_DURATION_MS = 280;
+
 /**
  * Fullscreen portal transition overlay shown during server switching.
  * Performance-tiered: high (particles + depth), medium (color morph), low (fade).
+ * Auto-dismisses after PORTAL_DURATION_MS.
  */
 export function PortalOverlay() {
 	const isTransitioning = useUIStore((s) => s.isPortalTransitioning);
@@ -16,18 +19,33 @@ export function PortalOverlay() {
 	const sourceColor = useUIStore((s) => s.portalSourceColor);
 	const isIdle = useUIStore((s) => s.isIdle);
 	const endPortalTransition = useUIStore((s) => s.endPortalTransition);
+	const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const tier = useMemo(() => {
 		if (typeof window === "undefined") return "low";
 		return getPerformanceTier();
 	}, []);
 
-	// Escape key dismisses portal
+	// Auto-dismiss after the visual transition completes
+	useEffect(() => {
+		if (!isTransitioning) return;
+
+		timerRef.current = setTimeout(() => {
+			endPortalTransition();
+		}, PORTAL_DURATION_MS);
+
+		return () => {
+			if (timerRef.current) clearTimeout(timerRef.current);
+		};
+	}, [isTransitioning, endPortalTransition]);
+
+	// Escape key dismisses portal early
 	useEffect(() => {
 		if (!isTransitioning) return;
 
 		const handleKeyDown = (e: KeyboardEvent) => {
 			if (e.key === "Escape") {
+				if (timerRef.current) clearTimeout(timerRef.current);
 				endPortalTransition();
 			}
 		};
@@ -35,10 +53,6 @@ export function PortalOverlay() {
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
 	}, [isTransitioning, endPortalTransition]);
-
-	const handleAnimationComplete = useCallback(() => {
-		endPortalTransition();
-	}, [endPortalTransition]);
 
 	if (typeof document === "undefined") return null;
 
@@ -53,8 +67,7 @@ export function PortalOverlay() {
 					initial={{ opacity: 0 }}
 					animate={{ opacity: 1 }}
 					exit={{ opacity: 0 }}
-					transition={{ duration: 0.05 }}
-					onAnimationComplete={handleAnimationComplete}
+					transition={{ duration: 0.08 }}
 				>
 					{/* Backdrop */}
 					<motion.div
@@ -65,7 +78,7 @@ export function PortalOverlay() {
 						initial={{ opacity: 0 }}
 						animate={{ opacity: 0.85 }}
 						exit={{ opacity: 0 }}
-						transition={{ duration: 0.1 }}
+						transition={{ duration: 0.12 }}
 					/>
 
 					{/* Liquid glass overlay */}

@@ -8,6 +8,9 @@ import type {
 	ServerApproval,
 	FriendApproval,
 	TransparencyLogEntry,
+	KeywordAlert,
+	TimeLimitConfig,
+	ParentDashboardSettings,
 } from "@/lib/types/family";
 import type { User } from "@/store/auth.store";
 import { createClient } from "@/lib/supabase/client";
@@ -52,6 +55,27 @@ interface FamilyState {
 	denyFriend: (teenId: string, approvalId: string) => void;
 	dismissFlag: (teenId: string, flagId: string) => void;
 	addressFlag: (teenId: string, flagId: string) => void;
+
+	// Actions - Parent (keyword alerts)
+	addKeywordAlert: (teenId: string, keyword: string, severity: "low" | "medium" | "high") => void;
+	removeKeywordAlert: (teenId: string, alertId: string) => void;
+	toggleKeywordAlert: (teenId: string, alertId: string) => void;
+	dismissKeywordMatch: (teenId: string, matchId: string) => void;
+
+	// Actions - Parent (time limits)
+	setTimeLimit: (teenId: string, config: TimeLimitConfig) => void;
+	removeTimeLimit: (teenId: string) => void;
+
+	// Actions - Parent (categories)
+	toggleBlockedCategory: (teenId: string, categoryId: string) => void;
+
+	// Actions - Parent (server restrictions)
+	restrictServer: (teenId: string, serverId: string, serverName: string) => void;
+	unrestrictServer: (teenId: string, serverId: string, serverName: string) => void;
+
+	// Actions - Parent (logging)
+	viewVoiceMetadata: (teenId: string) => void;
+	logExportActivity: (teenId: string) => void;
 
 	// Actions - Teen
 	getMyTransparencyLog: () => TransparencyLogEntry[];
@@ -523,6 +547,256 @@ export const useFamilyStore = create<FamilyState>()(
 											f.id === flagId ? { ...f, status: "addressed" } : f,
 										),
 									}
+								: ta,
+						),
+					}));
+				},
+
+				// Parent: Add keyword alert
+				addKeywordAlert: (teenId, keyword, severity) => {
+					const newAlert: KeywordAlert = {
+						id: `alert-${Date.now()}`,
+						keyword,
+						isRegex: false,
+						isActive: true,
+						severity,
+						createdAt: new Date(),
+						matchCount: 0,
+					};
+					const logEntry: TransparencyLogEntry = {
+						id: `log-${Date.now()}`,
+						action: "added_keyword_alert",
+						details: "Parent added keyword alert",
+						timestamp: new Date(),
+					};
+					set((state) => ({
+						teenAccounts: state.teenAccounts.map((ta) =>
+							ta.id === teenId
+								? {
+										...ta,
+										restrictions: {
+											...ta.restrictions,
+											keywordAlerts: [...(ta.restrictions.keywordAlerts || []), newAlert],
+										},
+										transparencyLog: [logEntry, ...ta.transparencyLog],
+									}
+								: ta,
+						),
+					}));
+				},
+
+				// Parent: Remove keyword alert
+				removeKeywordAlert: (teenId, alertId) => {
+					const logEntry: TransparencyLogEntry = {
+						id: `log-${Date.now()}`,
+						action: "removed_keyword_alert",
+						details: "Parent removed keyword alert",
+						timestamp: new Date(),
+					};
+					set((state) => ({
+						teenAccounts: state.teenAccounts.map((ta) =>
+							ta.id === teenId
+								? {
+										...ta,
+										restrictions: {
+											...ta.restrictions,
+											keywordAlerts: (ta.restrictions.keywordAlerts || []).filter((a) => a.id !== alertId),
+										},
+										transparencyLog: [logEntry, ...ta.transparencyLog],
+									}
+								: ta,
+						),
+					}));
+				},
+
+				// Parent: Toggle keyword alert
+				toggleKeywordAlert: (teenId, alertId) => {
+					set((state) => ({
+						teenAccounts: state.teenAccounts.map((ta) =>
+							ta.id === teenId
+								? {
+										...ta,
+										restrictions: {
+											...ta.restrictions,
+											keywordAlerts: (ta.restrictions.keywordAlerts || []).map((a) =>
+												a.id === alertId ? { ...a, isActive: !a.isActive } : a,
+											),
+										},
+									}
+								: ta,
+						),
+					}));
+				},
+
+				// Parent: Dismiss keyword match
+				dismissKeywordMatch: (teenId, matchId) => {
+					set((state) => ({
+						teenAccounts: state.teenAccounts.map((ta) =>
+							ta.id === teenId
+								? {
+										...ta,
+										restrictions: {
+											...ta.restrictions,
+											keywordAlertMatches: (ta.restrictions.keywordAlertMatches || []).map((m) =>
+												m.id === matchId ? { ...m, dismissed: true } : m,
+											),
+										},
+									}
+								: ta,
+						),
+					}));
+				},
+
+				// Parent: Set time limit
+				setTimeLimit: (teenId, config) => {
+					const logEntry: TransparencyLogEntry = {
+						id: `log-${Date.now()}`,
+						action: "changed_time_limit",
+						details: `Parent updated time limits (${config.dailyLimitMinutes} min/day)`,
+						timestamp: new Date(),
+					};
+					set((state) => ({
+						teenAccounts: state.teenAccounts.map((ta) =>
+							ta.id === teenId
+								? {
+										...ta,
+										restrictions: { ...ta.restrictions, timeLimitConfig: config },
+										transparencyLog: [logEntry, ...ta.transparencyLog],
+									}
+								: ta,
+						),
+					}));
+				},
+
+				// Parent: Remove time limit
+				removeTimeLimit: (teenId) => {
+					const logEntry: TransparencyLogEntry = {
+						id: `log-${Date.now()}`,
+						action: "changed_time_limit",
+						details: "Parent removed time limits",
+						timestamp: new Date(),
+					};
+					set((state) => ({
+						teenAccounts: state.teenAccounts.map((ta) =>
+							ta.id === teenId
+								? {
+										...ta,
+										restrictions: { ...ta.restrictions, timeLimitConfig: undefined },
+										transparencyLog: [logEntry, ...ta.transparencyLog],
+									}
+								: ta,
+						),
+					}));
+				},
+
+				// Parent: Toggle blocked category
+				toggleBlockedCategory: (teenId, categoryId) => {
+					set((state) => ({
+						teenAccounts: state.teenAccounts.map((ta) => {
+							if (ta.id !== teenId) return ta;
+							const categories = ta.restrictions.blockedCategories || [];
+							const cat = categories.find((c) => c.id === categoryId);
+							if (!cat) return ta;
+							const action = cat.isActive ? "unblocked_category" : "blocked_category";
+							const logEntry: TransparencyLogEntry = {
+								id: `log-${Date.now()}`,
+								action,
+								details: `Parent ${cat.isActive ? "unblocked" : "blocked"} category: ${cat.name}`,
+								timestamp: new Date(),
+							};
+							return {
+								...ta,
+								restrictions: {
+									...ta.restrictions,
+									blockedCategories: categories.map((c) =>
+										c.id === categoryId ? { ...c, isActive: !c.isActive } : c,
+									),
+								},
+								transparencyLog: [logEntry, ...ta.transparencyLog],
+							};
+						}),
+					}));
+				},
+
+				// Parent: Restrict server
+				restrictServer: (teenId, serverId, serverName) => {
+					const logEntry: TransparencyLogEntry = {
+						id: `log-${Date.now()}`,
+						action: "restricted_server",
+						details: `Parent restricted server: ${serverName}`,
+						timestamp: new Date(),
+						metadata: { serverId, serverName },
+					};
+					set((state) => ({
+						teenAccounts: state.teenAccounts.map((ta) =>
+							ta.id === teenId
+								? {
+										...ta,
+										restrictions: {
+											...ta.restrictions,
+											restrictedServers: [...(ta.restrictions.restrictedServers || []), serverId],
+										},
+										transparencyLog: [logEntry, ...ta.transparencyLog],
+									}
+								: ta,
+						),
+					}));
+				},
+
+				// Parent: Unrestrict server
+				unrestrictServer: (teenId, serverId, serverName) => {
+					const logEntry: TransparencyLogEntry = {
+						id: `log-${Date.now()}`,
+						action: "unrestricted_server",
+						details: `Parent unrestricted server: ${serverName}`,
+						timestamp: new Date(),
+						metadata: { serverId, serverName },
+					};
+					set((state) => ({
+						teenAccounts: state.teenAccounts.map((ta) =>
+							ta.id === teenId
+								? {
+										...ta,
+										restrictions: {
+											...ta.restrictions,
+											restrictedServers: (ta.restrictions.restrictedServers || []).filter((id) => id !== serverId),
+										},
+										transparencyLog: [logEntry, ...ta.transparencyLog],
+									}
+								: ta,
+						),
+					}));
+				},
+
+				// Parent: Log voice metadata access
+				viewVoiceMetadata: (teenId) => {
+					const logEntry: TransparencyLogEntry = {
+						id: `log-${Date.now()}`,
+						action: "viewed_voice_metadata",
+						details: "Parent viewed voice call metadata",
+						timestamp: new Date(),
+					};
+					set((state) => ({
+						teenAccounts: state.teenAccounts.map((ta) =>
+							ta.id === teenId
+								? { ...ta, transparencyLog: [logEntry, ...ta.transparencyLog] }
+								: ta,
+						),
+					}));
+				},
+
+				// Parent: Log export
+				logExportActivity: (teenId) => {
+					const logEntry: TransparencyLogEntry = {
+						id: `log-${Date.now()}`,
+						action: "exported_activity_log",
+						details: "Parent exported activity log",
+						timestamp: new Date(),
+					};
+					set((state) => ({
+						teenAccounts: state.teenAccounts.map((ta) =>
+							ta.id === teenId
+								? { ...ta, transparencyLog: [logEntry, ...ta.transparencyLog] }
 								: ta,
 						),
 					}));

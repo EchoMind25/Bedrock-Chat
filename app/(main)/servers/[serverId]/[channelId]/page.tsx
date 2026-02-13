@@ -28,18 +28,18 @@ export default function ChannelPage({ params }: PageProps) {
 	// Use individual selectors to prevent re-renders from unrelated state changes
 	const setCurrentServer = useServerStore((s) => s.setCurrentServer);
 	const setCurrentChannel = useServerStore((s) => s.setCurrentChannel);
-	const currentServerId = useServerStore((s) => s.currentServerId);
-	const currentChannelId = useServerStore((s) => s.currentChannelId);
 	const servers = useServerStore((s) => s.servers);
+	const isInitialized = useServerStore((s) => s.isInitialized);
 
-	// Derive server and channel from stable selectors
+	// Derive server and channel from URL params directly (not store currentIds)
+	// This prevents race conditions where the store hasn't updated yet
 	const server = useMemo(
-		() => servers.find((s) => s.id === currentServerId),
-		[servers, currentServerId]
+		() => servers.find((s) => s.id === serverId),
+		[servers, serverId]
 	);
 	const channel = useMemo(
-		() => server?.channels.find((c) => c.id === currentChannelId),
-		[server, currentChannelId]
+		() => server?.channels.find((c) => c.id === channelId),
+		[server, channelId]
 	);
 
 	// Update store when URL changes
@@ -49,6 +49,15 @@ export default function ChannelPage({ params }: PageProps) {
 			setCurrentChannel(channelId);
 		}
 	}, [serverId, channelId, setCurrentServer, setCurrentChannel]);
+
+	// Show loading skeleton while stores are initializing
+	if (!isInitialized) {
+		return (
+			<div className="flex-1 flex flex-col bg-[oklch(0.14_0.02_250)]">
+				<ChannelLoadingSkeleton />
+			</div>
+		);
+	}
 
 	if (!server || !channel) {
 		return (
