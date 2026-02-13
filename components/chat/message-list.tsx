@@ -13,6 +13,7 @@ interface MessageListProps {
 
 export function MessageList({ channelId }: MessageListProps) {
 	const parentRef = useRef<HTMLDivElement>(null);
+	const initializedRef = useRef<Set<string>>(new Set());
 	const messages = useMessageStore((s) => s.messages);
 	const isLoading = useMessageStore((s) => s.isLoading);
 	const typingUsers = useMessageStore((s) => s.typingUsers);
@@ -21,12 +22,23 @@ export function MessageList({ channelId }: MessageListProps) {
 
 	// Load messages and subscribe to real-time updates
 	useEffect(() => {
+		// Prevent multiple initializations for the same channel
+		if (initializedRef.current.has(channelId)) {
+			console.log('[MessageList] Already initialized channel:', channelId);
+			return;
+		}
+
+		console.log('[MessageList] Initializing channel:', channelId);
+		initializedRef.current.add(channelId);
+
 		// Call store methods directly to avoid unstable references
 		useMessageStore.getState().loadMessages(channelId);
 		useMessageStore.getState().subscribeToChannel(channelId);
 
 		// Cleanup subscription when channel changes or component unmounts
 		return () => {
+			console.log('[MessageList] Cleaning up channel:', channelId);
+			initializedRef.current.delete(channelId);
 			useMessageStore.getState().unsubscribeFromChannel(channelId);
 		};
 	}, [channelId]); // Only depend on channelId

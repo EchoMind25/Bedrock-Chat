@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 interface MessageState {
   messages: Record<string, Message[]>; // channelId -> messages
   isLoading: boolean;
+  loadingChannels: Set<string>; // Track which channels are currently loading
   typingUsers: Record<string, string[]>; // channelId -> usernames
   subscriptions: Record<string, () => void>; // channelId -> cleanup function
 
@@ -27,13 +28,18 @@ export const useMessageStore = create<MessageState>()(
     (set, get) => ({
       messages: {},
       isLoading: false,
+      loadingChannels: new Set(),
       typingUsers: {},
       subscriptions: {},
 
       subscribeToChannel: (channelId) => {
         // Don't subscribe twice
-        if (get().subscriptions[channelId]) return;
+        if (get().subscriptions[channelId]) {
+          console.log('[MessageStore] Already subscribed to channel:', channelId);
+          return;
+        }
 
+        console.log('[MessageStore] Subscribing to channel:', channelId);
         const supabase = createClient();
         const channel = supabase
           .channel(`messages:${channelId}`)
@@ -155,9 +161,23 @@ export const useMessageStore = create<MessageState>()(
       },
 
       loadMessages: async (channelId) => {
-        if (get().messages[channelId]) return;
+        // Check if already loading or already loaded
+        const state = get();
+        if (state.messages[channelId] !== undefined) {
+          console.log('[MessageStore] Messages already loaded for channel:', channelId);
+          return;
+        }
+        if (state.loadingChannels.has(channelId)) {
+          console.log('[MessageStore] Already loading messages for channel:', channelId);
+          return;
+        }
 
-        set({ isLoading: true });
+        console.log('[MessageStore] Loading messages for channel:', channelId);
+
+        // Mark this channel as loading
+        const newLoadingChannels = new Set(state.loadingChannels);
+        newLoadingChannels.add(channelId);
+        set({ isLoading: true, loadingChannels: newLoadingChannels });
 
         try {
           const supabase = createClient();
@@ -195,15 +215,21 @@ export const useMessageStore = create<MessageState>()(
             type: (msg.type as Message['type']) || 'default',
           }));
 
+          const newLoadingChannels = new Set(get().loadingChannels);
+          newLoadingChannels.delete(channelId);
           set((state) => ({
             messages: { ...state.messages, [channelId]: messages },
             isLoading: false,
+            loadingChannels: newLoadingChannels,
           }));
         } catch (err) {
           console.error('Error loading messages:', err);
+          const newLoadingChannels = new Set(get().loadingChannels);
+          newLoadingChannels.delete(channelId);
           set((state) => ({
             messages: { ...state.messages, [channelId]: [] },
             isLoading: false,
+            loadingChannels: newLoadingChannels,
           }));
         }
       },
