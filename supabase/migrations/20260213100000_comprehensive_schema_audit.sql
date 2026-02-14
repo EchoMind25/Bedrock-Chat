@@ -125,8 +125,7 @@ CREATE TABLE IF NOT EXISTS points_transactions (
 );
 
 CREATE INDEX idx_points_tx_user ON points_transactions (user_id, created_at DESC);
-CREATE INDEX idx_points_tx_daily ON points_transactions (user_id, created_at)
-  WHERE created_at > NOW() - INTERVAL '24 hours';
+-- Removed idx_points_tx_daily - NOW() is not IMMUTABLE and can't be used in index predicates
 
 -- ============================================================================
 -- TABLE: user_achievements
