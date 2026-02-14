@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth.store";
 import { useServerStore } from "@/store/server.store";
@@ -14,11 +14,16 @@ import { UserPanel } from "@/components/navigation/user-panel/user-panel";
 import { MobileNav } from "@/components/navigation/mobile-nav";
 import { PortalOverlay } from "@/components/navigation/portal-overlay";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { ErrorRecovery } from "@/components/error-recovery";
 import { useIdleDetection } from "@/lib/hooks/use-idle-detection";
 import { initPerformanceMonitoring } from "@/store/performance.store";
 import { PerformanceMonitor } from "@/lib/performance/monitoring";
 import { PerformanceOverlay } from "@/components/performance/PerformanceOverlay";
 import { PerformanceDashboard } from "@/components/performance/PerformanceDashboard";
+import { logError } from "@/lib/utils/error-logger";
+
+const MAX_INIT_ATTEMPTS = 3;
+const INIT_TIMEOUT_MS = 30000; // 30 seconds
 
 export default function MainLayout({
 	children,
@@ -32,6 +37,10 @@ export default function MainLayout({
 	const user = useAuthStore((s) => s.user);
 	const isInitializing = useAuthStore((s) => s.isInitializing);
 	const serversInitialized = useServerStore((s) => s.isInitialized);
+
+	// Circuit breaker and error recovery state
+	const [initError, setInitError] = useState<string | null>(null);
+	const [loadingStage, setLoadingStage] = useState<"auth" | "servers" | "ready">("auth");
 
 	// Idle detection: pauses CSS animations after 30s of inactivity
 	const isIdle = useIdleDetection();
@@ -68,51 +77,89 @@ export default function MainLayout({
 		let cancelled = false;
 
 		async function initialize() {
-			const authState = useAuthStore.getState();
-			const hasPersistedAuth = authState.isAuthenticated && authState.user;
+			// Check circuit breaker
+			const storedAttempts = parseInt(localStorage.getItem("bedrock-init-attempts") || "0", 10);
+			if (storedAttempts >= MAX_INIT_ATTEMPTS) {
+				setInitError("Too many failed initialization attempts. Please clear cache.");
+				logError("STORE_INIT", new Error("Circuit breaker: max init attempts exceeded"));
+				return;
+			}
 
-			if (hasPersistedAuth) {
-				// Trust persisted auth — render the app immediately instead of
-				// blocking on a network call. Verify session in background.
-				if (authState.isInitializing) {
-					useAuthStore.setState({ isInitializing: false });
+			try {
+				// Increment attempt counter
+				localStorage.setItem("bedrock-init-attempts", String(storedAttempts + 1));
+
+				// Create timeout promise
+				const timeoutPromise = new Promise<never>((_, reject) =>
+					setTimeout(() => reject(new Error("Initialization timeout after 30s")), INIT_TIMEOUT_MS)
+				);
+
+				// Create initialization promise
+				const initPromise = async () => {
+					setLoadingStage("auth");
+					const authState = useAuthStore.getState();
+					const hasPersistedAuth = authState.isAuthenticated && authState.user;
+
+					if (hasPersistedAuth) {
+						// Trust persisted auth — render the app immediately instead of
+						// blocking on a network call. Verify session in background.
+						if (authState.isInitializing) {
+							useAuthStore.setState({ isInitializing: false });
+						}
+						useAuthStore.getState().checkAuth().catch(() => {});
+					} else {
+						// No persisted auth — must wait for verification
+						await useAuthStore.getState().checkAuth();
+						if (cancelled) return;
+					}
+
+					// Step 2: Only init data stores if authenticated
+					const { isAuthenticated: authed } = useAuthStore.getState();
+					if (!authed) return;
+
+					// Step 2.5: DEV MODE - Ensure user is member of all servers (fire-and-forget to not block init)
+					if (process.env.NODE_ENV !== "production") {
+						import("@/lib/dev-mode-helpers")
+							.then(({ ensureUserInAllServers }) => ensureUserInAllServers())
+							.catch(() => {});
+					}
+
+					// Step 3: Init stores (servers awaited, friends/dm fire-and-forget)
+					setLoadingStage("servers");
+					const serverState = useServerStore.getState();
+					const friendsState = useFriendsStore.getState();
+					const dmState = useDMStore.getState();
+
+					const promises: Promise<void>[] = [];
+					if (!serverState.isInitialized) promises.push(serverState.loadServers());
+					// Note: init() methods are synchronous wrappers that kick off async work
+					// They set isInitialized = true internally after loading completes
+					if (!friendsState.isInitialized) friendsState.init();
+					if (!dmState.isInitialized) dmState.init();
+
+					// Await server loading so child pages can rely on server data
+					if (promises.length > 0) await Promise.all(promises);
+
+					setLoadingStage("ready");
+				};
+
+				// Race between initialization and timeout
+				await Promise.race([initPromise(), timeoutPromise]);
+
+				// Success - reset circuit breaker
+				localStorage.removeItem("bedrock-init-attempts");
+			} catch (err) {
+				if (!cancelled) {
+					logError("STORE_INIT", err);
+					setInitError(err instanceof Error ? err.message : "Initialization failed");
 				}
-				useAuthStore.getState().checkAuth().catch(() => {});
-			} else {
-				// No persisted auth — must wait for verification
-				await useAuthStore.getState().checkAuth();
-				if (cancelled) return;
 			}
-
-			// Step 2: Only init data stores if authenticated
-			const { isAuthenticated: authed } = useAuthStore.getState();
-			if (!authed) return;
-
-			// Step 2.5: DEV MODE - Ensure user is member of all servers (fire-and-forget to not block init)
-			if (process.env.NODE_ENV !== 'production') {
-				import('@/lib/dev-mode-helpers')
-					.then(({ ensureUserInAllServers }) => ensureUserInAllServers())
-					.catch(() => {});
-			}
-
-			// Step 3: Init stores (servers awaited, friends/dm fire-and-forget)
-			const serverState = useServerStore.getState();
-			const friendsState = useFriendsStore.getState();
-			const dmState = useDMStore.getState();
-
-			const promises: Promise<void>[] = [];
-			if (!serverState.isInitialized) promises.push(serverState.loadServers());
-			// Note: init() methods are synchronous wrappers that kick off async work
-			// They set isInitialized = true internally after loading completes
-			if (!friendsState.isInitialized) friendsState.init();
-			if (!dmState.isInitialized) dmState.init();
-
-			// Await server loading so child pages can rely on server data
-			if (promises.length > 0) await Promise.all(promises);
 		}
 
 		initialize();
-		return () => { cancelled = true; };
+		return () => {
+			cancelled = true;
+		};
 	}, []);
 
 	// Set up Supabase auth state change listener (token refresh, sign out, etc.)
@@ -133,6 +180,11 @@ export default function MainLayout({
 		}
 	}, [isAuthenticated, isInitializing, router]);
 
+	// Show error recovery UI if initialization failed
+	if (initError) {
+		return <ErrorRecovery error={initError} onRetry={() => window.location.reload()} />;
+	}
+
 	// Show loading while auth is being checked
 	// BUT skip if servers are already loaded (user came from entrance transition)
 	if (isInitializing && !serversInitialized) {
@@ -141,8 +193,15 @@ export default function MainLayout({
 				<div className="text-center">
 					<div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
 					<p className="mt-4 text-white/60">
-						Loading Bedrock Chat...
+						{loadingStage === "auth" && "Verifying authentication..."}
+						{loadingStage === "servers" && "Loading your servers..."}
+						{loadingStage === "ready" && "Almost ready..."}
 					</p>
+					<div className="mt-2 flex items-center justify-center gap-1">
+						<div className={`w-2 h-2 rounded-full ${loadingStage === "auth" ? "bg-primary" : "bg-white/20"}`} />
+						<div className={`w-2 h-2 rounded-full ${loadingStage === "servers" ? "bg-primary" : "bg-white/20"}`} />
+						<div className={`w-2 h-2 rounded-full ${loadingStage === "ready" ? "bg-primary" : "bg-white/20"}`} />
+					</div>
 				</div>
 			</div>
 		);

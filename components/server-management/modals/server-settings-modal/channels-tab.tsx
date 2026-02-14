@@ -149,22 +149,39 @@ export function ChannelsTab({ server, onChannelReorder }: ChannelsTabProps) {
           {/* Categorized channels */}
           {server.categories.map((category) => {
             const channels = channelsByCategory[category.id] || [];
-            if (channels.length === 0) return null;
 
             return (
               <div key={category.id} className="space-y-2">
-                <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                  {category.name}
-                </h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                    {category.name}
+                  </h4>
+                  <span className="text-xs text-slate-500">
+                    {channels.length} {channels.length === 1 ? "channel" : "channels"}
+                  </span>
+                </div>
                 <SortableContext
                   items={channels.map((ch) => ch.id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  <div className="space-y-2">
-                    {channels.map((channel) => (
-                      <SortableChannelItem key={channel.id} channel={channel} />
-                    ))}
-                  </div>
+                  {channels.length === 0 ? (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="p-6 rounded-lg border-2 border-dashed border-slate-700/30 bg-slate-800/10 text-center"
+                    >
+                      <p className="text-sm text-slate-400">No channels in this category yet</p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Drag channels here or create a new one
+                      </p>
+                    </motion.div>
+                  ) : (
+                    <div className="space-y-2">
+                      {channels.map((channel) => (
+                        <SortableChannelItem key={channel.id} channel={channel} />
+                      ))}
+                    </div>
+                  )}
                 </SortableContext>
               </div>
             );

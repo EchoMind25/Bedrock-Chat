@@ -1,6 +1,8 @@
 "use client";
 
 import { Component, type ReactNode, type ErrorInfo } from "react";
+import { logError, isBlackScreenState, updateRenderHeartbeat } from "@/lib/utils/error-logger";
+import { ErrorRecovery } from "@/components/error-recovery";
 
 type ErrorLevel = "app" | "page" | "feature" | "component";
 
@@ -15,6 +17,7 @@ interface ErrorBoundaryProps {
 interface ErrorBoundaryState {
 	hasError: boolean;
 	error: Error | null;
+	isBlackScreen: boolean;
 }
 
 function logErrorToStorage(entry: {
@@ -45,13 +48,36 @@ export class ErrorBoundary extends Component<
 	ErrorBoundaryProps,
 	ErrorBoundaryState
 > {
+	private heartbeatInterval?: NodeJS.Timeout;
+
 	constructor(props: ErrorBoundaryProps) {
 		super(props);
-		this.state = { hasError: false, error: null };
+		this.state = { hasError: false, error: null, isBlackScreen: false };
 	}
 
 	static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-		return { hasError: true, error };
+		// Log to error logger
+		logError("RENDER", error);
+
+		// Detect black screen state
+		const blackScreen = isBlackScreenState();
+
+		return { hasError: true, error, isBlackScreen: blackScreen };
+	}
+
+	componentDidMount() {
+		// Update heartbeat every 5 seconds to indicate successful renders
+		this.heartbeatInterval = setInterval(() => {
+			updateRenderHeartbeat();
+		}, 5000);
+		// Initial heartbeat
+		updateRenderHeartbeat();
+	}
+
+	componentWillUnmount() {
+		if (this.heartbeatInterval) {
+			clearInterval(this.heartbeatInterval);
+		}
 	}
 
 	componentDidCatch(error: Error, errorInfo: ErrorInfo) {
@@ -69,16 +95,43 @@ export class ErrorBoundary extends Component<
 	}
 
 	private handleRetry = () => {
-		this.setState({ hasError: false, error: null });
+		this.setState({ hasError: false, error: null, isBlackScreen: false });
 	};
 
 	private handleReload = () => {
 		window.location.reload();
 	};
 
+	private handleClearCacheAndReload = () => {
+		// Clear Bedrock-related localStorage keys
+		const keysToRemove = [
+			"bedrock-auth",
+			"bedrock-server",
+			"bedrock-ui",
+			"bedrock-favorites",
+			"bedrock-init-attempts",
+			"bedrock-last-render",
+		];
+
+		keysToRemove.forEach((key) => {
+			try {
+				localStorage.removeItem(key);
+			} catch (err) {
+				console.error(`Failed to remove ${key}:`, err);
+			}
+		});
+
+		window.location.reload();
+	};
+
 	render() {
 		if (!this.state.hasError) {
 			return this.props.children;
+		}
+
+		// Show error recovery UI for black screen state
+		if (this.state.isBlackScreen) {
+			return <ErrorRecovery error={this.state.error} onRetry={this.handleClearCacheAndReload} />;
 		}
 
 		if (this.props.fallback) {

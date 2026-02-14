@@ -161,6 +161,9 @@ export function CreateChannelModal() {
         currentChannelId: newChannel.id,
       }));
 
+      // Refresh to ensure categoryId mapping is accurate
+      await useServerStore.getState().loadServers();
+
       toast.success("Channel Created", `#${formattedName} has been created`);
       handleClose();
 

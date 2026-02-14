@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { conditionalDevtools } from "@/lib/utils/devtools-config";
 import { createClient } from "@/lib/supabase/client";
+import { logError } from "@/lib/utils/error-logger";
 
 export type UserStatus = "online" | "idle" | "dnd" | "offline";
 
@@ -127,14 +128,13 @@ export const useAuthStore = create<AuthState>()(
 
 						set({ isLoading: false, error: "Profile not found" });
 						return false;
-					} catch (err) {
-						set({
-							isLoading: false,
-							error: err instanceof Error ? err.message : "Login failed",
-						});
-						return false;
-					}
-				},
+				} catch (err) {
+					// Auth check failed or timed out
+					logError("AUTH", err);
+				}
+
+				set({ user: null, isAuthenticated: false, isLoading: false, isInitializing: false });
+			},
 
 				// Step 1: Register with Supabase — sends a confirmation email with a magic link
 				signUpWithEmail: async (data) => {
@@ -203,14 +203,13 @@ export const useAuthStore = create<AuthState>()(
 						// Store pending signup data for the confirmation screen
 						set({ pendingSignup: data, isLoading: false });
 						return true;
-					} catch (err) {
-						set({
-							isLoading: false,
-							error: err instanceof Error ? err.message : "Signup failed",
-						});
-						return false;
-					}
-				},
+				} catch (err) {
+					// Auth check failed or timed out
+					logError("AUTH", err);
+				}
+
+				set({ user: null, isAuthenticated: false, isLoading: false, isInitializing: false });
+			},
 
 				// Resend the confirmation email
 				resendConfirmationEmail: async (email) => {
@@ -233,14 +232,13 @@ export const useAuthStore = create<AuthState>()(
 
 						set({ isLoading: false });
 						return true;
-					} catch (err) {
-						set({
-							isLoading: false,
-							error: err instanceof Error ? err.message : "Failed to resend email",
-						});
-						return false;
-					}
-				},
+				} catch (err) {
+					// Auth check failed or timed out
+					logError("AUTH", err);
+				}
+
+				set({ user: null, isAuthenticated: false, isLoading: false, isInitializing: false });
+			},
 
 				// Called after the user clicks the confirmation link and lands on /auth/callback.
 				// The callback route exchanges the code for a session and creates the profile.
@@ -325,14 +323,13 @@ export const useAuthStore = create<AuthState>()(
 							pendingSignup: null,
 						});
 						return true;
-					} catch (err) {
-						set({
-							isLoading: false,
-							error: err instanceof Error ? err.message : "Signup completion failed",
-						});
-						return false;
-					}
-				},
+				} catch (err) {
+					// Auth check failed or timed out
+					logError("AUTH", err);
+				}
+
+				set({ user: null, isAuthenticated: false, isLoading: false, isInitializing: false });
+			},
 
 				logout: async () => {
 					try {
@@ -370,10 +367,13 @@ export const useAuthStore = create<AuthState>()(
 						if (Object.keys(profileUpdates).length > 0) {
 							await supabase.from("profiles").update(profileUpdates).eq("id", current.id);
 						}
-					} catch (err) {
-						console.error("Error updating profile:", err);
-					}
-				},
+				} catch (err) {
+					// Auth check failed or timed out
+					logError("AUTH", err);
+				}
+
+				set({ user: null, isAuthenticated: false, isLoading: false, isInitializing: false });
+			},
 
 				setPendingSignup: (data) => set({ pendingSignup: data }),
 
@@ -386,7 +386,7 @@ export const useAuthStore = create<AuthState>()(
 
 						// Timeout prevents infinite loading if Supabase is unreachable
 						const timeout = new Promise<never>((_, reject) =>
-							setTimeout(() => reject(new Error("Auth check timed out")), 8000),
+							setTimeout(() => reject(new Error("Auth check timed out")), 15000),
 						);
 
 						const { data: { user } } = await Promise.race([
@@ -414,12 +414,13 @@ export const useAuthStore = create<AuthState>()(
 								return;
 							}
 						}
-					} catch {
-						// Auth check failed or timed out
-					}
+				} catch (err) {
+					// Auth check failed or timed out
+					logError("AUTH", err);
+				}
 
-					set({ user: null, isAuthenticated: false, isLoading: false, isInitializing: false });
-				},
+				set({ user: null, isAuthenticated: false, isLoading: false, isInitializing: false });
+			},
 
 				// Sets up a Supabase auth state change listener. Returns an
 				// unsubscribe function for cleanup.

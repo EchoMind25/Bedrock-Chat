@@ -213,6 +213,22 @@ export const useServerStore = create<ServerState>()(
 								});
 							}
 
+							// Validate data integrity - check for orphaned channels
+							for (const server of servers) {
+								const categoryIds = new Set(server.categories.map(c => c.id));
+								
+								// Check for orphaned channels (categoryId points to non-existent category)
+								for (const channel of server.channels) {
+									if (channel.categoryId && !categoryIds.has(channel.categoryId)) {
+										console.warn(
+											`Channel ${channel.id} references non-existent category ${channel.categoryId}. Setting to uncategorized.`
+										);
+										logError("STORE_INIT", new Error(`Orphaned channel: ${channel.name}`));
+										channel.categoryId = undefined;
+									}
+								}
+							}
+
 							const firstServer = servers.find((s) => s.id !== "home");
 							const firstChannel = firstServer?.channels[0];
 
@@ -392,6 +408,14 @@ export const useServerStore = create<ServerState>()(
 					}));
 
 					toast.success("Category Created", `"${name}" has been created`);
+
+					// Refresh server data to ensure channel counts are accurate
+					try {
+						await get().loadServers();
+					} catch (err) {
+						console.error("Failed to refresh server data after category creation:", err);
+						// Don't throw - category was created successfully
+					}
 					return newCategory;
 				},
 
