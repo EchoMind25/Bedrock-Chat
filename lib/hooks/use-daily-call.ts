@@ -239,6 +239,13 @@ export function useDailyCall(channelId: string | null) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const failWithError = useCallback((message: string) => {
+    destroyCall();
+    const store = useVoiceStore.getState();
+    store.setConnectionStatus("error");
+    store.setError(message || "Connection failed");
+  }, [destroyCall]);
+
   const attemptReconnect = useCallback(
     async (errorMsg: string) => {
       // Guard against reconnect attempts during leave
@@ -277,13 +284,6 @@ export function useDailyCall(channelId: string | null) {
     },
     [join, failWithError] // join is now stable (from Step 1 fix)
   );
-
-  const failWithError = useCallback((message: string) => {
-    destroyCall();
-    const store = useVoiceStore.getState();
-    store.setConnectionStatus("error");
-    store.setError(message || "Connection failed");
-  }, [destroyCall]);
 
   const leave = useCallback(() => {
     // Prevent reconnect attempts during leave
