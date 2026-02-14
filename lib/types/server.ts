@@ -1,4 +1,4 @@
-import type { Role, PermissionOverride } from "./permissions";
+import type { Role, PermissionOverride, ChannelPermissionOverride } from "./permissions";
 import type { ServerSettings } from "./server-settings";
 
 export type ChannelType = "text" | "voice" | "announcement";
@@ -28,7 +28,7 @@ export interface Channel {
 	// Channel settings
 	topic?: string;
 	slowMode?: number; // Seconds (0 = off)
-	permissionOverrides?: PermissionOverride[];
+	permissionOverrides?: ChannelPermissionOverride[];
 }
 
 export interface ChannelCategory {

@@ -42,6 +42,40 @@ export interface PermissionOverride {
   deny: number; // Bitfield of denied permissions
 }
 
+// Server-level base permissions (applies to roles)
+export interface ServerPermission {
+  id: string;
+  serverId: string;
+  roleId: string;
+  permissions: number; // Bitfield of granted permissions
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+// Category-level permission overrides (cascades to channels in category)
+export interface CategoryPermissionOverride {
+  id: string;
+  categoryId: string;
+  targetType: "role" | "user";
+  targetId: string;
+  allow: number; // Bitfield of explicitly allowed permissions
+  deny: number; // Bitfield of explicitly denied permissions
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+// Channel-level permission overrides (highest priority for channels)
+export interface ChannelPermissionOverride {
+  id: string;
+  channelId: string;
+  targetType: "role" | "user";
+  targetId: string;
+  allow: number; // Bitfield of explicitly allowed permissions
+  deny: number; // Bitfield of explicitly denied permissions
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export interface Role {
   id: string;
   serverId: string;
@@ -119,7 +153,7 @@ export const getPermissionsFromCategory = (category: keyof typeof PERMISSION_CAT
   return PERMISSION_CATEGORIES[category].map((p) => p.permission);
 };
 
-// Calculate effective permissions with overrides
+// Calculate effective permissions with overrides (legacy - single override)
 export const calculateEffectivePermissions = (
   rolePermissions: number,
   overrides?: PermissionOverride,
@@ -137,4 +171,67 @@ export const calculateEffectivePermissions = (
   effective = effective | overrides.allow; // Add allowed permissions
 
   return effective;
+};
+
+// Calculate effective permissions with full hierarchy (Discord-style)
+// Hierarchy: Server Base → Category Overrides → Channel Overrides → User Overrides
+export const calculateHierarchicalPermissions = (
+  userId: string,
+  channelId: string,
+  context: {
+    serverPermissions: ServerPermission[];
+    categoryOverrides: CategoryPermissionOverride[];
+    channelOverrides: ChannelPermissionOverride[];
+    userRoles: string[];
+    categoryId?: string;
+  }
+): number => {
+  let permissions = 0;
+
+  // Step 1: Server base permissions (combine all role permissions)
+  for (const roleId of context.userRoles) {
+    const serverPerm = context.serverPermissions.find((sp) => sp.roleId === roleId);
+    if (serverPerm) {
+      permissions |= serverPerm.permissions; // Combine with bitwise OR
+    }
+  }
+
+  // Administrator bypasses all overrides
+  if ((permissions & Permission.ADMINISTRATOR) === Permission.ADMINISTRATOR) {
+    return permissions;
+  }
+
+  // Step 2: Category overrides (if channel is in a category)
+  if (context.categoryId) {
+    for (const override of context.categoryOverrides) {
+      if (
+        override.categoryId === context.categoryId &&
+        override.targetType === "role" &&
+        context.userRoles.includes(override.targetId)
+      ) {
+        permissions = (permissions & ~override.deny) | override.allow;
+      }
+    }
+  }
+
+  // Step 3: Channel overrides (role-based)
+  for (const override of context.channelOverrides) {
+    if (
+      override.channelId === channelId &&
+      override.targetType === "role" &&
+      context.userRoles.includes(override.targetId)
+    ) {
+      permissions = (permissions & ~override.deny) | override.allow;
+    }
+  }
+
+  // Step 4: User-specific overrides (highest priority)
+  const userOverride = context.channelOverrides.find(
+    (o) => o.channelId === channelId && o.targetType === "user" && o.targetId === userId
+  );
+  if (userOverride) {
+    permissions = (permissions & ~userOverride.deny) | userOverride.allow;
+  }
+
+  return permissions;
 };

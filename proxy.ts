@@ -31,6 +31,10 @@ const securityHeaders = {
 	"Referrer-Policy": "strict-origin-when-cross-origin",
 
 	// Permissions policy - restrict features (allow microphone for voice)
+	// Note: Daily.co SDK will attempt to enumerate camera devices on initialization,
+	// which triggers permission policy violations in console. These are harmless warnings
+	// indicating the security policy is working - screen sharing uses screenVideo tracks
+	// and does not require camera access.
 	"Permissions-Policy":
 		"microphone=(self), camera=(), geolocation=(), payment=()",
 

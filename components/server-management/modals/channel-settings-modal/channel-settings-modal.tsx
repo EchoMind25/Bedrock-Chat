@@ -9,6 +9,7 @@ import { Input, Textarea } from "../../../ui/input/input";
 import { Dropdown } from "../../../ui/dropdown/dropdown";
 import { Toggle } from "../../../ui/toggle/toggle";
 import { PermissionOverrideGrid } from "../../permission-grid/permission-grid";
+import { PermissionsTab } from "./permissions-tab";
 import { useServerManagementStore, type ChannelSettingsTab } from "../../../../store/server-management.store";
 import { useServerStore } from "../../../../store/server.store";
 import { toast } from "../../../../lib/stores/toast-store";
@@ -274,46 +275,8 @@ export function ChannelSettingsModal() {
         )}
 
         {/* Permissions Tab */}
-        {channelSettingsTab === "permissions" && (
-          <div className="space-y-4">
-            <div>
-              <h4 className="text-sm font-semibold mb-2">Permission Overrides</h4>
-              <p className="text-sm text-white/60 mb-4">
-                Configure role-specific permissions for this channel. These override server-level role permissions.
-              </p>
-            </div>
-
-            <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
-              <p className="text-sm text-blue-200">
-                <strong>Coming Soon:</strong> Full permission override management. For now, you can
-                set channels as private when creating them.
-              </p>
-            </div>
-
-            {/* Placeholder for permission overrides */}
-            {displayChannel.permissionOverrides && displayChannel.permissionOverrides.length > 0 && (
-              <div className="space-y-2">
-                <h5 className="text-sm font-medium">Active Overrides</h5>
-                {displayChannel.permissionOverrides.map((override) => {
-                  const role = currentServer.roles?.find((r) => r.id === override.targetId);
-                  return (
-                    <div
-                      key={override.id}
-                      className="p-3 rounded-lg border border-white/10 bg-white/5"
-                    >
-                      <div className="font-medium text-sm">
-                        {override.targetType === "role" ? `@${role?.name || "Unknown Role"}` : "User"}
-                      </div>
-                      <div className="text-xs text-white/60 mt-1">
-                        {override.allow > 0 && `Allowed: ${override.allow} `}
-                        {override.deny > 0 && `Denied: ${override.deny}`}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+        {channelSettingsTab === "permissions" && displayChannel && (
+          <PermissionsTab channel={displayChannel} />
         )}
       </div>
     </Modal>

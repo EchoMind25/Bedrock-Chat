@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, lazy, Suspense } from "react";
-import { Settings, X } from "lucide-react";
+import { useMemo, lazy, Suspense, useState } from "react";
+import { Settings, X, Plus, Folder } from "lucide-react";
 import { useServerStore } from "@/store/server.store";
 import { useUIStore } from "@/store/ui.store";
 import { useServerManagementStore } from "@/store/server-management.store";
@@ -10,6 +10,8 @@ import { ChannelCategory } from "./channel-category";
 import { ChannelItem } from "./channel-item";
 import { DMList } from "@/components/dm/dm-list";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { Input } from "@/components/ui/input/input";
+import { Button } from "@/components/ui/button/button";
 import { motion, AnimatePresence } from "motion/react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -34,7 +36,13 @@ export function ChannelList() {
 	const currentChannelId = useServerStore((state) => state.currentChannelId);
 	const toggleCategoryStore = useServerStore((state) => state.toggleCategory);
 	const reorderCategories = useServerStore((state) => state.reorderCategories);
+	const createCategory = useServerStore((state) => state.createCategory);
 	const openServerSettings = useServerManagementStore((s) => s.openServerSettings);
+
+	// State for inline category creation
+	const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+	const [newCategoryName, setNewCategoryName] = useState("");
+	const [isCreatingLoading, setIsCreatingLoading] = useState(false);
 
 	const sensors = useSensors(
 		useSensor(PointerSensor),
@@ -173,6 +181,21 @@ export function ChannelList() {
 		}
 	};
 
+	const handleCreateCategory = async () => {
+		if (!newCategoryName.trim() || isCreatingLoading) return;
+
+		setIsCreatingLoading(true);
+		try {
+			await createCategory(currentServer.id, newCategoryName);
+			setNewCategoryName("");
+			setIsCreatingCategory(false);
+		} catch (err) {
+			console.error("Error creating category:", err);
+		} finally {
+			setIsCreatingLoading(false);
+		}
+	};
+
 	// Memoize channel grouping to prevent unnecessary recalculations
 	const channelsByCategory = useMemo(() => {
 		// Group channels by category
@@ -227,6 +250,78 @@ export function ChannelList() {
 
 			{/* Channels List */}
 			<div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent py-2">
+				{/* Quick Category Creation (Server Owners Only) */}
+				{currentServer.isOwner && (
+					<div className="px-3 mb-2">
+						{!isCreatingCategory ? (
+							<button
+								type="button"
+								onClick={() => setIsCreatingCategory(true)}
+								className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-white/60 hover:text-white/80 hover:bg-white/5 rounded-sm transition-colors group"
+								aria-label="Create Category"
+							>
+								<Plus className="w-3.5 h-3.5" />
+								<span>Create Category</span>
+							</button>
+						) : (
+							<AnimatePresence>
+								<motion.div
+									initial={{ opacity: 0, height: 0 }}
+									animate={{ opacity: 1, height: "auto" }}
+									exit={{ opacity: 0, height: 0 }}
+									className="overflow-hidden"
+								>
+									<div className="p-3 rounded-lg glass-card space-y-2">
+										<div className="flex items-center gap-2 text-xs text-white/80 mb-2">
+											<Folder className="w-3.5 h-3.5" />
+											<span className="font-medium">New Category</span>
+										</div>
+
+										<Input
+											value={newCategoryName}
+											onChange={(e) => setNewCategoryName(e.target.value)}
+											placeholder="Category name..."
+											maxLength={50}
+											onKeyDown={(e) => {
+												if (e.key === "Enter") handleCreateCategory();
+												if (e.key === "Escape") {
+													setIsCreatingCategory(false);
+													setNewCategoryName("");
+												}
+											}}
+											className="text-sm"
+											autoFocus
+										/>
+
+										<div className="flex items-center gap-1.5 pt-2">
+											<Button
+												size="sm"
+												onClick={handleCreateCategory}
+												loading={isCreatingLoading}
+												disabled={!newCategoryName.trim()}
+												className="flex-1 text-xs"
+											>
+												Create
+											</Button>
+											<Button
+												size="sm"
+												variant="ghost"
+												onClick={() => {
+													setIsCreatingCategory(false);
+													setNewCategoryName("");
+												}}
+												className="flex-1 text-xs"
+											>
+												Cancel
+											</Button>
+										</div>
+									</div>
+								</motion.div>
+							</AnimatePresence>
+						)}
+					</div>
+				)}
+
 				<motion.div
 					initial="hidden"
 					animate="visible"
