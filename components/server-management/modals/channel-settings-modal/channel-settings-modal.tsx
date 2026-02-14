@@ -33,13 +33,11 @@ const SLOWMODE_OPTIONS = [
 ];
 
 export function ChannelSettingsModal() {
-  const {
-    isChannelSettingsOpen,
-    closeChannelSettings,
-    selectedChannelId,
-    channelSettingsTab,
-    setChannelSettingsTab,
-  } = useServerManagementStore();
+  const isChannelSettingsOpen = useServerManagementStore((s) => s.isChannelSettingsOpen);
+  const closeChannelSettings = useServerManagementStore((s) => s.closeChannelSettings);
+  const selectedChannelId = useServerManagementStore((s) => s.selectedChannelId);
+  const channelSettingsTab = useServerManagementStore((s) => s.channelSettingsTab);
+  const setChannelSettingsTab = useServerManagementStore((s) => s.setChannelSettingsTab);
 
   const servers = useServerStore((s) => s.servers);
   const currentServerId = useServerStore((s) => s.currentServerId);

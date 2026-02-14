@@ -19,12 +19,10 @@ import type { Role } from "../../../../lib/types/permissions";
 import type { AutoModSettings } from "../../../../lib/types/moderation";
 
 export function ServerSettingsModal() {
-  const {
-    isServerSettingsOpen,
-    closeServerSettings,
-    serverSettingsTab,
-    setServerSettingsTab,
-  } = useServerManagementStore();
+  const isServerSettingsOpen = useServerManagementStore((s) => s.isServerSettingsOpen);
+  const closeServerSettings = useServerManagementStore((s) => s.closeServerSettings);
+  const serverSettingsTab = useServerManagementStore((s) => s.serverSettingsTab);
+  const setServerSettingsTab = useServerManagementStore((s) => s.setServerSettingsTab);
 
   const servers = useServerStore((s) => s.servers);
   const currentServerId = useServerStore((s) => s.currentServerId);

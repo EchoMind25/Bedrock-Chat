@@ -16,13 +16,11 @@ interface ModerationTabProps {
 }
 
 export function ModerationTab({ server, onAutoModUpdate }: ModerationTabProps) {
-  const {
-    loadBans,
-    getBansByServer,
-    unbanUser,
-    loadAuditLog,
-    getAuditLogByServer,
-  } = useServerManagementStore();
+  const loadBans = useServerManagementStore((s) => s.loadBans);
+  const getBansByServer = useServerManagementStore((s) => s.getBansByServer);
+  const unbanUser = useServerManagementStore((s) => s.unbanUser);
+  const loadAuditLog = useServerManagementStore((s) => s.loadAuditLog);
+  const getAuditLogByServer = useServerManagementStore((s) => s.getAuditLogByServer);
 
   const [activeTab, setActiveTab] = useState("automod");
   const [autoModSettings, setAutoModSettings] = useState<AutoModSettings>(

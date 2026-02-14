@@ -4,6 +4,10 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { Channel } from '@/lib/types/server';
 import { useMessageStore } from '@/store/message.store';
+import type { Message } from '@/lib/types/message';
+
+// Stable empty array reference - prevents re-renders from `|| []` creating new refs
+const EMPTY_MESSAGES: Message[] = [];
 
 interface ChannelHeaderProps {
 	channel: Channel;
@@ -13,7 +17,7 @@ interface ChannelHeaderProps {
 export function ChannelHeader({ channel, memberCount = 42 }: ChannelHeaderProps) {
 	const [showSearch, setShowSearch] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');
-	const channelMessages = useMessageStore((state) => state.messages[channel.id] || []);
+	const channelMessages = useMessageStore((state) => state.messages[channel.id] ?? EMPTY_MESSAGES);
 	const [searchResults, setSearchResults] = useState<number>(0);
 
 	const handleSearchToggle = () => {

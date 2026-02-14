@@ -6,6 +6,13 @@ import { useMessageStore } from '@/store/message.store';
 import { Message } from './message';
 import { TypingIndicator } from './typing-indicator';
 import { ScrollToBottom } from './scroll-to-bottom';
+import type { Message as MessageType } from '@/lib/types/message';
+
+// Stable empty array references to prevent Zustand selector reference instability.
+// `|| []` creates a NEW array on every selector call when the key is undefined,
+// causing re-renders on every unrelated store update (Object.is([], []) === false).
+const EMPTY_MESSAGES: MessageType[] = [];
+const EMPTY_STRINGS: string[] = [];
 
 interface MessageListProps {
 	channelId: string;
@@ -14,11 +21,10 @@ interface MessageListProps {
 export function MessageList({ channelId }: MessageListProps) {
 	const parentRef = useRef<HTMLDivElement>(null);
 	const initializedRef = useRef<Set<string>>(new Set());
-	// ✅ CRITICAL FIX: Subscribe ONLY to this channel's messages, not ALL channels
-	// This prevents re-renders from messages in other channels (scales to 1000s of servers)
-	const channelMessages = useMessageStore((s) => s.messages[channelId] || []);
-	const isLoading = useMessageStore((s) => s.isLoading);
-	const typing = useMessageStore((s) => s.typingUsers[channelId] || []);
+	// Subscribe ONLY to this channel's messages with stable fallback references
+	const channelMessages = useMessageStore((s) => s.messages[channelId] ?? EMPTY_MESSAGES);
+	const isLoading = useMessageStore((s) => s.loadingChannels[channelId] ?? false);
+	const typing = useMessageStore((s) => s.typingUsers[channelId] ?? EMPTY_STRINGS);
 
 	// Load messages and subscribe to real-time updates
 	useEffect(() => {
@@ -131,7 +137,7 @@ export function MessageList({ channelId }: MessageListProps) {
 
 			{/* Scroll to bottom button */}
 			<ScrollToBottom
-				scrollElement={parentRef.current}
+				scrollRef={parentRef}
 				onClick={() => virtualizer.scrollToIndex(channelMessages.length - 1, { align: 'end' })}
 			/>
 		</div>

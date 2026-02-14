@@ -259,17 +259,18 @@ export const useServerStore = create<ServerState>()(
 						.getState()
 						.startPortalTransition(serverId, sourceColor, targetColor);
 
-					set({ currentServerId: serverId });
+					// Compute new channel ID before set() to avoid double notifications
 					const server = get().servers.find((s) => s.id === serverId);
+					let newChannelId: string | null = null;
 					if (server && server.channels.length > 0) {
 						const firstTextChannel = server.channels.find(
 							(c) => c.type === "text",
 						);
-						set({
-							currentChannelId:
-								firstTextChannel?.id ?? server.channels[0].id,
-						});
+						newChannelId = firstTextChannel?.id ?? server.channels[0].id;
 					}
+
+					// Single atomic set() - one notification, one render cycle
+					set({ currentServerId: serverId, currentChannelId: newChannelId });
 				},
 
 				setCurrentChannel: (channelId) => {

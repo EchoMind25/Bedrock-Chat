@@ -6,8 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 
 interface MessageState {
   messages: Record<string, Message[]>; // channelId -> messages
-  isLoading: boolean;
-  loadingChannels: Set<string>; // Track which channels are currently loading
+  loadingChannels: Record<string, boolean>; // channelId -> loading state (per-channel, not global)
   typingUsers: Record<string, string[]>; // channelId -> usernames
   subscriptions: Record<string, () => void>; // channelId -> cleanup function
 
@@ -27,8 +26,7 @@ export const useMessageStore = create<MessageState>()(
   conditionalDevtools(
     (set, get) => ({
       messages: {},
-      isLoading: false,
-      loadingChannels: new Set(),
+      loadingChannels: {},
       typingUsers: {},
       subscriptions: {},
 
@@ -167,17 +165,17 @@ export const useMessageStore = create<MessageState>()(
           console.log('[MessageStore] Messages already loaded for channel:', channelId);
           return;
         }
-        if (state.loadingChannels.has(channelId)) {
+        if (state.loadingChannels[channelId]) {
           console.log('[MessageStore] Already loading messages for channel:', channelId);
           return;
         }
 
         console.log('[MessageStore] Loading messages for channel:', channelId);
 
-        // Mark this channel as loading
-        const newLoadingChannels = new Set(state.loadingChannels);
-        newLoadingChannels.add(channelId);
-        set({ isLoading: true, loadingChannels: newLoadingChannels });
+        // Mark this channel as loading (per-channel, not global)
+        set((prev) => ({
+          loadingChannels: { ...prev.loadingChannels, [channelId]: true },
+        }));
 
         try {
           const supabase = createClient();
@@ -215,21 +213,15 @@ export const useMessageStore = create<MessageState>()(
             type: (msg.type as Message['type']) || 'default',
           }));
 
-          const newLoadingChannels = new Set(get().loadingChannels);
-          newLoadingChannels.delete(channelId);
-          set((state) => ({
-            messages: { ...state.messages, [channelId]: messages },
-            isLoading: false,
-            loadingChannels: newLoadingChannels,
+          set((prev) => ({
+            messages: { ...prev.messages, [channelId]: messages },
+            loadingChannels: { ...prev.loadingChannels, [channelId]: false },
           }));
         } catch (err) {
           console.error('Error loading messages:', err);
-          const newLoadingChannels = new Set(get().loadingChannels);
-          newLoadingChannels.delete(channelId);
-          set((state) => ({
-            messages: { ...state.messages, [channelId]: [] },
-            isLoading: false,
-            loadingChannels: newLoadingChannels,
+          set((prev) => ({
+            messages: { ...prev.messages, [channelId]: [] },
+            loadingChannels: { ...prev.loadingChannels, [channelId]: false },
           }));
         }
       },

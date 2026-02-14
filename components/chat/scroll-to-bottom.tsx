@@ -1,17 +1,18 @@
 'use client';
 
 import { motion, AnimatePresence } from 'motion/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type RefObject } from 'react';
 
 interface ScrollToBottomProps {
-	scrollElement: HTMLElement | null;
+	scrollRef: RefObject<HTMLDivElement | null>;
 	onClick: () => void;
 }
 
-export function ScrollToBottom({ scrollElement, onClick }: ScrollToBottomProps) {
+export function ScrollToBottom({ scrollRef, onClick }: ScrollToBottomProps) {
 	const [showButton, setShowButton] = useState(false);
 
 	useEffect(() => {
+		const scrollElement = scrollRef.current;
 		if (!scrollElement) return;
 
 		const handleScroll = () => {
@@ -25,7 +26,7 @@ export function ScrollToBottom({ scrollElement, onClick }: ScrollToBottomProps) 
 
 		return () => scrollElement.removeEventListener('scroll', handleScroll);
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []); // Empty deps - effect should only run on mount/unmount, scrollElement is captured in closure
+	}, [scrollRef]); // scrollRef is a stable RefObject, reads .current inside effect
 
 	return (
 		<AnimatePresence>

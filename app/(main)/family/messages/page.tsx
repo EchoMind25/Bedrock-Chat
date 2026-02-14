@@ -20,7 +20,7 @@ export default function FamilyMessagesPage() {
 	const servers = useServerStore((s) => s.servers);
 	const messages = useMessageStore((s) => s.messages);
 	const loadMessages = useMessageStore((s) => s.loadMessages);
-	const isLoading = useMessageStore((s) => s.isLoading);
+	const loadingChannels = useMessageStore((s) => s.loadingChannels);
 
 	const teenAccount = getSelectedTeenAccount();
 
@@ -210,7 +210,7 @@ export default function FamilyMessagesPage() {
 							</div>
 						</CardHeader>
 						<CardContent>
-							{isLoading ? (
+							{(selectedChannelId && loadingChannels[selectedChannelId]) ? (
 								<div className="flex items-center justify-center py-8">
 									<div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
 								</div>

@@ -42,14 +42,20 @@ export default function ChannelPage({ params }: PageProps) {
 		[server, channelId]
 	);
 
-	// Update store when URL changes
+	// Update store when URL changes (with defensive checks to prevent loops)
 	useEffect(() => {
-		if (serverId && channelId) {
+		if (!serverId || !channelId) return;
+
+		// Only update if different from current store state
+		const state = useServerStore.getState();
+		if (state.currentServerId !== serverId) {
 			setCurrentServer(serverId);
+		}
+		if (state.currentChannelId !== channelId) {
 			setCurrentChannel(channelId);
 		}
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [serverId, channelId]); // Exclude store actions - they're stable Zustand actions
+	}, [serverId, channelId]); // Exclude store actions - stable Zustand actions
 
 	// Show loading skeleton while stores are initializing
 	if (!isInitialized) {

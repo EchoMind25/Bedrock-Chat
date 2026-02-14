@@ -19,7 +19,14 @@ const CreateChannelModal = lazy(() => import("@/components/server-management/mod
 const ChannelSettingsModal = lazy(() => import("@/components/server-management/modals/channel-settings-modal/channel-settings-modal").then(m => ({ default: m.ChannelSettingsModal })));
 
 export function ChannelList() {
-	const currentServer = useServerStore((state) => state.getCurrentServer());
+	// Derive currentServer from primitive selectors instead of calling getCurrentServer()
+	// which is a function call inside a selector (anti-pattern for Zustand equality checks)
+	const currentServerId = useServerStore((state) => state.currentServerId);
+	const servers = useServerStore((state) => state.servers);
+	const currentServer = useMemo(
+		() => servers.find((s) => s.id === currentServerId),
+		[servers, currentServerId]
+	);
 	const isInitialized = useServerStore((state) => state.isInitialized);
 	const currentChannelId = useServerStore((state) => state.currentChannelId);
 	const toggleCategoryStore = useServerStore((state) => state.toggleCategory);

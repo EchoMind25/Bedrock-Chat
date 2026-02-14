@@ -36,12 +36,10 @@ const MAX_USES_OPTIONS = [
 ];
 
 export function InvitesTab({ server }: InvitesTabProps) {
-  const {
-    loadInvites,
-    getInvitesByServer,
-    createInvite,
-    deleteInvite,
-  } = useServerManagementStore();
+  const loadInvites = useServerManagementStore((s) => s.loadInvites);
+  const getInvitesByServer = useServerManagementStore((s) => s.getInvitesByServer);
+  const createInvite = useServerManagementStore((s) => s.createInvite);
+  const deleteInvite = useServerManagementStore((s) => s.deleteInvite);
 
   const [isCreating, setIsCreating] = useState(false);
   const [selectedChannelId, setSelectedChannelId] = useState("");

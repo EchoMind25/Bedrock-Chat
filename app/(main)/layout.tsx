@@ -15,7 +15,6 @@ import { MobileNav } from "@/components/navigation/mobile-nav";
 import { PortalOverlay } from "@/components/navigation/portal-overlay";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { useIdleDetection } from "@/lib/hooks/use-idle-detection";
-import { usePerformanceMonitor } from "@/lib/hooks/use-performance-monitor";
 import { initPerformanceMonitoring } from "@/store/performance.store";
 import { PerformanceMonitor } from "@/lib/performance/monitoring";
 import { PerformanceOverlay } from "@/components/performance/PerformanceOverlay";
@@ -35,7 +34,6 @@ export default function MainLayout({
 
 	// Idle detection: pauses CSS animations after 30s of inactivity
 	const isIdle = useIdleDetection();
-	usePerformanceMonitor();
 
 	// Mobile detection
 	const isMobile = useIsMobile();
