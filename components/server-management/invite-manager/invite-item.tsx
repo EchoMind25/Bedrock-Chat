@@ -58,7 +58,7 @@ export function InviteItem({ invite, channelName, onDelete }: InviteItemProps) {
                 {invite.code}
               </code>
               {!isValid && (
-                <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-500/20 text-red-300">
+                <span className="px-2 py-0.5 rounded-sm text-xs font-medium bg-red-500/20 text-red-300">
                   Expired
                 </span>
               )}

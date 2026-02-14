@@ -144,7 +144,7 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
     >
       <div className="flex items-start gap-3">
         {iconVariants[variant] && (
-          <div className="flex-shrink-0 mt-0.5">{iconVariants[variant]}</div>
+          <div className="shrink-0 mt-0.5">{iconVariants[variant]}</div>
         )}
 
         <div className="flex-1 min-w-0">
@@ -163,11 +163,11 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
         onClick={() => onRemove(toast.id)}
         className={cn(
           "absolute top-4 right-4",
-          "p-1 rounded",
+          "p-1 rounded-sm",
           "text-slate-400 hover:text-foreground",
           "hover:bg-muted/50",
           "transition-all duration-200",
-          "focus:outline-none focus:ring-2 focus:ring-primary"
+          "focus:outline-hidden focus:ring-2 focus:ring-primary"
         )}
         aria-label="Close toast"
       >

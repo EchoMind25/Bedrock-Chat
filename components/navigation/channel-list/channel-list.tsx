@@ -47,10 +47,10 @@ export function ChannelList() {
 	if (!isInitialized || !currentServer) {
 		const loadingContent = (
 			<div className="w-60 h-screen bg-[oklch(0.15_0.02_250)] flex flex-col gap-2 p-3">
-				<div className="h-12 bg-white/5 rounded animate-pulse" />
-				<div className="h-8 bg-white/5 rounded animate-pulse" />
-				<div className="h-8 bg-white/5 rounded animate-pulse" />
-				<div className="h-8 bg-white/5 rounded animate-pulse" />
+				<div className="h-12 bg-white/5 rounded-sm animate-pulse" />
+				<div className="h-8 bg-white/5 rounded-sm animate-pulse" />
+				<div className="h-8 bg-white/5 rounded-sm animate-pulse" />
+				<div className="h-8 bg-white/5 rounded-sm animate-pulse" />
 				{/* AddServerModal must always render so the + button works even during load failures */}
 				<Suspense fallback={null}>
 					<ErrorBoundary level="component" name="Modals">
@@ -192,7 +192,7 @@ export function ChannelList() {
 					<button
 						type="button"
 						onClick={() => openServerSettings()}
-						className="p-2 rounded hover:bg-white/10 transition-colors touch-manipulation"
+						className="p-2 rounded-sm hover:bg-white/10 transition-colors touch-manipulation"
 						aria-label="Server Settings"
 					>
 						<Settings className="w-5 h-5 text-white/60 hover:text-white/80" />

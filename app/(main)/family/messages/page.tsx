@@ -131,7 +131,7 @@ export default function FamilyMessagesPage() {
 										setSelectedServerId(e.target.value);
 										setSelectedChannelId("");
 									}}
-									className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+									className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-primary"
 								>
 									<option value="" className="bg-[oklch(0.15_0.02_250)]">
 										Select a server
@@ -235,7 +235,7 @@ export default function FamilyMessagesPage() {
 														{new Date(message.timestamp).toLocaleString()}
 													</span>
 												</div>
-												<p className="text-white/80 mt-1 break-words">
+												<p className="text-white/80 mt-1 wrap-break-word">
 													{message.content}
 												</p>
 												{message.reactions.length > 0 && (

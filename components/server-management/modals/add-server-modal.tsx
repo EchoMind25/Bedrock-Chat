@@ -344,7 +344,7 @@ export function AddServerModal() {
                 placeholder="What's your server about?"
                 rows={2}
                 maxLength={500}
-                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 resize-none text-sm"
+                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-slate-100 placeholder:text-slate-500 focus:outline-hidden focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 resize-none text-sm"
               />
               <p className="text-xs text-slate-400 mt-1">{description.length}/500</p>
             </div>
@@ -357,7 +357,7 @@ export function AddServerModal() {
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-blue-500/50"
               >
                 {CATEGORIES.map((cat) => (
                   <option key={cat.value} value={cat.value} className="bg-gray-900">
@@ -383,7 +383,7 @@ export function AddServerModal() {
                       setRequireApproval(false);
                     }
                   }}
-                  className="mt-0.5 w-4 h-4 rounded border-white/30 text-blue-600 focus:ring-blue-500/50"
+                  className="mt-0.5 w-4 h-4 rounded-sm border-white/30 text-blue-600 focus:ring-blue-500/50"
                 />
                 <div>
                   <span className="text-sm font-medium text-slate-200">Public Server</span>
@@ -400,7 +400,7 @@ export function AddServerModal() {
                     type="checkbox"
                     checked={allowDiscovery}
                     onChange={(e) => setAllowDiscovery(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 rounded border-white/30 text-blue-600 focus:ring-blue-500/50"
+                    className="mt-0.5 w-4 h-4 rounded-sm border-white/30 text-blue-600 focus:ring-blue-500/50"
                   />
                   <div>
                     <span className="text-sm font-medium text-slate-200">Allow Discovery</span>
@@ -418,7 +418,7 @@ export function AddServerModal() {
                     type="checkbox"
                     checked={requireApproval}
                     onChange={(e) => setRequireApproval(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 rounded border-white/30 text-blue-600 focus:ring-blue-500/50"
+                    className="mt-0.5 w-4 h-4 rounded-sm border-white/30 text-blue-600 focus:ring-blue-500/50"
                   />
                   <div>
                     <span className="text-sm font-medium text-slate-200">Require Join Approval</span>
@@ -432,7 +432,7 @@ export function AddServerModal() {
               {/* Privacy summary */}
               <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
                 <div className="flex gap-2">
-                  <svg className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
                   <p className="text-xs text-slate-300">

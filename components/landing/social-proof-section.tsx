@@ -104,7 +104,7 @@ function TestimonialCard({
       >
         {/* Quote mark */}
         <svg
-          className="w-8 h-8 text-primary/30 mb-4 flex-shrink-0"
+          className="w-8 h-8 text-primary/30 mb-4 shrink-0"
           fill="currentColor"
           viewBox="0 0 24 24"
           aria-hidden="true"
@@ -143,7 +143,7 @@ export function SocialProofSection() {
   return (
     <section
       ref={sectionRef}
-      className="py-24 px-6 bg-gradient-to-b from-background-dark to-background-dark/95"
+      className="py-24 px-6 bg-linear-to-b from-background-dark to-background-dark/95"
     >
       <div className="max-w-7xl mx-auto">
         {/* Stats */}

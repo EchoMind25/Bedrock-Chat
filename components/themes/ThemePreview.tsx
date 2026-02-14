@@ -67,15 +67,15 @@ export function ThemePreview({
 					}}
 				>
 					<div
-						className="w-1.5 h-1.5 rounded-sm"
+						className="w-1.5 h-1.5 rounded-xs"
 						style={{ background: theme.colors.primary }}
 					/>
 					<div
-						className="w-1.5 h-1.5 rounded-sm opacity-40"
+						className="w-1.5 h-1.5 rounded-xs opacity-40"
 						style={{ background: theme.colors.textMuted }}
 					/>
 					<div
-						className="w-1.5 h-1.5 rounded-sm opacity-40"
+						className="w-1.5 h-1.5 rounded-xs opacity-40"
 						style={{ background: theme.colors.textMuted }}
 					/>
 				</div>
@@ -86,23 +86,23 @@ export function ThemePreview({
 					style={{ background: theme.colors.surface }}
 				>
 					<div
-						className="w-full h-1 rounded-sm opacity-70"
+						className="w-full h-1 rounded-xs opacity-70"
 						style={{ background: theme.colors.text }}
 					/>
 					<div
-						className="w-3/4 h-0.5 rounded-sm opacity-30"
+						className="w-3/4 h-0.5 rounded-xs opacity-30"
 						style={{ background: theme.colors.textMuted }}
 					/>
 					<div
-						className="w-full h-0.5 rounded-sm opacity-30"
+						className="w-full h-0.5 rounded-xs opacity-30"
 						style={{ background: theme.colors.textMuted }}
 					/>
 					<div
-						className="w-2/3 h-0.5 rounded-sm"
+						className="w-2/3 h-0.5 rounded-xs"
 						style={{ background: theme.colors.accent }}
 					/>
 					<div
-						className="w-full h-0.5 rounded-sm opacity-30"
+						className="w-full h-0.5 rounded-xs opacity-30"
 						style={{ background: theme.colors.textMuted }}
 					/>
 				</div>
@@ -112,32 +112,32 @@ export function ThemePreview({
 					{/* Messages */}
 					<div className="flex items-start gap-0.5">
 						<div
-							className="w-2 h-2 rounded-full flex-shrink-0"
+							className="w-2 h-2 rounded-full shrink-0"
 							style={{ background: theme.colors.accent }}
 						/>
 						<div className="flex flex-col gap-px">
 							<div
-								className="w-6 h-0.5 rounded-sm"
+								className="w-6 h-0.5 rounded-xs"
 								style={{ background: theme.colors.text }}
 							/>
 							<div
-								className="w-10 h-0.5 rounded-sm opacity-60"
+								className="w-10 h-0.5 rounded-xs opacity-60"
 								style={{ background: theme.colors.textMuted }}
 							/>
 						</div>
 					</div>
 					<div className="flex items-start gap-0.5">
 						<div
-							className="w-2 h-2 rounded-full flex-shrink-0"
+							className="w-2 h-2 rounded-full shrink-0"
 							style={{ background: theme.colors.primary }}
 						/>
 						<div className="flex flex-col gap-px">
 							<div
-								className="w-4 h-0.5 rounded-sm"
+								className="w-4 h-0.5 rounded-xs"
 								style={{ background: theme.colors.text }}
 							/>
 							<div
-								className="w-12 h-0.5 rounded-sm opacity-60"
+								className="w-12 h-0.5 rounded-xs opacity-60"
 								style={{ background: theme.colors.textMuted }}
 							/>
 						</div>
@@ -145,7 +145,7 @@ export function ThemePreview({
 
 					{/* Input mock */}
 					<div
-						className="w-full h-2 rounded-sm mt-0.5"
+						className="w-full h-2 rounded-xs mt-0.5"
 						style={{
 							background: theme.colors.surface,
 							border: `0.5px solid ${theme.colors.border}`,
@@ -191,7 +191,7 @@ export function ThemePreview({
 			)}
 
 			{/* Label */}
-			<div className="absolute bottom-0 inset-x-0 px-1.5 py-1 bg-gradient-to-t from-black/60 to-transparent">
+			<div className="absolute bottom-0 inset-x-0 px-1.5 py-1 bg-linear-to-t from-black/60 to-transparent">
 				<p
 					className="text-[9px] font-medium truncate"
 					style={{ color: theme.colors.text }}

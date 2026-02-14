@@ -67,9 +67,21 @@ export default function MainLayout({
 		let cancelled = false;
 
 		async function initialize() {
-			// Step 1: Check auth with Supabase (sets isInitializing to false)
-			await useAuthStore.getState().checkAuth();
-			if (cancelled) return;
+			const authState = useAuthStore.getState();
+			const hasPersistedAuth = authState.isAuthenticated && authState.user;
+
+			if (hasPersistedAuth) {
+				// Trust persisted auth — render the app immediately instead of
+				// blocking on a network call. Verify session in background.
+				if (authState.isInitializing) {
+					useAuthStore.setState({ isInitializing: false });
+				}
+				useAuthStore.getState().checkAuth().catch(() => {});
+			} else {
+				// No persisted auth — must wait for verification
+				await useAuthStore.getState().checkAuth();
+				if (cancelled) return;
+			}
 
 			// Step 2: Only init data stores if authenticated
 			const { isAuthenticated: authed } = useAuthStore.getState();
@@ -103,8 +115,12 @@ export default function MainLayout({
 
 	// Set up Supabase auth state change listener (token refresh, sign out, etc.)
 	useEffect(() => {
-		const unsubscribe = useAuthStore.getState().initAuthListener();
-		return unsubscribe;
+		try {
+			const unsubscribe = useAuthStore.getState().initAuthListener();
+			return unsubscribe;
+		} catch {
+			// Supabase client may fail to initialize (e.g. missing env vars)
+		}
 	}, []);
 
 	// Redirect to login only after auth check completes
@@ -148,7 +164,7 @@ export default function MainLayout({
 			{/* Skip to main content link for keyboard users */}
 			<a
 				href="#main-content"
-				className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded-lg focus:text-sm focus:font-medium"
+				className="sr-only focus:not-sr-only focus:absolute focus:z-100 focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded-lg focus:text-sm focus:font-medium"
 			>
 				Skip to main content
 			</a>

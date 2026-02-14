@@ -1,6 +1,99 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@custom-variant dark (@media (prefers-color-scheme: dark));
+
+@theme {
+  --color-primary: oklch(0.65 0.25 265);
+  --color-primary-hover: oklch(0.6 0.25 265);
+  --color-secondary: oklch(0.7 0.15 285);
+  --color-accent: oklch(0.75 0.2 145);
+  --color-background: oklch(0.98 0.01 285);
+  --color-foreground: oklch(0.15 0.02 285);
+  --color-muted: oklch(0.92 0.02 285);
+  --color-muted-foreground: oklch(0.45 0.02 285);
+  --color-border: oklch(0.88 0.02 285);
+  --color-background-dark: oklch(0.12 0.02 285);
+  --color-foreground-dark: oklch(0.95 0.01 285);
+  --color-muted-dark: oklch(0.18 0.02 285);
+  --color-muted-foreground-dark: oklch(0.6 0.02 285);
+  --color-border-dark: oklch(0.25 0.02 285);
+  --color-glass-light: oklch(0.98 0.01 285);
+  --color-glass-dark: oklch(0.15 0.02 285);
+
+  --shadow-glass: 0 8px 32px 0 rgb(0 0 0 / 0.1);
+
+  --backdrop-blur-xs: 2px;
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+/* Utility classes */
+@utility glass {
+  backdrop-filter: blur(12px);
+  background-color: oklch(0.98 0.01 285 / 0.7);
+  border: 1px solid oklch(0.88 0.02 285 / 0.5);
+  box-shadow: 0 8px 32px 0 rgb(0 0 0 / 0.1);
+
+  @media (prefers-color-scheme: dark) {
+    background-color: oklch(0.15 0.02 285 / 0.7);
+    border-color: oklch(0.25 0.02 285 / 0.5);
+  }
+}
+@utility glass-strong {
+  backdrop-filter: blur(24px);
+  background-color: oklch(0.98 0.01 285 / 0.9);
+  border: 1px solid oklch(0.88 0.02 285);
+  box-shadow: 0 10px 40px 0 rgb(0 0 0 / 0.2);
+
+  @media (prefers-color-scheme: dark) {
+    background-color: oklch(0.15 0.02 285 / 0.9);
+    border-color: oklch(0.25 0.02 285);
+  }
+}
+@utility scrollbar-hide {
+  /* Custom Scrollbar Styles */
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+@utility scrollbar-thin {
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: oklch(0.25 0.02 250 / 0.3);
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: oklch(0.25 0.02 250 / 0.5);
+  }
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.25 0.02 250 / 0.3) transparent;
+}
 
 /* Base styles */
 @layer base {
@@ -18,67 +111,6 @@
     body {
       @apply bg-background-dark text-foreground-dark;
     }
-  }
-}
-
-/* Utility classes */
-@layer utilities {
-  .glass {
-    backdrop-filter: blur(12px);
-    background-color: oklch(0.98 0.01 285 / 0.7);
-    border: 1px solid oklch(0.88 0.02 285 / 0.5);
-    box-shadow: 0 8px 32px 0 rgb(0 0 0 / 0.1);
-  }
-
-  .glass-strong {
-    backdrop-filter: blur(24px);
-    background-color: oklch(0.98 0.01 285 / 0.9);
-    border: 1px solid oklch(0.88 0.02 285);
-    box-shadow: 0 10px 40px 0 rgb(0 0 0 / 0.2);
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .glass {
-      background-color: oklch(0.15 0.02 285 / 0.7);
-      border-color: oklch(0.25 0.02 285 / 0.5);
-    }
-
-    .glass-strong {
-      background-color: oklch(0.15 0.02 285 / 0.9);
-      border-color: oklch(0.25 0.02 285);
-    }
-  }
-
-  /* Custom Scrollbar Styles */
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
-
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  .scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: oklch(0.25 0.02 250 / 0.3);
-    border-radius: 4px;
-  }
-
-  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background-color: oklch(0.25 0.02 250 / 0.5);
-  }
-
-  .scrollbar-thin {
-    scrollbar-width: thin;
-    scrollbar-color: oklch(0.25 0.02 250 / 0.3) transparent;
   }
 }
 

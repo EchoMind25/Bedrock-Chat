@@ -129,7 +129,7 @@ export default function SafetyPage() {
 								onChange={(e) => setNewKeyword(e.target.value)}
 								onKeyDown={(e) => e.key === "Enter" && handleAddKeyword()}
 								placeholder="Enter keyword or phrase..."
-								className="flex-1 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2"
+								className="flex-1 px-3 py-2 rounded-lg text-sm focus:outline-hidden focus:ring-2"
 								style={{
 									background: "var(--pd-bg-secondary)",
 									color: "var(--pd-text)",

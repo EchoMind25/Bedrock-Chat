@@ -205,7 +205,7 @@ export function Dropdown({
           "bg-slate-900/50 border border-slate-700/50",
           "text-slate-200",
           "transition-all duration-200",
-          "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
+          "focus:outline-hidden focus:ring-2 focus:ring-primary focus:border-transparent",
           "disabled:opacity-50 disabled:cursor-not-allowed",
           isOpen && "ring-2 ring-primary border-transparent"
         )}
@@ -263,7 +263,7 @@ export function Dropdown({
                       "bg-slate-900/50 border border-slate-700/50",
                       "text-slate-200 placeholder:text-slate-500",
                       "text-sm",
-                      "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                      "focus:outline-hidden focus:ring-2 focus:ring-primary focus:border-transparent"
                     )}
                     onClick={(e) => e.stopPropagation()}
                   />
@@ -292,7 +292,7 @@ export function Dropdown({
                         "px-3 py-2 rounded-lg",
                         "text-sm text-left",
                         "transition-all duration-150",
-                        "focus:outline-none",
+                        "focus:outline-hidden",
                         item.disabled
                           ? "opacity-50 cursor-not-allowed"
                           : "cursor-pointer hover:bg-muted",

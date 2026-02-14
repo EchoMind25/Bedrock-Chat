@@ -84,7 +84,7 @@ export function DMItem({ dm, isActive }: DMItemProps) {
 						{otherParticipant.displayName}
 					</p>
 					{dm.lastMessage && (
-						<span className="text-[10px] text-white/40 flex-shrink-0">
+						<span className="text-[10px] text-white/40 shrink-0">
 							{formatTimestamp(dm.lastMessage.timestamp)}
 						</span>
 					)}
@@ -102,7 +102,7 @@ export function DMItem({ dm, isActive }: DMItemProps) {
 			{/* Unread Badge */}
 			{dm.unreadCount > 0 && !isActive && (
 				<motion.div
-					className="flex-shrink-0 min-w-[20px] h-5 bg-error rounded-full flex items-center justify-center px-1.5"
+					className="shrink-0 min-w-[20px] h-5 bg-error rounded-full flex items-center justify-center px-1.5"
 					initial={{ scale: 0 }}
 					animate={{ scale: 1 }}
 					exit={{ scale: 0 }}
@@ -123,7 +123,7 @@ export function DMItem({ dm, isActive }: DMItemProps) {
 				role="button"
 				tabIndex={0}
 				aria-label={`Close conversation with ${dm.participants[0]?.username || "user"}`}
-				className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+				className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
 				onClick={(e) => {
 					e.stopPropagation();
 					// TODO: Implement close DM functionality

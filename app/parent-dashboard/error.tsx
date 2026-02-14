@@ -40,7 +40,7 @@ export default function ParentDashboardError({
 					The parent dashboard encountered an error. Your data is safe.
 				</p>
 				{error?.message && (
-					<p className="text-xs mb-6 break-words" style={{ color: "var(--pd-text-muted, #9ca3af)" }}>
+					<p className="text-xs mb-6 wrap-break-word" style={{ color: "var(--pd-text-muted, #9ca3af)" }}>
 						{error.message}
 					</p>
 				)}

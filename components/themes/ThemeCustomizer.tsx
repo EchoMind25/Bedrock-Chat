@@ -411,7 +411,7 @@ function ColorField({
 				}}
 			>
 				<div
-					className="w-4 h-4 rounded-md border border-white/20 flex-shrink-0"
+					className="w-4 h-4 rounded-md border border-white/20 shrink-0"
 					style={{ background: value }}
 				/>
 				<span className="text-[10px] text-blue-300/60 truncate font-mono">
@@ -425,7 +425,7 @@ function ColorField({
 					value={value}
 					onChange={(e) => onChange(e.target.value)}
 					placeholder="oklch(0.65 0.25 265)"
-					className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[10px] text-blue-300 font-mono focus:outline-none focus:border-blue-500/30"
+					className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[10px] text-blue-300 font-mono focus:outline-hidden focus:border-blue-500/30"
 					onBlur={() => setIsEditing(false)}
 					autoFocus
 				/>

@@ -50,13 +50,13 @@ export default function DemoPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted p-8">
+    <div className="min-h-screen bg-linear-to-br from-background to-muted p-8">
       <ToastContainer />
 
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
         <div className="text-center space-y-4">
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+          <h1 className="text-5xl font-bold bg-linear-to-r from-primary to-secondary bg-clip-text text-transparent">
             Bedrock Chat UI Components
           </h1>
           <p className="text-slate-300">

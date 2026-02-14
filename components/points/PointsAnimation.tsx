@@ -19,7 +19,7 @@ export function PointsAnimation() {
 	if (!isEnabled || typeof document === "undefined") return null;
 
 	return createPortal(
-		<div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 pointer-events-none">
+		<div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-60 flex flex-col items-center gap-2 pointer-events-none">
 			<AnimatePresence mode="popLayout">
 				{pendingRewards.slice(0, 3).map((reward) => (
 					<RewardToast

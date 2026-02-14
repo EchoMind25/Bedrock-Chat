@@ -56,7 +56,7 @@ export function ActivityFeed() {
 					>
 						{/* Icon */}
 						<div
-							className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+							className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
 							style={{
 								background: getIconBg(entry.type),
 							}}
@@ -77,7 +77,7 @@ export function ActivityFeed() {
 						{/* Points */}
 						{entry.points !== undefined && (
 							<span
-								className={`text-sm font-semibold flex-shrink-0 ${
+								className={`text-sm font-semibold shrink-0 ${
 									entry.points >= 0
 										? "text-green-400/80"
 										: "text-red-400/80"
@@ -89,7 +89,7 @@ export function ActivityFeed() {
 						)}
 
 						{/* Time */}
-						<span className="text-[10px] text-blue-300/30 flex-shrink-0">
+						<span className="text-[10px] text-blue-300/30 shrink-0">
 							{formatTime(entry.timestamp)}
 						</span>
 					</Glass>

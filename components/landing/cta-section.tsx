@@ -13,7 +13,7 @@ export function CTASection() {
   return (
     <section
       ref={ref}
-      className="py-24 px-6 bg-gradient-to-b from-background-dark/95 to-background-dark"
+      className="py-24 px-6 bg-linear-to-b from-background-dark/95 to-background-dark"
     >
       <div className="max-w-4xl mx-auto">
         <motion.div
@@ -32,7 +32,7 @@ export function CTASection() {
             <div className="absolute inset-0 rounded-2xl glow-pulse pointer-events-none" />
 
             {/* Background gradient */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10 pointer-events-none" />
+            <div className="absolute inset-0 bg-linear-to-br from-primary/10 via-secondary/5 to-accent/10 pointer-events-none" />
 
             <motion.div
               className="relative z-10"

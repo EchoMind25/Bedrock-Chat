@@ -112,7 +112,7 @@ export function Avatar({
       <div
         className={cn(
           "relative flex items-center justify-center rounded-full overflow-hidden",
-          "bg-gradient-to-br from-primary to-secondary",
+          "bg-linear-to-br from-primary to-secondary",
           "text-white font-semibold",
           sizeClasses[size]
         )}

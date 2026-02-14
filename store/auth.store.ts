@@ -383,16 +383,26 @@ export const useAuthStore = create<AuthState>()(
 				checkAuth: async () => {
 					try {
 						const supabase = createClient();
-						const {
-							data: { user },
-						} = await supabase.auth.getUser();
+
+						// Timeout prevents infinite loading if Supabase is unreachable
+						const timeout = new Promise<never>((_, reject) =>
+							setTimeout(() => reject(new Error("Auth check timed out")), 8000),
+						);
+
+						const { data: { user } } = await Promise.race([
+							supabase.auth.getUser(),
+							timeout,
+						]);
 
 						if (user) {
-							const { data: profile } = await supabase
-								.from("profiles")
-								.select("*")
-								.eq("id", user.id)
-								.single();
+							const { data: profile } = await Promise.race([
+								supabase
+									.from("profiles")
+									.select("*")
+									.eq("id", user.id)
+									.single(),
+								timeout,
+							]);
 
 							if (profile) {
 								set({
@@ -405,7 +415,7 @@ export const useAuthStore = create<AuthState>()(
 							}
 						}
 					} catch {
-						// Auth check failed silently
+						// Auth check failed or timed out
 					}
 
 					set({ user: null, isAuthenticated: false, isLoading: false, isInitializing: false });

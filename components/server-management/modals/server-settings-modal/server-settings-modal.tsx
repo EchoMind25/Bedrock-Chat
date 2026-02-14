@@ -198,7 +198,7 @@ export function ServerSettingsModal() {
     >
       <div className="flex gap-0 h-[650px]">
         {/* Vertical Tabs - Liquid Glass Sidebar */}
-        <div className="w-52 flex-shrink-0 border-r border-slate-700/30 pr-0 overflow-y-auto settings-scrollbar glass-inset rounded-l-lg">
+        <div className="w-52 shrink-0 border-r border-slate-700/30 pr-0 overflow-y-auto settings-scrollbar glass-inset rounded-l-lg">
           <div className="p-3 space-y-1">
             {tabs.map((tab) => {
               const Icon = tab.icon;

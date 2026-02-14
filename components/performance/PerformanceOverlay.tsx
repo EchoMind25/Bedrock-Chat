@@ -38,7 +38,7 @@ export function PerformanceOverlay() {
 	return (
 		<AnimatePresence>
 			<motion.div
-				className="fixed top-3 right-3 z-[100] w-64 font-mono text-[11px] pointer-events-auto"
+				className="fixed top-3 right-3 z-100 w-64 font-mono text-[11px] pointer-events-auto"
 				initial={{ opacity: 0, x: 20 }}
 				animate={{ opacity: 1, x: 0 }}
 				exit={{ opacity: 0, x: 20 }}

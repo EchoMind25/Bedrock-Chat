@@ -73,7 +73,7 @@ function SortableChannelItem({ channel }: { channel: Channel }) {
       </div>
 
       {channel.isNsfw && (
-        <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-500/20 text-red-300">
+        <span className="px-2 py-0.5 rounded-sm text-xs font-medium bg-red-500/20 text-red-300">
           NSFW
         </span>
       )}

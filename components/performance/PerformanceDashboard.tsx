@@ -76,7 +76,7 @@ export function PerformanceDashboard() {
 	return (
 		<AnimatePresence>
 			<motion.div
-				className="fixed inset-0 z-[90] flex items-center justify-center p-8"
+				className="fixed inset-0 z-90 flex items-center justify-center p-8"
 				initial={{ opacity: 0 }}
 				animate={{ opacity: 1 }}
 				exit={{ opacity: 0 }}
@@ -578,7 +578,7 @@ function VitalCard({
 					{name}
 				</span>
 				<span
-					className={`text-[9px] px-1.5 py-0.5 rounded ${colors[status]} bg-current/10`}
+					className={`text-[9px] px-1.5 py-0.5 rounded-sm ${colors[status]} bg-current/10`}
 					style={{ color: undefined }}
 				>
 					<span className={colors[status]}>{badges[status]}</span>

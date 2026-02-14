@@ -138,7 +138,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
 						onClick={(e) => e.stopPropagation()}
 					>
 						{/* Banner */}
-						<div className="h-28 bg-gradient-to-r from-[oklch(0.45_0.25_265)] via-[oklch(0.45_0.2_285)] to-[oklch(0.5_0.2_320)] relative">
+						<div className="h-28 bg-linear-to-r from-[oklch(0.45_0.25_265)] via-[oklch(0.45_0.2_285)] to-[oklch(0.5_0.2_320)] relative">
 							<button
 								type="button"
 								onClick={onClose}
@@ -188,7 +188,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
 										type="text"
 										value={formData.displayName}
 										onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
-										className="!bg-[oklch(0.12_0.02_250)] !border-white/10"
+										className="bg-[oklch(0.12_0.02_250)]! border-white/10!"
 									/>
 
 									<Textarea
@@ -198,7 +198,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
 										onChange={(e) => setFormData({ ...formData, bio: e.target.value.slice(0, 190) })}
 										rows={3}
 										placeholder="Tell us about yourself..."
-										className="!bg-[oklch(0.12_0.02_250)] !border-white/10 !text-white !placeholder:text-white/30"
+										className="bg-[oklch(0.12_0.02_250)]! border-white/10! text-white! !placeholder:text-white/30"
 										helperText={`${formData.bio.length}/190`}
 									/>
 
@@ -289,11 +289,11 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
 									{/* Privacy Notice */}
 									<div className="bg-[oklch(0.45_0.25_265/0.1)] border border-[oklch(0.45_0.25_265/0.2)] rounded-lg p-4">
 										<div className="flex gap-3">
-											<svg className="w-5 h-5 text-[oklch(0.65_0.25_265)] shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+											<svg className="w-5 h-5 text-primary shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
 											</svg>
 											<div>
-												<p className="text-sm font-medium text-[oklch(0.65_0.25_265)]">Privacy Protected</p>
+												<p className="text-sm font-medium text-primary">Privacy Protected</p>
 												<p className="text-xs text-white/40 mt-1">
 													Your data is encrypted and never shared with third parties. Only you can see your full profile information.
 												</p>

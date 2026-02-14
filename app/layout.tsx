@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
+import { ConsentBanner } from "@/components/consent/consent-banner";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -56,6 +57,7 @@ export default function RootLayout({
       <body className="antialiased touch-manipulation">
         <ServiceWorkerRegister />
         {children}
+        <ConsentBanner />
       </body>
     </html>
   );

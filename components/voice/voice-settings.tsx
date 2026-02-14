@@ -276,7 +276,7 @@ function VolumeSlider({ value, onChange, meterLevel }: VolumeSliderProps) {
       {/* Level Meter */}
       <div className="h-2 bg-muted/50 rounded-full overflow-hidden">
         <motion.div
-          className="h-full bg-gradient-to-r from-green-400 via-yellow-400 to-red-400"
+          className="h-full bg-linear-to-r from-green-400 via-yellow-400 to-red-400"
           style={{
             width: `${meterLevel}%`,
           }}

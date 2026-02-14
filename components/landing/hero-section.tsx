@@ -39,7 +39,7 @@ export function HeroSection() {
         <Suspense fallback={<HeroFallback />}>
           <Hero3DScene />
           {/* Gradient overlay for text readability on 3D */}
-          <div className="absolute inset-0 z-[1] bg-gradient-to-b from-transparent via-transparent to-background-dark/80 pointer-events-none" />
+          <div className="absolute inset-0 z-1 bg-linear-to-b from-transparent via-transparent to-background-dark/80 pointer-events-none" />
         </Suspense>
       ) : (
         <HeroFallback parallax={mounted && tier === "medium"} />
@@ -67,7 +67,7 @@ export function HeroSection() {
         >
           Privacy-first communication
           <br />
-          <span className="bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+          <span className="bg-linear-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
             that Discord wishes it was
           </span>
         </motion.h1>

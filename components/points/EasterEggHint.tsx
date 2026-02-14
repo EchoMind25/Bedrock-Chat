@@ -85,7 +85,7 @@ export function EasterEggHint() {
 					>
 						<div className="flex items-start gap-2">
 							<span
-								className="text-xs flex-shrink-0 mt-0.5"
+								className="text-xs shrink-0 mt-0.5"
 								style={{
 									color: "oklch(0.7 0.15 85)",
 								}}

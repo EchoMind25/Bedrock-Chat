@@ -350,14 +350,45 @@ const springConfig = {
 };
 ```
 
-### 4. OKLCH Colors
+### 4. Tailwind CSS 4.x (CSS-first config)
+
+Theme tokens are defined in `app/globals.css` using `@theme`:
+```css
+@import 'tailwindcss';
+
+@theme {
+  --color-primary: oklch(0.65 0.25 265);
+  --color-background-dark: oklch(0.12 0.02 285);
+  --shadow-glass: 0 8px 32px 0 rgb(0 0 0 / 0.1);
+}
+```
+
+Custom utilities use `@utility` (NOT `@layer utilities`):
+```css
+@utility glass {
+  backdrop-filter: blur(12px);
+  background-color: oklch(0.98 0.01 285 / 0.7);
+  @media (prefers-color-scheme: dark) {
+    background-color: oklch(0.15 0.02 285 / 0.7);
+  }
+}
+```
+
+**Renamed utilities (v3 -> v4):**
+- `flex-shrink-0` -> `shrink-0`
+- `outline-none` -> `outline-hidden`
+- `shadow-sm` -> `shadow-xs`
+- `blur-sm` -> `blur-xs`
+- `backdrop-blur-sm` -> `backdrop-blur-xs`
+
+### 5. OKLCH Colors
 ```css
 /* Use OKLCH for wider color gamut */
 background-color: oklch(0.15 0.02 250 / 0.7);
 border-color: oklch(0.25 0.02 285 / 0.5);
 ```
 
-### 5. Custom Scrollbars
+### 6. Custom Scrollbars
 ```tsx
 <div className="scrollbar-thin">
   {/* Content */}
@@ -527,6 +558,10 @@ The app has dev mode enabled. Users can:
 - ❌ Add features beyond what's requested
 - ❌ Create documentation files unless explicitly asked
 - ❌ Use emojis unless user requests them
+- ❌ Use `tailwind.config.ts` (deleted, use `@theme` in globals.css)
+- ❌ Use `@layer utilities` (use `@utility` directive in Tailwind 4)
+- ❌ Use `flex-shrink-0` (use `shrink-0`)
+- ❌ Use `outline-none` (use `outline-hidden`)
 
 ### DO
 - ✅ Use `motion/react` for animations
@@ -649,9 +684,15 @@ When uncertain about:
 
 ---
 
-**Last Updated:** 2026-02-13
+**Last Updated:** 2026-02-14
 **Phase:** 3.1 In Progress - Chat System with Critical Bug Fixes
 **Next:** Complete Message List + Real-time Features
+
+**Recent Changes (2026-02-14):**
+- Migrated from Tailwind CSS 3.4 to 4.x (CSS-first @theme config)
+- Deleted tailwind.config.ts, all theme tokens now in globals.css @theme block
+- Added GDPR/CCPA privacy compliance UI (consent banner, privacy policy, data export)
+- Added auth timeout and persisted auth trust for faster app loading
 
 **Recent Critical Fixes (2026-02-13):**
 - Fixed React Error #185 infinite loop in chat system

@@ -175,7 +175,7 @@ export function KeywordAlertManager({
                     aria-label={`Toggle ${alert.keyword} alert`}
                   >
                     <span
-                      className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform"
+                      className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-xs transition-transform"
                       style={{
                         transform: alert.isActive
                           ? "translateX(16px)"

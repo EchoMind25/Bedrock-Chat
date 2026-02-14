@@ -50,7 +50,7 @@ export function PortalOverlay() {
 		<AnimatePresence>
 			{isTransitioning && (
 				<motion.div
-					className="fixed inset-0 z-[100] pointer-events-none"
+					className="fixed inset-0 z-100 pointer-events-none"
 					initial={{ opacity: 0 }}
 					animate={{ opacity: 1 }}
 					exit={{ opacity: 0 }}

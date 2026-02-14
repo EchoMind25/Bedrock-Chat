@@ -195,7 +195,7 @@ export function ServerBrowser() {
 					placeholder="Search servers..."
 					value={search}
 					onChange={(e) => setSearch(e.target.value)}
-					className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-blue-200 placeholder-blue-300/30 focus:outline-none focus:border-blue-500/30 transition-colors"
+					className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-blue-200 placeholder-blue-300/30 focus:outline-hidden focus:border-blue-500/30 transition-colors"
 				/>
 			</div>
 
@@ -268,7 +268,7 @@ function ServerCard({
 		>
 			{/* Icon */}
 			<div
-				className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 text-lg font-bold"
+				className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 text-lg font-bold"
 				style={{
 					background: server.themeColor
 						? `${server.themeColor} / 0.15`
@@ -308,7 +308,7 @@ function ServerCard({
 			</div>
 
 			{/* Join */}
-			<div className="flex-shrink-0">
+			<div className="shrink-0">
 				{server.isJoined ? (
 					<span className="text-xs text-green-400/60 font-medium px-3 py-1.5">
 						Joined
@@ -339,7 +339,7 @@ function ActivityDot({ level }: { level: ServerActivityLevel }) {
 
 	return (
 		<span
-			className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${colors[level]}`}
+			className={`w-1.5 h-1.5 rounded-full shrink-0 ${colors[level]}`}
 			title={`${level} activity`}
 		/>
 	);

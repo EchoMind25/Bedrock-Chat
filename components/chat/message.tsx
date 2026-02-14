@@ -118,7 +118,7 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 								{message.author.displayName}
 							</span>
 							{message.author.isBot && (
-								<span className="px-1.5 py-0.5 text-xs font-semibold rounded bg-[oklch(0.35_0.08_250)] text-[oklch(0.75_0.15_250)]">
+								<span className="px-1.5 py-0.5 text-xs font-semibold rounded-sm bg-[oklch(0.35_0.08_250)] text-[oklch(0.75_0.15_250)]">
 									BOT
 								</span>
 							)}
@@ -148,7 +148,7 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 							<textarea
 								value={editContent}
 								onChange={(e) => setEditContent(e.target.value)}
-								className="w-full p-2 rounded-lg bg-white/5 border border-white/10 text-white resize-none focus:outline-none focus:border-[oklch(0.5_0.12_250)]"
+								className="w-full p-2 rounded-lg bg-white/5 border border-white/10 text-white resize-none focus:outline-hidden focus:border-[oklch(0.5_0.12_250)]"
 								rows={3}
 								autoFocus
 							/>
@@ -169,7 +169,7 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 						</div>
 					) : (
 						<>
-							<div className="text-white/90 break-words">
+							<div className="text-white/90 wrap-break-word">
 								{renderMarkdown(parsedContent)}
 							</div>
 
@@ -214,7 +214,7 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 					>
 						<button
 							onClick={() => setIsEmojiPickerOpen(true)}
-							className="p-2 rounded-lg bg-[oklch(0.2_0.02_250)] hover:bg-[oklch(0.25_0.02_285)] transition-colors"
+							className="p-2 rounded-lg bg-[oklch(0.2_0.02_250)] hover:bg-border-dark transition-colors"
 							title="Add reaction"
 						>
 							<svg className="w-5 h-5 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -225,7 +225,7 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 							<>
 								<button
 									onClick={handleEdit}
-									className="p-2 rounded-lg bg-[oklch(0.2_0.02_250)] hover:bg-[oklch(0.25_0.02_285)] transition-colors"
+									className="p-2 rounded-lg bg-[oklch(0.2_0.02_250)] hover:bg-border-dark transition-colors"
 									title="Edit message"
 								>
 									<svg className="w-5 h-5 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">

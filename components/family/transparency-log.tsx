@@ -90,7 +90,7 @@ export function TransparencyLog({
 						initial={{ opacity: 0, x: -10 }}
 						animate={{ opacity: 1, x: 0 }}
 					>
-						<span className="text-xl flex-shrink-0">
+						<span className="text-xl shrink-0">
 							{actionIcons[entry.action]}
 						</span>
 						<div className="flex-1 min-w-0">
@@ -139,13 +139,13 @@ export function TransparencyLog({
 								transition={{ delay: idx * 0.05 }}
 							>
 								<div className="flex items-start gap-4">
-									<div className="text-3xl flex-shrink-0">
+									<div className="text-3xl shrink-0">
 										{actionIcons[entry.action]}
 									</div>
 									<div className="flex-1">
 										<div className="flex items-start justify-between gap-2">
 											<p className="text-white font-medium">{entry.details}</p>
-											<span className="text-xs text-white/50 flex-shrink-0">
+											<span className="text-xs text-white/50 shrink-0">
 												{new Date(entry.timestamp).toLocaleString()}
 											</span>
 										</div>

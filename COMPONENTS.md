@@ -143,7 +143,7 @@ Badge with variants and optional pulse animation.
 ```
 
 **Props:**
-- `variant`: "default" | "primary" | "secondary" | "success" | "warning" | "danger" | "outline"
+- `variant`: "default" | "primary" | "secondary" | "success" | "warning" | "danger" | "outline-solid"
 - `pulse`: boolean (default: false)
 
 ## Card

@@ -143,7 +143,7 @@ export function PresenceTrail() {
 	return (
 		<canvas
 			ref={canvasRef}
-			className="fixed inset-0 z-[55] pointer-events-none"
+			className="fixed inset-0 z-55 pointer-events-none"
 			aria-hidden="true"
 		/>
 	);

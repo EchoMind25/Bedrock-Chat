@@ -97,7 +97,7 @@ export function UserPanel() {
 			{/* User Info - opens profile modal */}
 			<button
 				type="button"
-				className="flex items-center gap-2 flex-1 px-2 py-1 min-h-[44px] rounded hover:bg-white/5 transition-colors group touch-manipulation"
+				className="flex items-center gap-2 flex-1 px-2 py-1 min-h-[44px] rounded-sm hover:bg-white/5 transition-colors group touch-manipulation"
 				onClick={() => {
 					setShowProfile(true);
 					setShowSettings(false);
@@ -179,7 +179,7 @@ export function UserPanel() {
 				<Tooltip content="User Settings" position="top">
 					<motion.button
 						type="button"
-						className="min-w-[44px] min-h-[44px] w-11 h-11 md:w-8 md:h-8 rounded hover:bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition-colors touch-manipulation"
+						className="min-w-[44px] min-h-[44px] w-11 h-11 md:w-8 md:h-8 rounded-sm hover:bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition-colors touch-manipulation"
 						whileHover={{ scale: 1.05, rotate: 90 }}
 						whileTap={{ scale: 0.95 }}
 						onClick={() => {
@@ -218,7 +218,7 @@ export function UserPanel() {
 							<div className="p-2 space-y-1">
 								<button
 									type="button"
-									className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded transition-colors flex items-center gap-2"
+									className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded-sm transition-colors flex items-center gap-2"
 									onClick={() => handleSetStatus("online")}
 								>
 									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -229,7 +229,7 @@ export function UserPanel() {
 								</button>
 								<button
 									type="button"
-									className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded transition-colors flex items-center gap-2"
+									className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded-sm transition-colors flex items-center gap-2"
 									onClick={() => handleSetStatus("dnd")}
 								>
 									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -240,7 +240,7 @@ export function UserPanel() {
 								</button>
 								<button
 									type="button"
-									className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded transition-colors flex items-center gap-2"
+									className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded-sm transition-colors flex items-center gap-2"
 									onClick={() => {
 										setShowSettings(false);
 										setShowAppearance(true);
@@ -255,7 +255,7 @@ export function UserPanel() {
 								<div className="h-px bg-white/10 my-1" />
 								<button
 									type="button"
-									className="w-full px-3 py-2 text-sm text-left text-error hover:bg-error/10 rounded transition-colors flex items-center gap-2"
+									className="w-full px-3 py-2 text-sm text-left text-error hover:bg-error/10 rounded-sm transition-colors flex items-center gap-2"
 									onClick={async () => {
 										setShowSettings(false);
 										await logout();

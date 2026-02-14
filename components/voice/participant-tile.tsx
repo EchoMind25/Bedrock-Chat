@@ -56,7 +56,7 @@ export function ParticipantTile({
       />
 
       {/* Video placeholder / Avatar */}
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 via-blue-500/20 to-pink-500/20 backdrop-blur-xl">
+      <div className="absolute inset-0 bg-linear-to-br from-purple-500/20 via-blue-500/20 to-pink-500/20 backdrop-blur-xl">
         {isVideoOff ? (
           <div className="flex items-center justify-center h-full">
             <Avatar
@@ -75,7 +75,7 @@ export function ParticipantTile({
 
       {/* Glass overlay on hover */}
       <motion.div
-        className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+        className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
       />
 
       {/* Username label */}

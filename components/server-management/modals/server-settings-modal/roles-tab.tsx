@@ -96,7 +96,7 @@ function SortableRoleItem({
       </div>
 
       <div
-        className="w-3.5 h-3.5 rounded-full flex-shrink-0 ring-2 ring-slate-800/50"
+        className="w-3.5 h-3.5 rounded-full shrink-0 ring-2 ring-slate-800/50"
         style={{ backgroundColor: role.color }}
       />
 
@@ -109,7 +109,7 @@ function SortableRoleItem({
       </div>
 
       {role.isDefault && (
-        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-700/50 text-slate-300">
+        <span className="px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-slate-700/50 text-slate-300">
           DEFAULT
         </span>
       )}
@@ -412,7 +412,7 @@ export function RolesTab({
                                     memberCount: Math.max(0, (selectedRole.memberCount || 1) - 1),
                                   })
                                 }
-                                className="p-1 rounded hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
+                                className="p-1 rounded-sm hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
                               >
                                 <X className="w-4 h-4" />
                               </button>

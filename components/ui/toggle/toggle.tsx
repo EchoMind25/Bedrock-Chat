@@ -125,7 +125,7 @@ export function Toggle({
             }}
           >
             <motion.div
-              className="absolute inset-0 bg-gradient-to-r from-primary via-blue-500 to-primary"
+              className="absolute inset-0 bg-linear-to-r from-primary via-blue-500 to-primary"
               animate={{
                 x: ["-100%", "100%"],
               }}

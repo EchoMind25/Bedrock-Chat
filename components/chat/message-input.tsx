@@ -105,7 +105,7 @@ export function MessageInput({ channelId, channelName }: MessageInputProps) {
 							onChange={(e) => setContent(e.target.value.slice(0, MAX_LENGTH))}
 							onKeyDown={handleKeyDown}
 							placeholder={`Message #${channelName}`}
-							className="w-full bg-transparent text-white placeholder:text-white/40 resize-none focus:outline-none scrollbar-thin max-h-[200px]"
+							className="w-full bg-transparent text-white placeholder:text-white/40 resize-none focus:outline-hidden scrollbar-thin max-h-[200px]"
 							rows={1}
 						/>
 					</div>

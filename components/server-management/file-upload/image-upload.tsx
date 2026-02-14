@@ -94,7 +94,7 @@ export function ImageUpload({
     }
   };
 
-  const aspectRatioClass = aspectRatio === "square" ? "aspect-square" : "aspect-[16/9]";
+  const aspectRatioClass = aspectRatio === "square" ? "aspect-square" : "aspect-video";
 
   return (
     <div className={cn("space-y-2", className)} {...props}>

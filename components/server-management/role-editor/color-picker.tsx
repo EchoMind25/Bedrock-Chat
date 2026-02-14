@@ -69,7 +69,7 @@ export function ColorPicker({ value, onChange, label, roleName, className, ...pr
               onClick={() => handlePresetSelect(preset.color)}
               className={cn(
                 "relative w-full aspect-square rounded-lg transition-transform",
-                "hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white/30",
+                "hover:scale-110 focus:outline-hidden focus:ring-2 focus:ring-white/30",
               )}
               style={{ backgroundColor: preset.color }}
               whileHover={{ scale: 1.1 }}

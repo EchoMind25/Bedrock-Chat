@@ -151,8 +151,8 @@ function MessageListSkeleton() {
 				<div key={i} className="flex gap-4 animate-pulse">
 					<div className="w-10 h-10 rounded-full bg-white/10" />
 					<div className="flex-1 space-y-2">
-						<div className="h-4 w-32 bg-white/10 rounded" />
-						<div className="h-4 w-full max-w-md bg-white/10 rounded" />
+						<div className="h-4 w-32 bg-white/10 rounded-sm" />
+						<div className="h-4 w-full max-w-md bg-white/10 rounded-sm" />
 					</div>
 				</div>
 			))}

@@ -141,7 +141,7 @@ export function ChannelHeader({ channel, memberCount = 42 }: ChannelHeaderProps)
 								value={searchQuery}
 								onChange={(e) => handleSearch(e.target.value)}
 								placeholder="Search messages..."
-								className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-blue-500/50"
+								className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder:text-white/40 focus:outline-hidden focus:border-blue-500/50"
 								autoFocus
 							/>
 							{searchQuery && (

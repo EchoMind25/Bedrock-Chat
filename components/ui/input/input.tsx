@@ -111,7 +111,7 @@ export function Input({
             "bg-slate-900/50 border border-slate-700/50",
             "text-white placeholder:text-slate-500",
             "transition-all duration-200",
-            "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
+            "focus:outline-hidden focus:ring-2 focus:ring-primary focus:border-transparent",
             "disabled:opacity-50 disabled:cursor-not-allowed",
             error && "border-red-500 focus:ring-red-500",
             leftIcon ? "pl-10" : false,
@@ -210,7 +210,7 @@ export function Textarea({
             "bg-slate-900/50 border border-slate-700/50",
             "text-white placeholder:text-slate-500",
             "transition-all duration-200",
-            "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
+            "focus:outline-hidden focus:ring-2 focus:ring-primary focus:border-transparent",
             "disabled:opacity-50 disabled:cursor-not-allowed",
             error && "border-red-500 focus:ring-red-500",
             className

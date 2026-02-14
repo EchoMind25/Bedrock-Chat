@@ -95,7 +95,7 @@ export function TimeLimitEditor({
           aria-label="Toggle time limits"
         >
           <span
-            className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform"
+            className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-xs transition-transform"
             style={{
               transform: localConfig.isActive
                 ? "translateX(20px)"
@@ -135,7 +135,7 @@ export function TimeLimitEditor({
               updateConfig({ dailyLimitMinutes: parseInt(e.target.value) })
             }
             disabled={!localConfig.isActive}
-            className="w-full accent-[var(--pd-primary)]"
+            className="w-full accent-(--pd-primary)"
           />
           <div
             className="flex justify-between text-xs mt-1"

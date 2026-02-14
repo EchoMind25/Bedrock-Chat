@@ -138,7 +138,7 @@ export function FeaturesSection() {
     <section
       id="features"
       ref={ref}
-      className="py-24 px-6 bg-gradient-to-b from-background-dark to-background-dark/95"
+      className="py-24 px-6 bg-linear-to-b from-background-dark to-background-dark/95"
     >
       <div className="max-w-7xl mx-auto">
         <motion.div

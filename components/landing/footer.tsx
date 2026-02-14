@@ -11,10 +11,18 @@ const footerLinks = {
     { label: "Changelog", href: "#" },
   ],
   legal: [
-    { label: "Privacy Policy", href: "#" },
+    { label: "Privacy Policy", href: "/privacy-policy" },
     { label: "Terms of Service", href: "#" },
     { label: "Cookie Policy", href: "#" },
     { label: "GDPR", href: "#" },
+    {
+      label: "Do Not Sell or Share My Personal Information",
+      href: "/privacy-settings?section=ccpa",
+    },
+    {
+      label: "Limit Use of Sensitive Personal Information",
+      href: "/privacy-settings?section=sensitive",
+    },
   ],
   community: [
     { label: "Open Source", href: "https://github.com" },

@@ -79,7 +79,7 @@ function TrustCard({
       }}
     >
       {/* Icon block */}
-      <div className="flex-shrink-0">
+      <div className="shrink-0">
         <Glass
           variant="liquid"
           border="liquid"
@@ -108,7 +108,7 @@ export function TrustSection() {
   return (
     <section
       ref={ref}
-      className="py-24 px-6 bg-gradient-to-b from-background-dark/95 to-background-dark"
+      className="py-24 px-6 bg-linear-to-b from-background-dark/95 to-background-dark"
     >
       <div className="max-w-4xl mx-auto">
         <motion.div

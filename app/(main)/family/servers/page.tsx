@@ -66,7 +66,7 @@ export default function FamilyServersPage() {
 										<div className="flex items-start justify-between gap-4">
 											<div className="flex items-start gap-4 flex-1">
 												{/* Server Icon */}
-												<div className="w-16 h-16 bg-white/10 rounded-xl flex items-center justify-center text-3xl flex-shrink-0">
+												<div className="w-16 h-16 bg-white/10 rounded-xl flex items-center justify-center text-3xl shrink-0">
 													{approval.server.icon || "🏰"}
 												</div>
 
@@ -94,7 +94,7 @@ export default function FamilyServersPage() {
 											</div>
 
 											{/* Actions */}
-											<div className="flex gap-2 flex-shrink-0">
+											<div className="flex gap-2 shrink-0">
 												<Button
 													variant="primary"
 													size="sm"

@@ -21,7 +21,7 @@ export function SkipIntroButton({ onSkip }: SkipIntroButtonProps) {
 			aria-label="Skip intro animation"
 		>
 			Skip intro
-			<kbd className="text-xs border border-white/20 rounded px-1.5 py-0.5 font-mono">
+			<kbd className="text-xs border border-white/20 rounded-sm px-1.5 py-0.5 font-mono">
 				Esc
 			</kbd>
 		</motion.button>

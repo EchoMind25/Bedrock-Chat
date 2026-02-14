@@ -75,7 +75,7 @@ export function OnboardingServerPrompt({
 					>
 						<div className="flex items-center gap-4">
 							<div
-								className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+								className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
 								style={{
 									background:
 										"linear-gradient(135deg, oklch(0.55 0.25 265 / 0.3), oklch(0.6 0.15 285 / 0.2))",
@@ -114,7 +114,7 @@ export function OnboardingServerPrompt({
 					>
 						<div className="flex items-center gap-4">
 							<div
-								className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+								className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
 								style={{
 									background:
 										"linear-gradient(135deg, oklch(0.6 0.2 145 / 0.3), oklch(0.55 0.15 160 / 0.2))",

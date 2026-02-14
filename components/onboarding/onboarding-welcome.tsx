@@ -82,7 +82,7 @@ export function OnboardingWelcome({ onNext, onSkip }: OnboardingWelcomeProps) {
 				transition={{ delay: 0.4 }}
 			>
 				<div className="flex items-center gap-3 text-sm text-blue-200/70">
-					<span className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+					<span className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
 						<svg
 							width="14"
 							height="14"
@@ -97,7 +97,7 @@ export function OnboardingWelcome({ onNext, onSkip }: OnboardingWelcomeProps) {
 					End-to-end encrypted conversations
 				</div>
 				<div className="flex items-center gap-3 text-sm text-blue-200/70">
-					<span className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+					<span className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
 						<svg
 							width="14"
 							height="14"
@@ -112,7 +112,7 @@ export function OnboardingWelcome({ onNext, onSkip }: OnboardingWelcomeProps) {
 					No government ID required
 				</div>
 				<div className="flex items-center gap-3 text-sm text-blue-200/70">
-					<span className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+					<span className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
 						<svg
 							width="14"
 							height="14"

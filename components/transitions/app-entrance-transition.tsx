@@ -61,7 +61,7 @@ export function AppEntranceTransition({
     <AnimatePresence>
       {isActive && (
         <motion.div
-          className="fixed inset-0 z-[200] flex items-center justify-center overflow-hidden"
+          className="fixed inset-0 z-200 flex items-center justify-center overflow-hidden"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -177,7 +177,7 @@ export function AppEntranceTransition({
 
             {/* Shimmer effect */}
             <motion.div
-              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+              className="absolute inset-0 bg-linear-to-r from-transparent via-white/30 to-transparent"
               initial={{ x: "-100%", opacity: 0 }}
               animate={{ x: "200%", opacity: [0, 1, 0] }}
               transition={{

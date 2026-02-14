@@ -56,10 +56,10 @@ export function VoiceChannel({ channelName, participants, onLeave }: VoiceChanne
 
   return (
     <>
-      <div className="flex flex-col h-full bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="flex flex-col h-full bg-linear-to-br from-background via-background to-muted/20">
         {/* Header */}
         <motion.div
-          className="flex-shrink-0 px-6 py-4 border-b border-border/50 bg-background/50 backdrop-blur-sm"
+          className="shrink-0 px-6 py-4 border-b border-border/50 bg-background/50 backdrop-blur-sm"
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={springConfig}

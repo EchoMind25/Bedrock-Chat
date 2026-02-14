@@ -67,9 +67,9 @@ function FullScreenView({ onMinimize, onClose, username, avatar }: FullScreenVie
     >
       {/* Screen Content Placeholder */}
       <div className="absolute inset-0 flex items-center justify-center p-8">
-        <div className="relative w-full h-full max-w-7xl rounded-2xl overflow-hidden bg-gradient-to-br from-purple-900/20 via-blue-900/20 to-pink-900/20 border border-white/10">
+        <div className="relative w-full h-full max-w-7xl rounded-2xl overflow-hidden bg-linear-to-br from-purple-900/20 via-blue-900/20 to-pink-900/20 border border-white/10">
           <div className="absolute inset-0 p-8">
-            <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-6 h-full">
+            <div className="bg-linear-to-br from-gray-800 to-gray-900 rounded-xl p-6 h-full">
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <div className="w-3 h-3 rounded-full bg-red-500" />
@@ -189,7 +189,7 @@ function MinimizedView({ onMaximize, onClose, username }: MinimizedViewProps) {
       whileHover={{ scale: 1.02 }}
     >
       {/* Mini screen preview */}
-      <div className="aspect-video bg-gradient-to-br from-gray-800 to-gray-900 relative">
+      <div className="aspect-video bg-linear-to-br from-gray-800 to-gray-900 relative">
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center">
             <Monitor className="w-12 h-12 text-white/30 mx-auto mb-2" />

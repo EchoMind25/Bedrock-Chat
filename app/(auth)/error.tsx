@@ -39,7 +39,7 @@ export default function AuthError({
 					Something went wrong during authentication.
 				</p>
 				{error?.message && (
-					<p className="text-xs text-white/30 mb-6 break-words">
+					<p className="text-xs text-white/30 mb-6 wrap-break-word">
 						{error.message}
 					</p>
 				)}

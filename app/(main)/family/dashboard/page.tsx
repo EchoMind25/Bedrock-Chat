@@ -74,7 +74,7 @@ export default function FamilyDashboardPage() {
 							<select
 								value={selectedTeenId || ""}
 								onChange={(e) => setSelectedTeen(e.target.value)}
-								className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+								className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-hidden focus:ring-2 focus:ring-primary"
 							>
 								{teenAccounts.map((ta) => (
 									<option key={ta.id} value={ta.id} className="bg-[oklch(0.15_0.02_250)]">
@@ -165,7 +165,7 @@ export default function FamilyDashboardPage() {
 												>
 													<div className="flex items-start gap-3">
 														<div
-															className="w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0"
+															className="w-10 h-10 rounded-full flex items-center justify-center text-xl shrink-0"
 															style={{
 																backgroundColor: `${info.color.replace(")", " / 0.2)")}`,
 																color: info.color,

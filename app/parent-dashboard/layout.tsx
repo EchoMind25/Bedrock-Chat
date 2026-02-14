@@ -165,7 +165,7 @@ export default function ParentDashboardLayout({
 							<select
 								value={selectedTeenId || ""}
 								onChange={(e) => setSelectedTeen(e.target.value)}
-								className="w-full px-3 py-2 text-sm rounded-lg appearance-none cursor-pointer pr-8 focus:outline-none focus:ring-2"
+								className="w-full px-3 py-2 text-sm rounded-lg appearance-none cursor-pointer pr-8 focus:outline-hidden focus:ring-2"
 								style={{
 									background: "var(--pd-bg-secondary)",
 									color: "var(--pd-text)",

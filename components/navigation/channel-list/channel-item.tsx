@@ -102,7 +102,7 @@ export function ChannelItem({ channel, isActive }: ChannelItemProps) {
 				type="button"
 				onClick={handleChannelClick}
 				className={cn(
-					"w-full px-2 py-3 md:py-1.5 mx-1 min-h-[44px] md:min-h-0 rounded flex items-center gap-2 text-sm transition-colors group touch-manipulation",
+					"w-full px-2 py-3 md:py-1.5 mx-1 min-h-[44px] md:min-h-0 rounded-sm flex items-center gap-2 text-sm transition-colors group touch-manipulation",
 					isActive
 						? "bg-white/10 text-white"
 						: "text-white/60 hover:bg-white/5 hover:text-white/80"
@@ -147,7 +147,7 @@ export function ChannelItem({ channel, isActive }: ChannelItemProps) {
 						role="button"
 						tabIndex={0}
 						aria-label={`Settings for ${channel.name}`}
-						className="p-2 md:p-1 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center hover:bg-white/10 rounded transition-colors cursor-pointer md:opacity-0 md:group-hover:opacity-100 touch-manipulation"
+						className="p-2 md:p-1 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center hover:bg-white/10 rounded-sm transition-colors cursor-pointer md:opacity-0 md:group-hover:opacity-100 touch-manipulation"
 						onClick={(e) => {
 							e.stopPropagation();
 							openChannelSettings(channel.id);
@@ -205,7 +205,7 @@ export function ChannelItem({ channel, isActive }: ChannelItemProps) {
 function VoiceUserItem({ user }: { user: VoiceUser }) {
 	return (
 		<motion.div
-			className="flex items-center gap-2 px-2 py-1 rounded hover:bg-white/5 transition-colors cursor-pointer group"
+			className="flex items-center gap-2 px-2 py-1 rounded-sm hover:bg-white/5 transition-colors cursor-pointer group"
 			initial={{ opacity: 0, x: -10 }}
 			animate={{ opacity: 1, x: 0 }}
 			transition={{ type: "spring", stiffness: 260, damping: 20 }}

@@ -199,7 +199,7 @@ export function TooltipIcon({
           "w-5 h-5 rounded-full",
           "text-slate-400 hover:text-foreground",
           "transition-colors duration-200",
-          "focus:outline-none focus:ring-2 focus:ring-primary"
+          "focus:outline-hidden focus:ring-2 focus:ring-primary"
         )}
         aria-label="More information"
       >

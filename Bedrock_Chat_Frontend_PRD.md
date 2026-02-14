@@ -321,10 +321,10 @@ interface GlassProps extends HTMLMotionProps<'div'> {
 }
 
 const variantStyles: Record<GlassVariant, string> = {
-  default: 'bg-[--glass-bg] backdrop-blur-[--glass-blur] border border-[--glass-border]',
-  elevated: 'bg-[--glass-bg] backdrop-blur-[--glass-blur] border border-[--glass-border] shadow-2xl shadow-primary-500/10',
-  subtle: 'bg-[--glass-bg]/60 backdrop-blur-md border border-[--glass-border]/50',
-  interactive: 'bg-[--glass-bg] backdrop-blur-[--glass-blur] border border-[--glass-border] hover:border-primary-500/50 transition-colors',
+  default: 'bg-(--glass-bg) backdrop-blur-(--glass-blur) border border-(--glass-border)',
+  elevated: 'bg-(--glass-bg) backdrop-blur-(--glass-blur) border border-(--glass-border) shadow-2xl shadow-primary-500/10',
+  subtle: 'bg-(--glass-bg)/60 backdrop-blur-md border border-(--glass-border)/50',
+  interactive: 'bg-(--glass-bg) backdrop-blur-(--glass-blur) border border-(--glass-border) hover:border-primary-500/50 transition-colors',
 };
 
 export function Glass({ variant = 'default', className, children, ...props }: GlassProps) {

@@ -149,7 +149,7 @@ export function ComparisonTable() {
   return (
     <section
       ref={ref}
-      className="py-24 px-6 bg-gradient-to-b from-background-dark/95 to-background-dark"
+      className="py-24 px-6 bg-linear-to-b from-background-dark/95 to-background-dark"
     >
       <div className="max-w-5xl mx-auto">
         <motion.div

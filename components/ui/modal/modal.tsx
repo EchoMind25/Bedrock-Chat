@@ -196,7 +196,7 @@ export function Modal({
             <Glass variant="liquid-elevated" border="liquid" className="max-h-[90vh] flex flex-col overflow-hidden rounded-2xl">
               {/* Header */}
               {(title || description) && (
-                <div className="flex-shrink-0 p-6 pb-4">
+                <div className="shrink-0 p-6 pb-4">
                   {title && (
                     <h2
                       id="modal-title"
@@ -227,7 +227,7 @@ export function Modal({
 
               {/* Footer */}
               {footer && (
-                <div className="flex-shrink-0 px-6 py-4 border-t border-slate-700/30 flex items-center justify-end gap-3">
+                <div className="shrink-0 px-6 py-4 border-t border-slate-700/30 flex items-center justify-end gap-3">
                   {footer}
                 </div>
               )}
@@ -242,7 +242,7 @@ export function Modal({
                   "text-slate-400 hover:text-slate-100",
                   "hover:bg-slate-700/50",
                   "transition-all duration-200",
-                  "focus:outline-none focus:ring-2 focus:ring-primary"
+                  "focus:outline-hidden focus:ring-2 focus:ring-primary"
                 )}
                 aria-label="Close modal"
               >

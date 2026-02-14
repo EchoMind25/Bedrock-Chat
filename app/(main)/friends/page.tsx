@@ -108,7 +108,7 @@ export default function FriendsPage() {
 						placeholder="Search friends..."
 						value={searchQuery}
 						onChange={(e) => setSearchQuery(e.target.value)}
-						className="!bg-[oklch(0.12_0.02_250)] !border-white/10"
+						className="bg-[oklch(0.12_0.02_250)]! border-white/10!"
 					/>
 				</div>
 			)}
@@ -235,7 +235,7 @@ export default function FriendsPage() {
 										className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/5"
 									>
 										<div className="flex items-center gap-3">
-											<div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-500/50 to-red-800/50 flex items-center justify-center">
+											<div className="w-10 h-10 rounded-full bg-linear-to-br from-red-500/50 to-red-800/50 flex items-center justify-center">
 												<span className="text-white font-semibold text-sm">
 													{user.displayName.slice(0, 2).toUpperCase()}
 												</span>

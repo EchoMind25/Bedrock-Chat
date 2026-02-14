@@ -39,7 +39,7 @@ export function ChannelCategory({
 				}}
 			>
 				<motion.svg
-					className="w-3 h-3 flex-shrink-0"
+					className="w-3 h-3 shrink-0"
 					fill="none"
 					stroke="currentColor"
 					viewBox="0 0 24 24"
@@ -64,7 +64,7 @@ export function ChannelCategory({
 					e.stopPropagation();
 					openCreateChannel(category.id);
 				}}
-				className="p-0.5 hover:bg-white/10 rounded transition-colors opacity-0 group-hover:opacity-100"
+				className="p-0.5 hover:bg-white/10 rounded-sm transition-colors opacity-0 group-hover:opacity-100"
 				aria-label="Create Channel"
 			>
 				<Plus className="w-3.5 h-3.5" />

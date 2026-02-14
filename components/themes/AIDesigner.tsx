@@ -23,7 +23,7 @@ export function AIDesigner() {
 			<div className="flex items-start gap-4">
 				{/* Icon */}
 				<div
-					className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+					className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
 					style={{
 						background:
 							"linear-gradient(135deg, oklch(0.55 0.25 265 / 0.2), oklch(0.5 0.2 310 / 0.2))",

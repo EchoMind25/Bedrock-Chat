@@ -221,7 +221,7 @@ export function CreateChannelModal() {
                 >
                   <Icon
                     className={cn(
-                      "w-5 h-5 mt-0.5 flex-shrink-0",
+                      "w-5 h-5 mt-0.5 shrink-0",
                       channelType === type.type ? "text-blue-400" : "text-white/60",
                     )}
                   />
@@ -269,7 +269,7 @@ export function CreateChannelModal() {
           />
           {isPrivate && (
             <div className="flex items-start gap-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
-              <Lock className="w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0" />
+              <Lock className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
               <p className="text-xs text-yellow-200">
                 Only members with specific roles or permissions will be able to view this channel.
               </p>

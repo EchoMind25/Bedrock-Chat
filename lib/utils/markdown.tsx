@@ -166,7 +166,7 @@ export function renderMarkdown(parsed: ParsedContent[]): React.ReactNode {
 				return (
 					<code
 						key={key}
-						className="px-1.5 py-0.5 rounded text-sm font-mono bg-black/40 text-[oklch(0.8_0.08_190)]"
+						className="px-1.5 py-0.5 rounded-sm text-sm font-mono bg-black/40 text-[oklch(0.8_0.08_190)]"
 					>
 						{token.content}
 					</code>
@@ -196,7 +196,7 @@ export function renderMarkdown(parsed: ParsedContent[]): React.ReactNode {
 				return (
 					<span
 						key={key}
-						className="px-1 py-0.5 rounded bg-[oklch(0.35_0.08_250)] text-[oklch(0.75_0.15_250)] hover:bg-[oklch(0.4_0.1_250)] cursor-pointer transition-colors"
+						className="px-1 py-0.5 rounded-sm bg-[oklch(0.35_0.08_250)] text-[oklch(0.75_0.15_250)] hover:bg-[oklch(0.4_0.1_250)] cursor-pointer transition-colors"
 					>
 						@{token.content}
 					</span>
