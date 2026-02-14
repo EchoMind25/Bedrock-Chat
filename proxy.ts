@@ -34,14 +34,14 @@ const securityHeaders = {
 	"Permissions-Policy":
 		"microphone=(self), camera=(), geolocation=(), payment=()",
 
-	// Content Security Policy - allow Supabase + Daily.co
+	// Content Security Policy - allow Supabase + Daily.co + Sentry
 	"Content-Security-Policy": [
 		"default-src 'self'",
 		"script-src 'self' 'unsafe-inline'",
 		"style-src 'self' 'unsafe-inline'",
 		"img-src 'self' data: https:",
 		"font-src 'self' data:",
-		"connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.daily.co wss://*.daily.co https://api.daily.co",
+		"connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.daily.co wss://*.daily.co https://api.daily.co https://*.ingest.sentry.io",
 		"frame-ancestors 'none'",
 		"base-uri 'self'",
 		"form-action 'self'",
