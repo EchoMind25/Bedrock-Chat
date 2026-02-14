@@ -94,13 +94,13 @@ export function UserPanel() {
 
 	return (
 		<div ref={panelRef} className="relative min-h-[52px] md:h-[52px] h-auto px-2 py-1 bg-[oklch(0.12_0.02_250)] border-t border-white/10 flex items-center gap-2">
-			{/* User Info - opens profile modal */}
+			{/* User Info - opens settings menu */}
 			<button
 				type="button"
 				className="flex items-center gap-2 flex-1 px-2 py-1 min-h-[44px] rounded-sm hover:bg-white/5 transition-colors group touch-manipulation"
 				onClick={() => {
-					setShowProfile(true);
-					setShowSettings(false);
+					computePopoverPosition();
+					setShowSettings(!showSettings);
 				}}
 			>
 				<Avatar
@@ -216,6 +216,21 @@ export function UserPanel() {
 							transition={{ type: "spring", stiffness: 260, damping: 20 }}
 						>
 							<div className="p-2 space-y-1">
+								<button
+									type="button"
+									className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded-sm transition-colors flex items-center gap-2"
+									onClick={() => {
+										setShowSettings(false);
+										setShowProfile(true);
+									}}
+								>
+									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<title>Profile</title>
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+									</svg>
+									My Profile
+								</button>
+								<div className="h-px bg-white/10 my-1" />
 								<button
 									type="button"
 									className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded-sm transition-colors flex items-center gap-2"
