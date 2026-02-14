@@ -1,15 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Link as LinkIcon } from "lucide-react";
+import { Plus, Link as LinkIcon, Hash, Volume2, Server as ServerIcon } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "../../../ui/button/button";
 import { Dropdown } from "../../../ui/dropdown/dropdown";
 import { Toggle } from "../../../ui/toggle/toggle";
 import { InviteItem } from "../../invite-manager/invite-item";
 import { useServerManagementStore } from "../../../../store/server-management.store";
+import { cn } from "../../../../lib/utils/cn";
 import type { Server } from "../../../../lib/types/server";
-import type { InviteExpirationOption, InviteMaxUsesOption } from "../../../../lib/types/invites";
+import type { InviteExpirationOption, InviteMaxUsesOption, InviteTargetType } from "../../../../lib/types/invites";
 
 interface InvitesTabProps {
   server: Server;
@@ -42,6 +43,7 @@ export function InvitesTab({ server }: InvitesTabProps) {
   const deleteInvite = useServerManagementStore((s) => s.deleteInvite);
 
   const [isCreating, setIsCreating] = useState(false);
+  const [targetType, setTargetType] = useState<InviteTargetType>("server");
   const [selectedChannelId, setSelectedChannelId] = useState("");
   const [expiresAfter, setExpiresAfter] = useState<string>("7d");
   const [maxUses, setMaxUses] = useState<string>("0");
@@ -63,7 +65,7 @@ export function InvitesTab({ server }: InvitesTabProps) {
 
   const invites = getInvitesByServer(server.id);
 
-  const channelOptions = server.channels
+  const textChannelOptions = server.channels
     .filter((ch) => ch.type === "text" || ch.type === "announcement")
     .map((ch) => ({
       id: ch.id,
@@ -71,14 +73,26 @@ export function InvitesTab({ server }: InvitesTabProps) {
       label: `# ${ch.name}`,
     }));
 
+  const voiceChannelOptions = server.channels
+    .filter((ch) => ch.type === "voice")
+    .map((ch) => ({
+      id: ch.id,
+      value: ch.id,
+      label: `🔊 ${ch.name}`,
+    }));
+
   const handleCreate = async () => {
-    if (!selectedChannelId || isLoading) return;
+    if (targetType !== "server" && !selectedChannelId) {
+      return;
+    }
+    if (isLoading) return;
 
     setIsLoading(true);
     try {
       await createInvite(
         server.id,
-        selectedChannelId,
+        targetType,
+        targetType === "server" ? null : selectedChannelId,
         "current-user",
         "You",
         "",
@@ -90,6 +104,8 @@ export function InvitesTab({ server }: InvitesTabProps) {
       );
 
       // Reset form
+      setTargetType("server");
+      setSelectedChannelId("");
       setExpiresAfter("7d");
       setMaxUses("0");
       setTemporary(false);
@@ -136,13 +152,70 @@ export function InvitesTab({ server }: InvitesTabProps) {
             <div className="p-5 rounded-xl glass-card space-y-4">
               <h4 className="font-medium text-slate-100">Create New Invite</h4>
 
-              <Dropdown
-                label="Channel"
-                items={channelOptions}
-                value={selectedChannelId}
-                onSelect={setSelectedChannelId}
-                placeholder="Select a channel"
-              />
+              {/* Target Type Selector */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-200">Invite Type</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTargetType("server");
+                      setSelectedChannelId("");
+                    }}
+                    className={cn(
+                      "p-3 rounded-lg border-2 transition-all",
+                      targetType === "server"
+                        ? "border-blue-500 bg-blue-500/10"
+                        : "border-white/10 hover:border-white/20"
+                    )}
+                  >
+                    <ServerIcon className="w-5 h-5 mx-auto mb-1" />
+                    <div className="text-xs font-medium">Server-wide</div>
+                    <div className="text-[10px] text-white/60">Full access</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setTargetType("channel")}
+                    className={cn(
+                      "p-3 rounded-lg border-2 transition-all",
+                      targetType === "channel"
+                        ? "border-blue-500 bg-blue-500/10"
+                        : "border-white/10 hover:border-white/20"
+                    )}
+                  >
+                    <Hash className="w-5 h-5 mx-auto mb-1" />
+                    <div className="text-xs font-medium">Text Channel</div>
+                    <div className="text-[10px] text-white/60">One channel</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setTargetType("voice")}
+                    className={cn(
+                      "p-3 rounded-lg border-2 transition-all",
+                      targetType === "voice"
+                        ? "border-blue-500 bg-blue-500/10"
+                        : "border-white/10 hover:border-white/20"
+                    )}
+                  >
+                    <Volume2 className="w-5 h-5 mx-auto mb-1" />
+                    <div className="text-xs font-medium">Voice Channel</div>
+                    <div className="text-[10px] text-white/60">Voice only</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Conditional Channel Selector */}
+              {targetType !== "server" && (
+                <Dropdown
+                  label={targetType === "voice" ? "Voice Channel" : "Text Channel"}
+                  items={targetType === "voice" ? voiceChannelOptions : textChannelOptions}
+                  value={selectedChannelId}
+                  onSelect={setSelectedChannelId}
+                  placeholder={`Select a ${targetType} channel`}
+                />
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <Dropdown
@@ -170,7 +243,7 @@ export function InvitesTab({ server }: InvitesTabProps) {
                 <Button
                   onClick={handleCreate}
                   loading={isLoading}
-                  disabled={!selectedChannelId}
+                  disabled={targetType !== "server" && !selectedChannelId}
                 >
                   Create Invite
                 </Button>
@@ -188,12 +261,21 @@ export function InvitesTab({ server }: InvitesTabProps) {
         <AnimatePresence>
           {invites.length > 0 ? (
             invites.map((invite) => {
-              const channel = server.channels.find((ch) => ch.id === invite.channelId);
+              const channel = invite.channelId
+                ? server.channels.find((ch) => ch.id === invite.channelId)
+                : null;
+
+              const displayName = invite.targetType === "server"
+                ? "🌐 Server-wide"
+                : invite.targetType === "voice"
+                ? `🔊 ${channel?.name || "Unknown"}`
+                : `# ${channel?.name || "Unknown"}`;
+
               return (
                 <InviteItem
                   key={invite.id}
                   invite={invite}
-                  channelName={channel?.name || "Unknown"}
+                  channelName={displayName}
                   onDelete={() => handleDelete(invite.id)}
                 />
               );

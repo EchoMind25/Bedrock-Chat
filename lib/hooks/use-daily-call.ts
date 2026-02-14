@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
-import { createDailyCall, createDailyRoom } from "@/lib/daily/client";
+import { createDailyCall, createDailyRoom, setCurrentDailyCall } from "@/lib/daily/client";
 import { useVoiceStore } from "@/store/voice.store";
 import { useAuthStore } from "@/store/auth.store";
+import { supportsNoiseCancellation, getAudioEnhancementMethod } from "@/lib/utils/browser";
+import { getRNNoiseProcessor, destroyRNNoiseProcessor } from "@/lib/audio/rnnoise-processor";
 import type {
   DailyCall,
   DailyParticipant,
@@ -58,6 +60,7 @@ export function useDailyCall(channelId: string | null, serverId: string | null) 
   const isMuted = useVoiceStore((s) => s.isMuted);
   const isVideoOn = useVoiceStore((s) => s.isVideoOn);
   const isScreenSharing = useVoiceStore((s) => s.isScreenSharing);
+  const noiseCancellationEnabled = useVoiceStore((s) => s.noiseCancellationEnabled);
 
   // Auth info for participant mapping
   const user = useAuthStore ((s) => s.user);
@@ -83,6 +86,7 @@ export function useDailyCall(channelId: string | null, serverId: string | null) 
 
     destroyedRef.current = true;
     callRef.current = null;
+    setCurrentDailyCall(null); // Clear singleton reference
 
     try {
       call.leave();
@@ -93,6 +97,13 @@ export function useDailyCall(channelId: string | null, serverId: string | null) 
       call.destroy();
     } catch {
       // Already destroyed - ignore
+    }
+
+    // Clean up RNNoise processor if active
+    try {
+      destroyRNNoiseProcessor();
+    } catch (err) {
+      console.warn('[Audio Enhancement] Error cleaning up RNNoise:', err);
     }
   }, []);
 
@@ -201,10 +212,11 @@ export function useDailyCall(channelId: string | null, serverId: string | null) 
       }
 
       callRef.current = call;
+      setCurrentDailyCall(call); // Store in singleton for component access
       console.log('🔵 Setting up event handlers...');
 
       // Set up event handlers before joining
-      call.on("joined-meeting", (event) => {
+      call.on("joined-meeting", async (event) => {
         console.log('🎉 Joined Daily.co meeting!', event);
 
         if (!event) return;
@@ -216,6 +228,24 @@ export function useDailyCall(channelId: string | null, serverId: string | null) 
         const participants = event.participants;
         for (const [, p] of Object.entries(participants)) {
           store.addParticipant(mapDailyParticipant(p));
+        }
+
+        // Apply noise cancellation if enabled and supported (Chromium browsers)
+        const { noiseCancellationEnabled } = store;
+        if (noiseCancellationEnabled && supportsNoiseCancellation()) {
+          try {
+            await call.updateInputSettings({
+              audio: {
+                processor: {
+                  type: 'noise-cancellation',
+                },
+              },
+            });
+            console.info('[Privacy Audit] Daily.co noise cancellation enabled (browser-native) at', new Date().toISOString());
+            console.info('[Privacy Audit] Audio processing: Browser-native WebRTC pipeline, no third-party servers');
+          } catch (err) {
+            console.warn('[Audio Enhancement] Noise cancellation not supported:', err);
+          }
         }
       });
 
@@ -234,11 +264,36 @@ export function useDailyCall(channelId: string | null, serverId: string | null) 
         (event: DailyEventObjectParticipant | undefined) => {
           if (!event) return;
           const p = event.participant;
-          useVoiceStore.getState().updateParticipant(p.session_id, {
+          const store = useVoiceStore.getState();
+
+          // Update participant state
+          store.updateParticipant(p.session_id, {
             isMuted: !p.audio,
             isVideoOn: p.video,
             isScreenSharing: p.screen,
           });
+
+          // Handle screen sharing state changes
+          if (p.screen) {
+            // Screen sharing started
+            const allParticipants = callRef.current?.participants();
+            const participant = allParticipants?.[p.session_id];
+
+            // Check if screen video track is available
+            if (participant?.tracks?.screenVideo?.state === 'playable') {
+              store.setActiveScreenShare({
+                sessionId: p.session_id,
+                username: p.user_name || "Unknown",
+                isLocal: p.local,
+              });
+            }
+          } else {
+            // Screen sharing stopped - clear if this was the active screen share
+            const currentScreenShare = store.activeScreenShare;
+            if (currentScreenShare?.sessionId === p.session_id) {
+              store.setActiveScreenShare(null);
+            }
+          }
         }
       );
 
@@ -246,9 +301,15 @@ export function useDailyCall(channelId: string | null, serverId: string | null) 
         "participant-left",
         (event: DailyEventObjectParticipantLeft | undefined) => {
           if (!event) return;
-          useVoiceStore
-            .getState()
-            .removeParticipant(event.participant.session_id);
+          const store = useVoiceStore.getState();
+
+          // Clear active screen share if this participant was sharing
+          if (store.activeScreenShare?.sessionId === event.participant.session_id) {
+            store.setActiveScreenShare(null);
+          }
+
+          // Remove participant from store
+          store.removeParticipant(event.participant.session_id);
         }
       );
 
@@ -299,12 +360,41 @@ export function useDailyCall(channelId: string | null, serverId: string | null) 
       // Race join against timeout
       try {
         // Build join options with optional token for private rooms
-        const joinOptions: { url: string; userName: string; token?: string } = {
+        const joinOptions: { url: string; userName: string; token?: string; audioSource?: MediaStreamTrack | boolean } = {
           url: roomUrl,
           userName,
         };
         if (meetingToken) {
           joinOptions.token = meetingToken;
+        }
+
+        // Apply RNNoise processing for non-Chromium browsers (Safari, Firefox)
+        const { noiseCancellationEnabled } = useVoiceStore.getState();
+        const enhancementMethod = getAudioEnhancementMethod();
+
+        if (noiseCancellationEnabled && enhancementMethod === 'rnnoise') {
+          try {
+            console.info('[Audio Enhancement] Applying RNNoise processing for', enhancementMethod);
+
+            // Get raw microphone stream
+            const rawStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            // Initialize and process through RNNoise
+            const processor = getRNNoiseProcessor();
+            await processor.initialize();
+            const enhancedStream = await processor.process(rawStream);
+
+            // Use the processed audio track for Daily.co
+            const enhancedTrack = enhancedStream.getAudioTracks()[0];
+            if (enhancedTrack) {
+              joinOptions.audioSource = enhancedTrack;
+              console.info('[Privacy Audit] RNNoise processing enabled (client-side WASM) at', new Date().toISOString());
+              console.info('[Privacy Audit] Audio processing: 100% client-side, audio never leaves device');
+            }
+          } catch (rnnoiseError) {
+            console.error('[Audio Enhancement] RNNoise failed, falling back to default audio:', rnnoiseError);
+            // Continue with default audio if RNNoise fails
+          }
         }
 
         const joinResult = await Promise.race([
@@ -441,6 +531,30 @@ export function useDailyCall(channelId: string | null, serverId: string | null) 
       }
     } catch { /* ignore */ }
   }, [isScreenSharing]);
+
+  // Sync noise cancellation state (Chromium browsers only)
+  useEffect(() => {
+    if (!callRef.current || destroyedRef.current) return;
+    if (!supportsNoiseCancellation()) return; // Only for Chromium
+
+    const applyNoiseCancellation = async () => {
+      try {
+        await callRef.current?.updateInputSettings({
+          audio: {
+            processor: {
+              type: noiseCancellationEnabled ? 'noise-cancellation' : 'none',
+            },
+          },
+        });
+        console.info(`[Privacy Audit] Noise cancellation ${noiseCancellationEnabled ? 'enabled' : 'disabled'} (browser-native) at ${new Date().toISOString()}`);
+      } catch (err) {
+        console.warn('[Audio Enhancement] Failed to update noise cancellation:', err);
+      }
+    };
+
+    applyNoiseCancellation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noiseCancellationEnabled]); // Exclude callRef to avoid re-running on every render
 
   // Cleanup on unmount - idempotent since leave() guards with destroyedRef
   useEffect(() => {

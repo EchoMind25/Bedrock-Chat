@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Settings, Shield, Hash, Ban, Link as LinkIcon } from "lucide-react";
+import { Settings, Shield, Hash, Ban, Link as LinkIcon, Folder } from "lucide-react";
 import { Modal } from "../../../ui/modal/modal";
 import { Tabs } from "../../../ui/tabs/tabs";
 import { Button } from "../../../ui/button/button";
 import { OverviewTab } from "./overview-tab";
 import { RolesTab } from "./roles-tab";
 import { ChannelsTab } from "./channels-tab";
+import { CategoriesTab } from "./categories-tab";
 import { ModerationTab } from "./moderation-tab";
 import { InvitesTab } from "./invites-tab";
 import { useServerManagementStore } from "../../../../store/server-management.store";
@@ -166,6 +167,7 @@ export function ServerSettingsModal() {
     { id: "overview" as const, label: "Overview", icon: Settings },
     { id: "roles" as const, label: "Roles", icon: Shield, count: displayServer.roles?.length },
     { id: "channels" as const, label: "Channels", icon: Hash, count: displayServer.channels.length },
+    { id: "categories" as const, label: "Categories", icon: Folder, count: displayServer.categories.length },
     { id: "moderation" as const, label: "Moderation", icon: Ban },
     { id: "invites" as const, label: "Invites", icon: LinkIcon },
   ];
@@ -254,6 +256,9 @@ export function ServerSettingsModal() {
               server={displayServer}
               onChannelReorder={handleChannelReorder}
             />
+          )}
+          {serverSettingsTab === "categories" && (
+            <CategoriesTab server={displayServer} />
           )}
           {serverSettingsTab === "moderation" && (
             <ModerationTab

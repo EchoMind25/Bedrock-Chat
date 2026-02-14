@@ -1,8 +1,11 @@
+export type InviteTargetType = "channel" | "server" | "voice";
+
 export interface ServerInvite {
   id: string;
   code: string; // 8-character code (e.g., "aBc123Xy")
   serverId: string;
-  channelId: string; // Channel this invite is for
+  channelId: string | null; // Channel this invite is for (null for server-wide invites)
+  targetType: InviteTargetType; // Scope of the invite
   inviterId: string; // User who created invite
   inviterUsername: string;
   inviterAvatar: string;

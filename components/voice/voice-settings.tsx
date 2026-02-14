@@ -3,8 +3,10 @@
 import { Modal } from "../ui/modal/modal";
 import { Button } from "../ui/button";
 import { motion } from "motion/react";
-import { Volume2, Mic, Headphones, ChevronDown } from "lucide-react";
+import { Volume2, Mic, Headphones, ChevronDown, Sparkles } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useVoiceStore } from "@/store/voice.store";
+import { supportsNoiseCancellation, getAudioEnhancementMethod, getBrowserName } from "@/lib/utils/browser";
 
 interface VoiceSettingsProps {
   isOpen: boolean;
@@ -44,6 +46,10 @@ export function VoiceSettings({ isOpen, onClose }: VoiceSettingsProps) {
   const [outputMeterLevel, setOutputMeterLevel] = useState(0);
   const [isTesting, setIsTesting] = useState(false);
   const [permissionGranted, setPermissionGranted] = useState(false);
+
+  // Audio enhancement state from voice store
+  const noiseCancellationEnabled = useVoiceStore((s) => s.noiseCancellationEnabled);
+  const setNoiseCancellation = useVoiceStore((s) => s.setNoiseCancellation);
 
   // Enumerate real audio devices from the browser with caching
   useEffect(() => {
@@ -236,6 +242,64 @@ export function VoiceSettings({ isOpen, onClose }: VoiceSettingsProps) {
           >
             {isTesting ? "Testing..." : "Test Output"}
           </Button>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-border/50" />
+
+        {/* Audio Enhancement */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-purple-400" />
+            <label className="text-sm font-medium text-foreground">Audio Enhancement</label>
+          </div>
+
+          <label className="flex items-center justify-between p-3 rounded-lg bg-white/5 dark:bg-black/20 border border-white/10 cursor-pointer hover:bg-white/10 dark:hover:bg-black/30 transition-colors">
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-foreground">Noise Cancellation</span>
+                {noiseCancellationEnabled && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                    Active
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-400 mt-1">
+                {getAudioEnhancementMethod() === 'daily-co' &&
+                  "Browser-native noise cancellation (Daily.co)"}
+                {getAudioEnhancementMethod() === 'rnnoise' &&
+                  "Client-side RNNoise processing (WASM)"}
+                {getAudioEnhancementMethod() === 'none' &&
+                  `Not supported in ${getBrowserName()}`}
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              checked={noiseCancellationEnabled}
+              onChange={(e) => setNoiseCancellation(e.target.checked)}
+              disabled={getAudioEnhancementMethod() === 'none'}
+              className="w-4 h-4 rounded accent-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            />
+          </label>
+
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+            <div className="flex-shrink-0 mt-0.5">
+              <svg className="w-4 h-4 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-xs text-purple-300 font-medium">Privacy-First Processing</p>
+              <p className="text-xs text-purple-400/80 mt-1">
+                {getAudioEnhancementMethod() === 'daily-co' &&
+                  "Processed by your browser's native WebRTC pipeline. No audio data sent to third-party servers."}
+                {getAudioEnhancementMethod() === 'rnnoise' &&
+                  "100% client-side processing using Web Audio API. Your audio never leaves your device."}
+                {getAudioEnhancementMethod() === 'none' &&
+                  "Audio enhancement requires Chrome, Edge, Brave, Firefox, or Safari."}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </Modal>

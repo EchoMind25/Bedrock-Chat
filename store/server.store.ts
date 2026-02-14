@@ -1,11 +1,12 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import { conditionalDevtools } from "@/lib/utils/devtools-config";
-import type { Server, Channel, ChannelType } from "@/lib/types/server";
+import type { Server, Channel, ChannelType, ChannelCategory } from "@/lib/types/server";
 import { generateDefaultRoles } from "@/lib/constants/roles";
 import { DEFAULT_SERVER_SETTINGS } from "@/lib/types/server-settings";
 import { createClient } from "@/lib/supabase/client";
 import { useUIStore } from "@/store/ui.store";
+import { toast } from "@/lib/stores/toast-store";
 
 const DEFAULT_THEME_COLOR = "oklch(0.65 0.25 265)";
 
@@ -42,6 +43,12 @@ interface ServerState {
 	getServerChannels: (serverId: string) => Channel[];
 	toggleCategory: (serverId: string, categoryId: string) => void;
 	markChannelRead: (channelId: string) => void;
+
+	// Category management
+	createCategory: (serverId: string, name: string, position?: number) => Promise<ChannelCategory>;
+	updateCategory: (serverId: string, categoryId: string, name: string) => Promise<void>;
+	deleteCategory: (serverId: string, categoryId: string) => Promise<void>;
+	reorderCategories: (serverId: string, categoryIds: string[]) => Promise<void>;
 }
 
 // Deduplication: track in-flight loadServers request so concurrent callers share one promise
@@ -341,6 +348,166 @@ export const useServerStore = create<ServerState>()(
 							};
 						}),
 					}));
+				},
+
+				// Category Management
+				createCategory: async (serverId, name, position) => {
+					const supabase = createClient();
+
+					// Get current max position if position not specified
+					const server = get().servers.find(s => s.id === serverId);
+					const maxPosition = server?.categories.reduce((max, cat) => Math.max(max, cat.position), -1) ?? 0;
+					const finalPosition = position ?? maxPosition + 1;
+
+					const { data, error } = await supabase
+						.from("channel_categories")
+						.insert({
+							server_id: serverId,
+							name: name.trim(),
+							position: finalPosition,
+						})
+						.select()
+						.single();
+
+					if (error) {
+						toast.error("Creation Failed", "Could not create category");
+						throw error;
+					}
+
+					const newCategory: ChannelCategory = {
+						id: data.id,
+						name: data.name,
+						serverId: data.server_id,
+						position: data.position,
+						collapsed: false,
+					};
+
+					// Update store
+					set((state) => ({
+						servers: state.servers.map((server) =>
+							server.id === serverId
+								? { ...server, categories: [...server.categories, newCategory].sort((a, b) => a.position - b.position) }
+								: server
+						),
+					}));
+
+					toast.success("Category Created", `"${name}" has been created`);
+					return newCategory;
+				},
+
+				updateCategory: async (serverId, categoryId, name) => {
+					const supabase = createClient();
+
+					const oldCategory = get().servers
+						.find(s => s.id === serverId)
+						?.categories.find(c => c.id === categoryId);
+
+					const { error } = await supabase
+						.from("channel_categories")
+						.update({ name: name.trim() })
+						.eq("id", categoryId);
+
+					if (error) {
+						toast.error("Update Failed", "Could not update category");
+						throw error;
+					}
+
+					// Update store
+					set((state) => ({
+						servers: state.servers.map((server) =>
+							server.id === serverId
+								? {
+										...server,
+										categories: server.categories.map((cat) =>
+											cat.id === categoryId ? { ...cat, name: name.trim() } : cat
+										),
+									}
+								: server
+						),
+					}));
+
+					toast.success("Category Updated", `Renamed to "${name}"`);
+				},
+
+				deleteCategory: async (serverId, categoryId) => {
+					const supabase = createClient();
+
+					const server = get().servers.find(s => s.id === serverId);
+					const category = server?.categories.find(c => c.id === categoryId);
+					const channelsInCategory = server?.channels.filter(ch => ch.categoryId === categoryId) || [];
+
+					// Move channels to uncategorized
+					if (channelsInCategory.length > 0) {
+						await supabase
+							.from("channels")
+							.update({ category_id: null })
+							.eq("category_id", categoryId);
+					}
+
+					const { error } = await supabase
+						.from("channel_categories")
+						.delete()
+						.eq("id", categoryId);
+
+					if (error) {
+						toast.error("Deletion Failed", "Could not delete category");
+						throw error;
+					}
+
+					// Update store
+					set((state) => ({
+						servers: state.servers.map((server) =>
+							server.id === serverId
+								? {
+										...server,
+										categories: server.categories.filter((cat) => cat.id !== categoryId),
+										channels: server.channels.map((ch) =>
+											ch.categoryId === categoryId ? { ...ch, categoryId: undefined } : ch
+										),
+									}
+								: server
+						),
+					}));
+
+					toast.success("Category Deleted", `"${category?.name}" has been removed`);
+				},
+
+				reorderCategories: async (serverId, categoryIds) => {
+					const supabase = createClient();
+
+					// Optimistic update
+					set((state) => ({
+						servers: state.servers.map((server) =>
+							server.id === serverId
+								? {
+										...server,
+										categories: categoryIds.map((id, index) => {
+											const cat = server.categories.find(c => c.id === id)!;
+											return { ...cat, position: index };
+										}),
+									}
+								: server
+						),
+					}));
+
+					// Batch update positions
+					try {
+						await Promise.all(
+							categoryIds.map((id, index) =>
+								supabase
+									.from("channel_categories")
+									.update({ position: index })
+									.eq("id", id)
+							)
+						);
+
+						toast.success("Categories Reordered", "Order has been saved");
+					} catch (error) {
+						toast.error("Reorder Failed", "Could not save new order");
+						// Revert optimistic update
+						get().loadServers();
+						throw error;
+					}
 				},
 			}),
 			{

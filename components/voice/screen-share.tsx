@@ -2,9 +2,10 @@
 
 import { motion, AnimatePresence } from "motion/react";
 import { X, Minimize2, Maximize2, Monitor } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { Avatar } from "../ui/avatar";
 import { useVoiceStore } from "@/store/voice.store";
+import { getCurrentDailyCall } from "@/lib/daily/client";
 
 const springConfig = {
   type: "spring" as const,
@@ -14,25 +15,30 @@ const springConfig = {
 };
 
 export function ScreenShare() {
-  const isActive = useVoiceStore((s) => s.isScreenSharing);
+  const activeScreenShare = useVoiceStore((s) => s.activeScreenShare);
   const setScreenSharing = useVoiceStore((s) => s.setScreenSharing);
   const participants = useVoiceStore((s) => s.participants);
 
-  const localParticipant = useMemo(
-    () => Object.values(participants).find((p) => p.isLocal),
-    [participants]
-  );
-
   const [isMinimized, setIsMinimized] = useState(false);
 
-  const username = localParticipant?.username || "You";
-  const avatar = localParticipant?.avatar;
+  // Get the participant who is screen sharing
+  const screenSharingParticipant = useMemo(() => {
+    if (!activeScreenShare) return null;
+    return participants[activeScreenShare.sessionId];
+  }, [activeScreenShare, participants]);
+
+  const username = activeScreenShare?.username || "Unknown";
+  const avatar = screenSharingParticipant?.avatar;
+  const isLocalShare = activeScreenShare?.isLocal || false;
 
   const handleClose = () => {
-    setScreenSharing(false);
+    // Only local user can stop their own screen share
+    if (isLocalShare) {
+      setScreenSharing(false);
+    }
   };
 
-  if (!isActive) return null;
+  if (!activeScreenShare) return null;
 
   return (
     <AnimatePresence>
@@ -41,6 +47,8 @@ export function ScreenShare() {
           onMaximize={() => setIsMinimized(false)}
           onClose={handleClose}
           username={username}
+          screenSharingParticipant={screenSharingParticipant}
+          isLocalShare={isLocalShare}
         />
       ) : (
         <FullScreenView
@@ -48,6 +56,8 @@ export function ScreenShare() {
           onClose={handleClose}
           username={username}
           avatar={avatar}
+          screenSharingParticipant={screenSharingParticipant}
+          isLocalShare={isLocalShare}
         />
       )}
     </AnimatePresence>
@@ -59,9 +69,65 @@ interface FullScreenViewProps {
   onClose: () => void;
   username: string;
   avatar?: string;
+  screenSharingParticipant: any; // DailyParticipant type not exported, using any
+  isLocalShare: boolean;
 }
 
-function FullScreenView({ onMinimize, onClose, username, avatar }: FullScreenViewProps) {
+function FullScreenView({ onMinimize, onClose, username, avatar, screenSharingParticipant, isLocalShare }: FullScreenViewProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const activeScreenShare = useVoiceStore((s) => s.activeScreenShare);
+
+  // Attach screen share track to video element
+  useEffect(() => {
+    if (!videoRef.current || !activeScreenShare) return;
+
+    const call = getCurrentDailyCall();
+    if (!call) {
+      console.warn('[Screen Share] No active Daily.co call');
+      return;
+    }
+
+    // Get the participant from Daily.co to access screen video track
+    const participants = call.participants();
+    const participant = participants?.[activeScreenShare.sessionId];
+
+    if (!participant) {
+      console.warn('[Screen Share] Participant not found:', activeScreenShare.sessionId);
+      return;
+    }
+
+    // Extract screen video track
+    const screenTrack = participant.tracks?.screenVideo;
+    if (!screenTrack || screenTrack.state !== 'playable') {
+      console.warn('[Screen Share] Screen video track not playable:', {
+        hasTrack: !!screenTrack,
+        state: screenTrack?.state,
+      });
+      return;
+    }
+
+    // Create MediaStream from track and attach to video element
+    const mediaStreamTrack = screenTrack.track;
+    if (mediaStreamTrack) {
+      const stream = new MediaStream([mediaStreamTrack]);
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch((err) => {
+        console.error('[Screen Share] Failed to play video:', err);
+      });
+
+      console.info('[Privacy Audit] Screen share video rendering started', {
+        username: activeScreenShare.username,
+        isLocal: activeScreenShare.isLocal,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    return () => {
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    };
+  }, [activeScreenShare]);
   return (
     <motion.div
       className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl"
@@ -70,37 +136,16 @@ function FullScreenView({ onMinimize, onClose, username, avatar }: FullScreenVie
       exit={{ opacity: 0 }}
       transition={springConfig}
     >
-      {/* Screen Content Placeholder */}
+      {/* Screen Content - Video Element */}
       <div className="absolute inset-0 flex items-center justify-center p-8">
-        <div className="relative w-full h-full max-w-7xl rounded-2xl overflow-hidden bg-linear-to-br from-purple-900/20 via-blue-900/20 to-pink-900/20 border border-white/10">
-          <div className="absolute inset-0 p-8">
-            <div className="bg-linear-to-br from-gray-800 to-gray-900 rounded-xl p-6 h-full">
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full bg-red-500" />
-                  <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                  <div className="w-3 h-3 rounded-full bg-green-500" />
-                </div>
-                <div className="space-y-3">
-                  <div className="h-8 bg-white/5 rounded-lg w-1/3" />
-                  <div className="h-32 bg-white/10 rounded-lg" />
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="h-24 bg-white/5 rounded-lg" />
-                    <div className="h-24 bg-white/5 rounded-lg" />
-                    <div className="h-24 bg-white/5 rounded-lg" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-                <Monitor className="w-24 h-24 text-white/20 mx-auto mb-4" />
-                <p className="text-white/40 text-2xl font-medium">Screen Share Active</p>
-                <p className="text-white/20 text-sm mt-2">
-                  Screen sharing will appear here
-                </p>
-              </div>
-            </div>
-          </div>
+        <div className="relative w-full h-full max-w-7xl rounded-2xl overflow-hidden bg-black border border-white/10">
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            className="w-full h-full object-contain"
+            style={{ backgroundColor: '#000' }}
+          />
 
           {/* Presenter indicator */}
           <div className="absolute top-4 left-4 z-10">
@@ -150,19 +195,27 @@ function FullScreenView({ onMinimize, onClose, username, avatar }: FullScreenVie
             <Minimize2 className="w-5 h-5" />
           </motion.button>
 
-          <div className="w-px h-8 bg-white/20" />
+          {isLocalShare && (
+            <>
+              <div className="w-px h-8 bg-white/20" />
 
-          <motion.button
-            className="p-3 rounded-xl bg-red-500/90 hover:bg-red-600 text-white transition-colors"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={onClose}
-            aria-label="Stop sharing"
-          >
-            <X className="w-5 h-5" />
-          </motion.button>
+              <motion.button
+                className="p-3 rounded-xl bg-red-500/90 hover:bg-red-600 text-white transition-colors"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={onClose}
+                aria-label="Stop sharing"
+              >
+                <X className="w-5 h-5" />
+              </motion.button>
 
-          <span className="ml-2 text-sm text-white/80">Stop Sharing</span>
+              <span className="ml-2 text-sm text-white/80">Stop Sharing</span>
+            </>
+          )}
+
+          {!isLocalShare && (
+            <span className="ml-2 text-sm text-white/60">Viewing {username}'s screen</span>
+          )}
         </div>
       </motion.div>
     </motion.div>
@@ -173,9 +226,40 @@ interface MinimizedViewProps {
   onMaximize: () => void;
   onClose: () => void;
   username: string;
+  screenSharingParticipant: any;
+  isLocalShare: boolean;
 }
 
-function MinimizedView({ onMaximize, onClose, username }: MinimizedViewProps) {
+function MinimizedView({ onMaximize, onClose, username, screenSharingParticipant, isLocalShare }: MinimizedViewProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const activeScreenShare = useVoiceStore((s) => s.activeScreenShare);
+
+  // Attach screen share track to video element
+  useEffect(() => {
+    if (!videoRef.current || !activeScreenShare) return;
+
+    const call = getCurrentDailyCall();
+    if (!call) return;
+
+    const participants = call.participants();
+    const participant = participants?.[activeScreenShare.sessionId];
+    if (!participant) return;
+
+    const screenTrack = participant.tracks?.screenVideo;
+    if (screenTrack?.state === 'playable' && screenTrack.track) {
+      const stream = new MediaStream([screenTrack.track]);
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch((err) => {
+        console.error('[Screen Share Mini] Failed to play video:', err);
+      });
+    }
+
+    return () => {
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    };
+  }, [activeScreenShare]);
   return (
     <motion.div
       className="fixed bottom-24 right-6 z-50 w-80 rounded-xl overflow-hidden shadow-2xl group"
@@ -194,13 +278,15 @@ function MinimizedView({ onMaximize, onClose, username }: MinimizedViewProps) {
       whileHover={{ scale: 1.02 }}
     >
       {/* Mini screen preview */}
-      <div className="aspect-video bg-linear-to-br from-gray-800 to-gray-900 relative">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center">
-            <Monitor className="w-12 h-12 text-white/30 mx-auto mb-2" />
-            <p className="text-white/50 text-xs">Screen Share</p>
-          </div>
-        </div>
+      <div className="aspect-video bg-black relative">
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className="w-full h-full object-contain"
+          style={{ backgroundColor: '#000' }}
+        />
 
         {/* Overlay controls */}
         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
@@ -213,15 +299,17 @@ function MinimizedView({ onMaximize, onClose, username }: MinimizedViewProps) {
           >
             <Maximize2 className="w-4 h-4" />
           </motion.button>
-          <motion.button
-            className="p-2 rounded-lg bg-red-500/90 hover:bg-red-600 text-white"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={onClose}
-            aria-label="Stop sharing"
-          >
-            <X className="w-4 h-4" />
-          </motion.button>
+          {isLocalShare && (
+            <motion.button
+              className="p-2 rounded-lg bg-red-500/90 hover:bg-red-600 text-white"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={onClose}
+              aria-label="Stop sharing"
+            >
+              <X className="w-4 h-4" />
+            </motion.button>
+          )}
         </div>
       </div>
 

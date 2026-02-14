@@ -1,13 +1,13 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { conditionalDevtools } from "@/lib/utils/devtools-config";
-import type { ServerInvite, InviteSettings } from "../lib/types/invites";
+import type { ServerInvite, InviteSettings, InviteTargetType } from "../lib/types/invites";
 import type { Ban, AuditLogEntry } from "../lib/types/moderation";
 import { calculateExpirationDate } from "../lib/types/invites";
 import { toast } from "../lib/stores/toast-store";
 import { createClient } from "../lib/supabase/client";
 
-export type ServerSettingsTab = "overview" | "roles" | "channels" | "moderation" | "invites";
+export type ServerSettingsTab = "overview" | "roles" | "channels" | "categories" | "moderation" | "invites";
 export type ChannelSettingsTab = "overview" | "permissions";
 
 export interface DiscoverableServer {
@@ -67,7 +67,8 @@ interface ServerManagementState {
   // Invite operations
   createInvite: (
     serverId: string,
-    channelId: string,
+    targetType: InviteTargetType,
+    channelId: string | null,
     inviterId: string,
     inviterUsername: string,
     inviterAvatar: string,
@@ -245,10 +246,10 @@ export const useServerManagementStore = create<ServerManagementState>()(
             throw new Error("Not authenticated");
           }
 
-          // Look up the invite
+          // Look up the invite with channel info
           const { data: invite, error: inviteError } = await supabase
             .from("server_invites")
-            .select("*")
+            .select(`*, channel:channels(id, name, type)`)
             .eq("code", code.trim())
             .single();
 
@@ -293,7 +294,14 @@ export const useServerManagementStore = create<ServerManagementState>()(
             // Invite use count is non-critical
           }
 
-          toast.success("Joined Server", "You have joined the server via invite");
+          // Determine success message based on target type
+          const targetType = invite.target_type as InviteTargetType;
+          const channel = invite.channel as unknown as Record<string, unknown>;
+          const redirectMessage = targetType === "server"
+            ? "You have joined the server"
+            : `You have joined via ${targetType === "voice" ? "🔊 " : "# "}${channel?.name || "invite"}`;
+
+          toast.success("Joined Server", redirectMessage);
         },
 
         openCreateChannel: (preselectedCategoryId) => {
@@ -317,14 +325,25 @@ export const useServerManagementStore = create<ServerManagementState>()(
         },
 
         // Invite operations
-        createInvite: async (serverId, channelId, inviterId, inviterUsername, inviterAvatar, settings) => {
+        createInvite: async (serverId, targetType, channelId, inviterId, inviterUsername, inviterAvatar, settings) => {
           const supabase = createClient();
+
+          // Validate target type and channel ID relationship
+          if (targetType === "server" && channelId !== null) {
+            toast.error("Invalid Invite", "Server-wide invites cannot specify a channel");
+            throw new Error("Server-wide invites cannot have channelId");
+          }
+          if ((targetType === "channel" || targetType === "voice") && !channelId) {
+            toast.error("Invalid Invite", "Channel invites must specify a channel");
+            throw new Error("Channel invites require channelId");
+          }
 
           const { data, error } = await supabase
             .from("server_invites")
             .insert({
               server_id: serverId,
-              channel_id: channelId || null,
+              channel_id: channelId,
+              target_type: targetType,
               inviter_id: inviterId,
               max_uses: settings.maxUses,
               expires_at: calculateExpirationDate(settings.expiresAfter)?.toISOString() || null,
@@ -342,7 +361,8 @@ export const useServerManagementStore = create<ServerManagementState>()(
             id: data.id,
             code: data.code,
             serverId,
-            channelId,
+            channelId: data.channel_id,
+            targetType: data.target_type as InviteTargetType,
             inviterId,
             inviterUsername,
             inviterAvatar,
@@ -363,9 +383,13 @@ export const useServerManagementStore = create<ServerManagementState>()(
           get().addAuditLogEntry(
             serverId, "invite_create", inviterId, inviterUsername, inviterAvatar,
             newInvite.id, newInvite.code, "invite",
+            { targetType: { old: null, new: targetType } }
           );
 
-          toast.success("Invite Created", `Invite code: ${newInvite.code}`);
+          const displayName = targetType === "server"
+            ? "Server-wide invite"
+            : `${targetType} channel invite`;
+          toast.success("Invite Created", `${displayName}: ${newInvite.code}`);
           return newInvite;
         },
 
@@ -402,7 +426,9 @@ export const useServerManagementStore = create<ServerManagementState>()(
               const inviter = inv.inviter as unknown as Record<string, unknown>;
               return {
                 id: inv.id, code: inv.code, serverId: inv.server_id,
-                channelId: inv.channel_id, inviterId: inv.inviter_id,
+                channelId: inv.channel_id,
+                targetType: (inv.target_type as InviteTargetType) || "channel", // Default to 'channel' for backward compatibility
+                inviterId: inv.inviter_id,
                 inviterUsername: (inviter?.username as string) || "Unknown",
                 inviterAvatar: (inviter?.avatar_url as string) || "",
                 maxUses: inv.max_uses,

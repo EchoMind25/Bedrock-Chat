@@ -57,6 +57,19 @@ export function InviteItem({ invite, channelName, onDelete }: InviteItemProps) {
               <code className="px-3 py-1 rounded-md glass-inset text-blue-300 font-mono text-sm">
                 {invite.code}
               </code>
+
+              {/* Target Type Badge */}
+              <span className={cn(
+                "px-2 py-0.5 rounded-sm text-xs font-medium",
+                invite.targetType === "server"
+                  ? "bg-purple-500/20 text-purple-300"
+                  : invite.targetType === "voice"
+                  ? "bg-blue-500/20 text-blue-300"
+                  : "bg-slate-500/20 text-slate-300"
+              )}>
+                {invite.targetType === "server" ? "Server" : invite.targetType === "voice" ? "Voice" : "Text"}
+              </span>
+
               {!isValid && (
                 <span className="px-2 py-0.5 rounded-sm text-xs font-medium bg-red-500/20 text-red-300">
                   Expired

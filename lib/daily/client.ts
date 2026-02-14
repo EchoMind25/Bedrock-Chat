@@ -5,6 +5,18 @@ export interface DailyRoomResponse {
   token?: string;
 }
 
+// Module-level singleton to store the current Daily.co call instance
+// This allows components to access the call object without prop drilling
+let currentCallInstance: DailyCall | null = null;
+
+export function setCurrentDailyCall(call: DailyCall | null) {
+  currentCallInstance = call;
+}
+
+export function getCurrentDailyCall(): DailyCall | null {
+  return currentCallInstance;
+}
+
 export async function createDailyRoom(
   channelId: string,
   serverId: string
