@@ -1,7 +1,9 @@
 "use client";
 
-import { Hash, Volume2, Megaphone, GripVertical } from "lucide-react";
+import { Hash, Volume2, Megaphone, GripVertical, Plus } from "lucide-react";
 import { motion } from "motion/react";
+import { Button } from "../../../ui/button/button";
+import { useServerManagementStore } from "../../../../store/server-management.store";
 import { cn } from "../../../../lib/utils/cn";
 import type { Server, Channel } from "../../../../lib/types/server";
 import {
@@ -80,6 +82,7 @@ function SortableChannelItem({ channel }: { channel: Channel }) {
 }
 
 export function ChannelsTab({ server, onChannelReorder }: ChannelsTabProps) {
+  const openCreateChannel = useServerManagementStore((state) => state.openCreateChannel);
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -113,11 +116,21 @@ export function ChannelsTab({ server, onChannelReorder }: ChannelsTabProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-slate-100 mb-1">Channels</h3>
-        <p className="text-sm text-slate-300">
-          Manage and reorder your server&apos;s channels
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-100 mb-1">Channels</h3>
+          <p className="text-sm text-slate-300">
+            Manage and reorder your server&apos;s channels
+          </p>
+        </div>
+        <Button
+          size="sm"
+          onClick={() => openCreateChannel()}
+          className="gap-1.5"
+        >
+          <Plus className="w-4 h-4" />
+          Create Channel
+        </Button>
       </div>
 
       <div className="p-3 rounded-lg glass-card">

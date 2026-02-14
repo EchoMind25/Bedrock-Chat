@@ -9,6 +9,7 @@ import { Avatar } from "@/components/ui/avatar/avatar";
 import type { AvatarStatus } from "@/components/ui/avatar/avatar";
 import { Tooltip } from "@/components/ui/tooltip/tooltip";
 import { ProfileModal } from "@/components/profile/profile-modal";
+import { AppearanceModal } from "@/components/settings/appearance-modal";
 import { motion, AnimatePresence } from "motion/react";
 
 export function UserPanel() {
@@ -18,6 +19,7 @@ export function UserPanel() {
 	const updateUser = useAuthStore((s) => s.updateUser);
 	const [showSettings, setShowSettings] = useState(false);
 	const [showProfile, setShowProfile] = useState(false);
+	const [showAppearance, setShowAppearance] = useState(false);
 	const [isMuted, setIsMuted] = useState(false);
 	const [isDeafened, setIsDeafened] = useState(false);
 	const settingsRef = useRef<HTMLDivElement>(null);
@@ -197,6 +199,9 @@ export function UserPanel() {
 			{/* Profile Modal */}
 			<ProfileModal isOpen={showProfile} onClose={() => setShowProfile(false)} />
 
+			{/* Appearance Modal */}
+			<AppearanceModal isOpen={showAppearance} onClose={() => setShowAppearance(false)} />
+
 			{/* Settings Panel - rendered via portal to escape overflow clipping */}
 			{mounted && createPortal(
 				<AnimatePresence>
@@ -232,6 +237,20 @@ export function UserPanel() {
 										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
 									</svg>
 									Do Not Disturb
+								</button>
+								<button
+									type="button"
+									className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded transition-colors flex items-center gap-2"
+									onClick={() => {
+										setShowSettings(false);
+										setShowAppearance(true);
+									}}
+								>
+									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<title>Appearance</title>
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+									</svg>
+									Appearance
 								</button>
 								<div className="h-px bg-white/10 my-1" />
 								<button

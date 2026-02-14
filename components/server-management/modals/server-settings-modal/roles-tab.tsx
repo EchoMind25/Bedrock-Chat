@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, GripVertical, Users, Shield } from "lucide-react";
+import { Plus, Trash2, GripVertical, Users, Shield, X, UserPlus } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "../../../ui/button/button";
 import { Input } from "../../../ui/input/input";
 import { Toggle } from "../../../ui/toggle/toggle";
 import { ColorPicker } from "../../role-editor/color-picker";
 import { PermissionGrid } from "../../permission-grid/permission-grid";
+import { Avatar } from "../../../ui/avatar/avatar";
 import { cn } from "../../../../lib/utils/cn";
 import type { Role } from "../../../../lib/types/permissions";
 import { Permission } from "../../../../lib/types/permissions";
@@ -28,6 +29,17 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+
+const MOCK_MEMBERS = [
+  { id: "user-1", username: "alex_dev", displayName: "Alex" },
+  { id: "user-2", username: "jordan_mod", displayName: "Jordan" },
+  { id: "user-3", username: "sam_creator", displayName: "Sam" },
+  { id: "user-4", username: "taylor_gamer", displayName: "Taylor" },
+  { id: "user-5", username: "casey_artist", displayName: "Casey" },
+  { id: "user-6", username: "riley_tech", displayName: "Riley" },
+  { id: "user-7", username: "morgan_music", displayName: "Morgan" },
+  { id: "user-8", username: "dakota_writer", displayName: "Dakota" },
+];
 
 interface RolesTabProps {
   roles: Role[];
@@ -268,6 +280,7 @@ export function RolesTab({
                   label="Role Color"
                   value={newRoleColor}
                   onChange={setNewRoleColor}
+                  roleName={newRoleName || undefined}
                 />
 
                 <Toggle
@@ -343,6 +356,7 @@ export function RolesTab({
                   label="Role Color"
                   value={selectedRole.color}
                   onChange={(color) => onRoleUpdate(selectedRole.id, { color })}
+                  roleName={selectedRole.name}
                 />
 
                 <Toggle
@@ -363,6 +377,87 @@ export function RolesTab({
                     }
                   />
                 </div>
+
+                {/* Role Members */}
+                {!selectedRole.isDefault && (
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-200 mb-3">
+                      Members ({selectedRole.memberIds?.length || 0})
+                    </h4>
+
+                    {/* Current members */}
+                    {(selectedRole.memberIds?.length ?? 0) > 0 && (
+                      <div className="space-y-2 mb-3">
+                        {(selectedRole.memberIds || []).map((memberId) => {
+                          const member = MOCK_MEMBERS.find((m) => m.id === memberId);
+                          if (!member) return null;
+                          return (
+                            <div
+                              key={member.id}
+                              className="flex items-center gap-3 p-2 rounded-lg bg-slate-800/30 border border-slate-700/30"
+                            >
+                              <Avatar
+                                fallback={member.displayName.slice(0, 2).toUpperCase()}
+                                size="sm"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-slate-100 truncate">{member.displayName}</p>
+                                <p className="text-xs text-slate-400">@{member.username}</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  onRoleUpdate(selectedRole.id, {
+                                    memberIds: (selectedRole.memberIds || []).filter((id) => id !== member.id),
+                                    memberCount: Math.max(0, (selectedRole.memberCount || 1) - 1),
+                                  })
+                                }
+                                className="p-1 rounded hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Add members */}
+                    {MOCK_MEMBERS.filter(
+                      (m) => !(selectedRole.memberIds || []).includes(m.id)
+                    ).length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs text-slate-400">Add Members</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {MOCK_MEMBERS.filter(
+                            (m) => !(selectedRole.memberIds || []).includes(m.id)
+                          ).map((member) => (
+                            <button
+                              key={member.id}
+                              type="button"
+                              onClick={() =>
+                                onRoleUpdate(selectedRole.id, {
+                                  memberIds: [...(selectedRole.memberIds || []), member.id],
+                                  memberCount: (selectedRole.memberCount || 0) + 1,
+                                })
+                              }
+                              className="flex items-center gap-2 p-2 rounded-lg border border-slate-700/30 hover:border-slate-600/40 hover:bg-slate-800/30 transition-all text-left"
+                            >
+                              <Avatar
+                                fallback={member.displayName.slice(0, 2).toUpperCase()}
+                                size="sm"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs text-slate-200 truncate">{member.displayName}</p>
+                              </div>
+                              <UserPlus className="w-3.5 h-3.5 text-slate-500" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {selectedRole.isDefault && (
                   <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">

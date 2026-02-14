@@ -7,13 +7,37 @@ import { cn } from "../../../lib/utils/cn";
 import { PRESET_ROLE_COLORS } from "../../../lib/constants/roles";
 import { Input } from "../../ui/input/input";
 
+/**
+ * Determine if text should be white or dark based on the background color.
+ * Parses OKLCH lightness or hex luminance.
+ */
+function getContrastTextColor(color: string): string {
+  const oklchMatch = color.match(/oklch\(\s*([\d.]+)/);
+  if (oklchMatch) {
+    const lightness = parseFloat(oklchMatch[1]);
+    return lightness > 0.65 ? "oklch(0.15 0 0)" : "oklch(0.98 0 0)";
+  }
+
+  if (color.startsWith("#") && color.length >= 7) {
+    const hex = color.replace("#", "");
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.5 ? "oklch(0.15 0 0)" : "oklch(0.98 0 0)";
+  }
+
+  return "oklch(0.98 0 0)";
+}
+
 interface ColorPickerProps extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
   value: string;
   onChange: (color: string) => void;
   label?: string;
+  roleName?: string;
 }
 
-export function ColorPicker({ value, onChange, label, className, ...props }: ColorPickerProps) {
+export function ColorPicker({ value, onChange, label, roleName, className, ...props }: ColorPickerProps) {
   const [customColor, setCustomColor] = useState(value);
 
   const handlePresetSelect = (color: string) => {
@@ -89,7 +113,12 @@ export function ColorPicker({ value, onChange, label, className, ...props }: Col
           animate={{ backgroundColor: value }}
           transition={{ duration: 0.2 }}
         >
-          <span className="drop-shadow-lg">Role Name</span>
+          <span
+            className="drop-shadow-lg"
+            style={{ color: getContrastTextColor(value) }}
+          >
+            {roleName || "Role Name"}
+          </span>
         </motion.div>
       </div>
     </div>

@@ -7,6 +7,7 @@ interface EmojiPickerProps {
 	onSelect: (emoji: string) => void;
 	isOpen: boolean;
 	onClose: () => void;
+	alignment?: "left" | "right";
 }
 
 const EMOJI_CATEGORIES = {
@@ -18,7 +19,7 @@ const EMOJI_CATEGORIES = {
 	'Fun': ['🎉', '🎊', '🎈', '🎁', '🎀', '🎂', '🍰', '🧁', '🍪', '🍩', '🍕', '🍔', '🌮', '🌯', '🥙', '🍿', '🥤', '🍻', '🎮', '🎯'],
 };
 
-export function EmojiPicker({ onSelect, isOpen, onClose }: EmojiPickerProps) {
+export function EmojiPicker({ onSelect, isOpen, onClose, alignment = "left" }: EmojiPickerProps) {
 	const [activeCategory, setActiveCategory] = useState('Smileys');
 
 	const handleSelect = (emoji: string) => {
@@ -42,7 +43,7 @@ export function EmojiPicker({ onSelect, isOpen, onClose }: EmojiPickerProps) {
 						animate={{ opacity: 1, scale: 1, y: 0 }}
 						exit={{ opacity: 0, scale: 0.95, y: 10 }}
 						transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-						className="absolute bottom-full left-0 mb-2 z-50 w-80 rounded-2xl overflow-hidden"
+						className={`absolute bottom-full ${alignment === "right" ? "right-0" : "left-0"} mb-2 z-50 w-80 rounded-2xl overflow-hidden`}
 						style={{
 							backgroundColor: 'oklch(0.15 0.02 250 / 0.95)',
 							border: '1px solid oklch(0.25 0.02 285 / 0.5)',

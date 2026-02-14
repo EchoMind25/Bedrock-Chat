@@ -127,6 +127,7 @@ export function MessageInput({ channelId, channelName }: MessageInputProps) {
 							isOpen={isEmojiPickerOpen}
 							onClose={() => setIsEmojiPickerOpen(false)}
 							onSelect={handleEmojiSelect}
+							alignment="right"
 						/>
 					</div>
 				</div>

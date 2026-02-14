@@ -51,6 +51,7 @@ export interface Role {
   position: number; // Higher = more important
   mentionable: boolean;
   memberCount: number;
+  memberIds?: string[]; // IDs of members assigned to this role
   isDefault: boolean; // @everyone role
   createdAt: Date;
 }
