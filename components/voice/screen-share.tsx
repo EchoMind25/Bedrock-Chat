@@ -4,13 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { X, Minimize2, Maximize2, Monitor } from "lucide-react";
 import { useState } from "react";
 import { Avatar } from "../ui/avatar";
-
-interface ScreenShareProps {
-  isActive: boolean;
-  onClose: () => void;
-  username?: string;
-  avatar?: string;
-}
+import { useVoiceStore } from "@/store/voice.store";
 
 const springConfig = {
   type: "spring" as const,
@@ -19,13 +13,19 @@ const springConfig = {
   mass: 1,
 };
 
-export function ScreenShare({
-  isActive,
-  onClose,
-  username = "You",
-  avatar,
-}: ScreenShareProps) {
+export function ScreenShare() {
+  const isActive = useVoiceStore((s) => s.isScreenSharing);
+  const setScreenSharing = useVoiceStore((s) => s.setScreenSharing);
+  const localParticipant = useVoiceStore((s) => s.getLocalParticipant());
+
   const [isMinimized, setIsMinimized] = useState(false);
+
+  const username = localParticipant?.username || "You";
+  const avatar = localParticipant?.avatar;
+
+  const handleClose = () => {
+    setScreenSharing(false);
+  };
 
   if (!isActive) return null;
 
@@ -34,13 +34,13 @@ export function ScreenShare({
       {isMinimized ? (
         <MinimizedView
           onMaximize={() => setIsMinimized(false)}
-          onClose={onClose}
+          onClose={handleClose}
           username={username}
         />
       ) : (
         <FullScreenView
           onMinimize={() => setIsMinimized(true)}
-          onClose={onClose}
+          onClose={handleClose}
           username={username}
           avatar={avatar}
         />
@@ -118,7 +118,7 @@ function FullScreenView({ onMinimize, onClose, username, avatar }: FullScreenVie
                 }}
                 transition={{
                   duration: 2,
-                  repeat: Number.POSITIVE_INFINITY,
+                  repeat: Infinity,
                   ease: "easeInOut",
                 }}
               />
@@ -200,7 +200,7 @@ function MinimizedView({ onMaximize, onClose, username }: MinimizedViewProps) {
         {/* Overlay controls */}
         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
           <motion.button
-            className="p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm"
+            className="p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white backdrop-blur-xs"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={onMaximize}
@@ -234,7 +234,7 @@ function MinimizedView({ onMaximize, onClose, username }: MinimizedViewProps) {
             }}
             transition={{
               duration: 2,
-              repeat: Number.POSITIVE_INFINITY,
+              repeat: Infinity,
               ease: "easeInOut",
             }}
           />

@@ -12,12 +12,11 @@ import {
   Settings,
   PhoneOff,
 } from "lucide-react";
-import { useState } from "react";
+import { useVoiceStore } from "@/store/voice.store";
 
 interface ControlsBarProps {
   onLeave?: () => void;
   onSettingsOpen?: () => void;
-  onScreenShare?: () => void;
 }
 
 const springConfig = {
@@ -27,49 +26,69 @@ const springConfig = {
   mass: 1,
 };
 
-export function ControlsBar({
-  onLeave,
-  onSettingsOpen,
-  onScreenShare,
-}: ControlsBarProps) {
-  const [isMuted, setIsMuted] = useState(false);
-  const [isDeafened, setIsDeafened] = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(true);
-  const [isScreenSharing, setIsScreenSharing] = useState(false);
+export function ControlsBar({ onLeave, onSettingsOpen }: ControlsBarProps) {
+  // Read state from voice store via selectors
+  const isMuted = useVoiceStore((s) => s.isMuted);
+  const isDeafened = useVoiceStore((s) => s.isDeafened);
+  const isVideoOn = useVoiceStore((s) => s.isVideoOn);
+  const isScreenSharing = useVoiceStore((s) => s.isScreenSharing);
+  const connectionStatus = useVoiceStore((s) => s.connectionStatus);
+  const setMuted = useVoiceStore((s) => s.setMuted);
+  const setDeafened = useVoiceStore((s) => s.setDeafened);
+  const setVideoOn = useVoiceStore((s) => s.setVideoOn);
+  const setScreenSharing = useVoiceStore((s) => s.setScreenSharing);
+  const setPermissionStep = useVoiceStore((s) => s.setPermissionStep);
+
+  const isDisabled = connectionStatus !== "connected";
 
   const handleMuteToggle = () => {
-    setIsMuted(!isMuted);
-    if (isDeafened) setIsDeafened(false);
+    setMuted(!isMuted);
+    if (isDeafened) setDeafened(false);
   };
 
   const handleDeafenToggle = () => {
     const newDeafened = !isDeafened;
-    setIsDeafened(newDeafened);
-    if (newDeafened) setIsMuted(true);
+    setDeafened(newDeafened);
+    if (newDeafened) setMuted(true);
   };
 
   const handleScreenShare = () => {
-    setIsScreenSharing(!isScreenSharing);
-    onScreenShare?.();
+    setScreenSharing(!isScreenSharing);
+  };
+
+  const handleVideoToggle = () => {
+    if (!isVideoOn) {
+      // Trigger camera permission flow
+      setPermissionStep("camera");
+      return;
+    }
+    setVideoOn(false);
   };
 
   return (
     <motion.div
-      className="fixed bottom-0 left-0 right-0 z-40 p-4"
+      className="shrink-0 p-4"
       initial={{ y: 100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={springConfig}
     >
       <div className="max-w-4xl mx-auto">
-        <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl p-4">
+        <div className="liquid-glass rounded-2xl border border-white/10 shadow-2xl p-4">
           <div className="flex items-center justify-center gap-3">
             {/* Mute/Unmute */}
             <ControlButton
               active={isMuted}
               activeColor="bg-red-500/90"
-              inactiveColor="bg-white/10 hover:bg-white/20"
+              inactiveColor="glass-interactive"
               onClick={handleMuteToggle}
-              icon={isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+              disabled={isDisabled}
+              icon={
+                isMuted ? (
+                  <MicOff className="w-5 h-5" />
+                ) : (
+                  <Mic className="w-5 h-5" />
+                )
+              }
               label={isMuted ? "Unmute" : "Mute"}
             />
 
@@ -77,8 +96,9 @@ export function ControlsBar({
             <ControlButton
               active={isDeafened}
               activeColor="bg-red-500/90"
-              inactiveColor="bg-white/10 hover:bg-white/20"
+              inactiveColor="glass-interactive"
               onClick={handleDeafenToggle}
+              disabled={isDisabled}
               icon={
                 isDeafened ? (
                   <HeadphoneOff className="w-5 h-5" />
@@ -92,23 +112,29 @@ export function ControlsBar({
             {/* Screen Share */}
             <ControlButton
               active={isScreenSharing}
-              activeColor="bg-green-500/90"
-              inactiveColor="bg-white/10 hover:bg-white/20"
+              activeColor="bg-linear-to-r from-[oklch(0.55_0.2_265)] to-[oklch(0.5_0.15_300)]"
+              inactiveColor="glass-interactive"
               onClick={handleScreenShare}
+              disabled={isDisabled}
               icon={<MonitorUp className="w-5 h-5" />}
               label="Screen Share"
             />
 
             {/* Camera Toggle */}
             <ControlButton
-              active={!isVideoOff}
-              activeColor="bg-green-500/90"
-              inactiveColor="bg-white/10 hover:bg-white/20"
-              onClick={() => setIsVideoOff(!isVideoOff)}
+              active={isVideoOn}
+              activeColor="bg-linear-to-r from-[oklch(0.55_0.2_265)] to-[oklch(0.5_0.15_300)]"
+              inactiveColor="glass-interactive"
+              onClick={handleVideoToggle}
+              disabled={isDisabled}
               icon={
-                isVideoOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />
+                isVideoOn ? (
+                  <Video className="w-5 h-5" />
+                ) : (
+                  <VideoOff className="w-5 h-5" />
+                )
               }
-              label={isVideoOff ? "Turn On Camera" : "Turn Off Camera"}
+              label={isVideoOn ? "Turn Off Camera" : "Turn On Camera"}
             />
 
             {/* Divider */}
@@ -117,8 +143,9 @@ export function ControlsBar({
             {/* Settings */}
             <ControlButton
               active={false}
-              inactiveColor="bg-white/10 hover:bg-white/20"
+              inactiveColor="glass-interactive"
               onClick={onSettingsOpen}
+              disabled={isDisabled}
               icon={<Settings className="w-5 h-5" />}
               label="Settings"
             />
@@ -128,6 +155,7 @@ export function ControlsBar({
               active={false}
               inactiveColor="bg-red-500/90 hover:bg-red-600/90"
               onClick={onLeave}
+              disabled={false}
               icon={<PhoneOff className="w-5 h-5" />}
               label="Disconnect"
             />
@@ -143,6 +171,7 @@ interface ControlButtonProps {
   activeColor?: string;
   inactiveColor: string;
   onClick?: () => void;
+  disabled?: boolean;
   icon: React.ReactNode;
   label: string;
 }
@@ -152,6 +181,7 @@ function ControlButton({
   activeColor,
   inactiveColor,
   onClick,
+  disabled = false,
   icon,
   label,
 }: ControlButtonProps) {
@@ -159,11 +189,12 @@ function ControlButton({
     <motion.button
       className={`relative p-4 rounded-xl text-white transition-colors group ${
         active && activeColor ? activeColor : inactiveColor
-      }`}
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
+      } ${disabled ? "opacity-50 pointer-events-none" : ""}`}
+      whileHover={disabled ? undefined : { scale: 1.05 }}
+      whileTap={disabled ? undefined : { scale: 0.95 }}
       transition={springConfig}
       onClick={onClick}
+      disabled={disabled}
       aria-label={label}
       title={label}
     >

@@ -17,10 +17,8 @@ const MAX_CACHE_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE_ASSETS))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_ASSETS))
+    // Do NOT call skipWaiting() here — wait for client to send SKIP_WAITING
   );
 });
 
@@ -114,6 +112,11 @@ self.addEventListener("fetch", (event) => {
 const messageQueue = [];
 
 self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+    return;
+  }
+
   if (event.data && event.data.type === "QUEUE_MESSAGE") {
     messageQueue.push({
       payload: event.data.payload,

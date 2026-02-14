@@ -43,14 +43,20 @@ export default function VoiceChannelPage({ params }: VoiceChannelPageProps) {
   }
 
   const handleLeave = () => {
-    // Navigate back to the text channel version of the same server/channel
-    router.push(`/servers/${serverId}/${channelId}`);
+    // Replace (not push) so back button doesn't return to dead voice channel
+    const textChannel = server?.channels.find((c) => c.type === "text");
+    if (textChannel) {
+      router.replace(`/servers/${serverId}/${textChannel.id}`);
+    } else {
+      router.replace(`/servers/${serverId}/${channelId}`);
+    }
   };
 
   return (
     <VoiceChannel
+      channelId={channelId}
       channelName={channelName}
-      participants={[]}
+      serverId={serverId}
       onLeave={handleLeave}
     />
   );
