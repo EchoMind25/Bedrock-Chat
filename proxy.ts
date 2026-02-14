@@ -37,11 +37,14 @@ const securityHeaders = {
 	// Content Security Policy - allow Supabase + Daily.co + Sentry
 	"Content-Security-Policy": [
 		"default-src 'self'",
-		"script-src 'self' 'unsafe-inline'",
+		"script-src 'self' 'unsafe-inline' 'unsafe-eval'",
 		"style-src 'self' 'unsafe-inline'",
 		"img-src 'self' data: https:",
 		"font-src 'self' data:",
 		"connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.daily.co wss://*.daily.co https://api.daily.co https://*.ingest.sentry.io",
+		"frame-src 'self' https://*.daily.co",
+		"media-src 'self' https://*.daily.co blob:",
+		"worker-src 'self' blob:",
 		"frame-ancestors 'none'",
 		"base-uri 'self'",
 		"form-action 'self'",

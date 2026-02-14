@@ -29,6 +29,39 @@ export async function createDailyRoom(channelId: string): Promise<string> {
 }
 
 export async function createDailyCall(): Promise<DailyCall> {
-  const Daily = (await import("@daily-co/daily-js")).default;
-  return Daily.createCallObject();
+  try {
+    console.log('🔵 [createDailyCall] Importing Daily.co SDK...');
+    const DailyModule = await import("@daily-co/daily-js");
+    console.log('✅ [createDailyCall] Daily.co SDK imported:', {
+      hasDefault: !!DailyModule.default,
+      moduleKeys: Object.keys(DailyModule),
+    });
+
+    const Daily = DailyModule.default;
+
+    if (!Daily) {
+      throw new Error('Daily.co SDK default export is undefined');
+    }
+
+    if (typeof Daily.createCallObject !== 'function') {
+      throw new Error('Daily.createCallObject is not a function');
+    }
+
+    console.log('🔵 [createDailyCall] Creating call object...');
+    const callObject = Daily.createCallObject();
+    console.log('✅ [createDailyCall] Call object created:', {
+      hasJoin: typeof callObject.join === 'function',
+      hasLeave: typeof callObject.leave === 'function',
+      hasOn: typeof callObject.on === 'function',
+    });
+
+    return callObject;
+  } catch (error) {
+    console.error('❌ [createDailyCall] Failed to create Daily.co call object:', {
+      error,
+      errorMessage: error instanceof Error ? error.message : 'Unknown error',
+      errorStack: error instanceof Error ? error.stack : undefined,
+    });
+    throw error;
+  }
 }
