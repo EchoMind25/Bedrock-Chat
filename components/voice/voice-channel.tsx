@@ -142,8 +142,10 @@ export function VoiceChannel({
       // Catch-all safety net
       useVoiceStore.getState().setPermissionStep("none");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [join]);
+  // Exclude join - stable callback from use-daily-call.ts
+  // This fixes React Error #185 infinite loop
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handlePermissionDeny = useCallback(() => {
     const currentStep = useVoiceStore.getState().permissionStep;
@@ -155,8 +157,10 @@ export function VoiceChannel({
       leave();
       onLeave?.();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onLeave, leave]);
+  // Exclude leave and onLeave - stable callbacks (leave from hook, onLeave is parent's responsibility)
+  // This fixes React Error #185 infinite loop
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Instant, synchronous leave - never blocks navigation
   const handleLeave = useCallback(() => {
@@ -174,8 +178,10 @@ export function VoiceChannel({
     useVoiceStore.getState().resetReconnectAttempts();
     useVoiceStore.getState().setError(null);
     join();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [join]);
+  // Exclude join - stable callback from use-daily-call.ts
+  // This fixes React Error #185 infinite loop
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const isConnected = connectionStatus === "connected";
   const isConnecting =

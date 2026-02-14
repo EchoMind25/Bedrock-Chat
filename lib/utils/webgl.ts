@@ -98,3 +98,50 @@ export function getPerformanceTier(): PerformanceTier {
 export function supportsWebGL(): boolean {
   return checkWebGL(1);
 }
+
+/**
+ * Handle WebGL context loss and restoration
+ * Attach to Three.js canvas to prevent crashes during rapid mount/unmount
+ *
+ * @param canvas - The WebGL canvas element
+ * @param onContextLost - Optional callback when context is lost
+ * @param onContextRestored - Optional callback when context is restored
+ * @returns Cleanup function to remove event listeners
+ *
+ * @example
+ * ```tsx
+ * const cleanup = setupWebGLContextHandlers(
+ *   gl.domElement,
+ *   () => console.warn("Context lost"),
+ *   () => console.info("Context restored")
+ * );
+ * // Later, on unmount:
+ * cleanup();
+ * ```
+ */
+export function setupWebGLContextHandlers(
+  canvas: HTMLCanvasElement,
+  onContextLost?: () => void,
+  onContextRestored?: () => void
+): () => void {
+  const handleContextLost = (event: Event) => {
+    // Prevent default behavior - allows context to be restored
+    event.preventDefault();
+    console.warn("⚠️ WebGL context lost - preventing default behavior");
+    onContextLost?.();
+  };
+
+  const handleContextRestored = () => {
+    console.info("✅ WebGL context restored");
+    onContextRestored?.();
+  };
+
+  canvas.addEventListener("webglcontextlost", handleContextLost, false);
+  canvas.addEventListener("webglcontextrestored", handleContextRestored, false);
+
+  // Return cleanup function
+  return () => {
+    canvas.removeEventListener("webglcontextlost", handleContextLost);
+    canvas.removeEventListener("webglcontextrestored", handleContextRestored);
+  };
+}

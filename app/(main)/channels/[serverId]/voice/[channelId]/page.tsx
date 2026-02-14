@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect } from "react";
+import { use, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { VoiceChannel } from "@/components/voice/voice-channel";
 import { useServerStore } from "@/store/server.store";
@@ -15,19 +15,33 @@ interface VoiceChannelPageProps {
 export default function VoiceChannelPage({ params }: VoiceChannelPageProps) {
   const { serverId, channelId } = use(params);
   const router = useRouter();
+  const mountedRef = useRef(false); // Race condition guard
+
   const setCurrentServer = useServerStore((state) => state.setCurrentServer);
   const setCurrentChannel = useServerStore((state) => state.setCurrentChannel);
   const servers = useServerStore((state) => state.servers);
   const isInitialized = useServerStore((state) => state.isInitialized);
 
+  // Track mounting state
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   // Update Zustand store when route changes (wrapped in useEffect)
   useEffect(() => {
+    // Guard against rapid unmount
+    if (!mountedRef.current) return;
+
     if (serverId && channelId) {
       setCurrentServer(serverId);
       setCurrentChannel(channelId);
     }
+  // Exclude store actions - stable Zustand actions
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverId, channelId]); // Exclude store actions - stable Zustand actions
+  }, [serverId, channelId]);
 
   // Look up channel from params directly to avoid race conditions
   const server = servers.find((s) => s.id === serverId);
@@ -43,6 +57,9 @@ export default function VoiceChannelPage({ params }: VoiceChannelPageProps) {
   }
 
   const handleLeave = () => {
+    // Guard against double-leave during unmount
+    if (!mountedRef.current) return;
+
     // Replace (not push) so back button doesn't return to dead voice channel
     const textChannel = server?.channels.find((c) => c.type === "text");
     if (textChannel) {

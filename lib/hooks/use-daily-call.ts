@@ -39,13 +39,27 @@ export function useDailyCall(channelId: string | null) {
   const activeSpeakerRef = useRef<string | null>(null);
   const destroyedRef = useRef(false);
 
+  // Refs to prevent callback recreation (React Error #185 fix)
+  const channelIdRef = useRef<string | null>(channelId);
+  const shouldReconnectRef = useRef(true);
+
   // Store selectors for syncing local controls to call object
   const isMuted = useVoiceStore((s) => s.isMuted);
   const isVideoOn = useVoiceStore((s) => s.isVideoOn);
   const isScreenSharing = useVoiceStore((s) => s.isScreenSharing);
 
   // Auth info for participant mapping
-  const user = useAuthStore((s) => s.user);
+  const user = useAuthStore ((s) => s.user);
+
+  // Sync channelId to ref without recreating callbacks
+  useEffect(() => {
+    channelIdRef.current = channelId;
+  }, [channelId]);
+
+  // Reset reconnect guard when channel changes
+  useEffect(() => {
+    shouldReconnectRef.current = true;
+  }, [channelId]);
 
   // Safely destroy the call object - idempotent, never throws
   const destroyCall = useCallback(() => {
@@ -69,7 +83,11 @@ export function useDailyCall(channelId: string | null) {
   }, []);
 
   const join = useCallback(async () => {
-    if (!channelId) return;
+    const currentChannelId = channelIdRef.current;
+    if (!currentChannelId) {
+      console.warn("[use-daily-call] Cannot join - no channel ID");
+      return;
+    }
 
     // Abort any previous join/reconnect
     abortRef.current?.abort();
@@ -88,7 +106,7 @@ export function useDailyCall(channelId: string | null) {
     try {
       // Race room creation against timeout and abort
       const roomUrl = await Promise.race([
-        createDailyRoom(channelId),
+        createDailyRoom(currentChannelId),
         new Promise<never>((_, reject) => {
           const timer = setTimeout(
             () => reject(new Error("Connection timed out")),
@@ -216,11 +234,16 @@ export function useDailyCall(channelId: string | null) {
         err instanceof Error ? err.message : "Failed to join voice channel";
       failWithError(message);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channelId]);
+  // Exclude channelId - read from ref to prevent callback recreation
+  // This fixes React Error #185 infinite loop in voice channels
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const attemptReconnect = useCallback(
     async (errorMsg: string) => {
+      // Guard against reconnect attempts during leave
+      if (!shouldReconnectRef.current) return;
+
       const store = useVoiceStore.getState();
       const attempts = store.reconnectAttempts;
 
@@ -229,21 +252,22 @@ export function useDailyCall(channelId: string | null) {
         store.incrementReconnectAttempts();
 
         const delay = BASE_BACKOFF_MS * Math.pow(2, attempts);
-        abortRef.current = new AbortController();
+        const controller = new AbortController();
+        abortRef.current = controller;
 
         try {
           await new Promise<void>((resolve, reject) => {
             const timeout = setTimeout(resolve, delay);
-            abortRef.current?.signal.addEventListener("abort", () => {
+            controller.signal.addEventListener("abort", () => {
               clearTimeout(timeout);
               reject(new Error("Cancelled"));
             });
           });
 
-          const roomUrl = store.roomUrl;
-          if (roomUrl && callRef.current && !destroyedRef.current) {
-            await callRef.current.join({ url: roomUrl });
-          }
+          if (controller.signal.aborted || !shouldReconnectRef.current) return;
+
+          // Call stable join function to rejoin with current channel
+          await join();
         } catch {
           // Aborted by user leave - do nothing
         }
@@ -251,8 +275,7 @@ export function useDailyCall(channelId: string | null) {
         failWithError(errorMsg);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [join, failWithError] // join is now stable (from Step 1 fix)
   );
 
   const failWithError = useCallback((message: string) => {
@@ -263,6 +286,9 @@ export function useDailyCall(channelId: string | null) {
   }, [destroyCall]);
 
   const leave = useCallback(() => {
+    // Prevent reconnect attempts during leave
+    shouldReconnectRef.current = false;
+
     // Cancel any in-progress join/reconnect
     abortRef.current?.abort();
     abortRef.current = null;

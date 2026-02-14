@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Float, Stars, MeshDistortMaterial } from "@react-three/drei";
 import type { Mesh, Group, PointLight as TPointLight } from "three";
 import * as THREE from "three";
+import { setupWebGLContextHandlers } from "@/lib/utils/webgl";
 
 // OKLCH primary/secondary/accent converted to hex for Three.js
 const COLORS = {
@@ -254,6 +255,16 @@ function Lighting() {
  * Complete 3D scene composition
  */
 function Scene() {
+  const { gl } = useThree();
+
+  useEffect(() => {
+    return () => {
+      // Cleanup WebGL context handlers on unmount
+      const cleanup = (gl.domElement as any).__contextCleanup;
+      if (cleanup) cleanup();
+    };
+  }, [gl]);
+
   return (
     <>
       <CameraRig />
@@ -286,6 +297,22 @@ export default function Hero3DScene() {
         }}
         dpr={[1, 1.5]}
         style={{ background: "transparent" }}
+        onCreated={({ gl }) => {
+          // Setup WebGL context loss handlers to prevent crashes
+          const cleanup = setupWebGLContextHandlers(
+            gl.domElement,
+            () => {
+              console.warn("Hero 3D scene context lost");
+            },
+            () => {
+              console.info("Hero 3D scene context restored");
+              // THREE.js will automatically restore state
+            }
+          );
+
+          // Store cleanup function for Scene component unmount
+          (gl.domElement as any).__contextCleanup = cleanup;
+        }}
       >
         <Scene />
       </Canvas>
