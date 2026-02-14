@@ -40,29 +40,48 @@ export function VoiceChannel({
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const leavingRef = useRef(false);
 
-  // Voice store selectors
+  // Voice store - subscribe only to primitives and objects (not derived arrays)
   const connectionStatus = useVoiceStore((s) => s.connectionStatus);
   const permissionStep = useVoiceStore((s) => s.permissionStep);
   const error = useVoiceStore((s) => s.error);
-  const localParticipant = useVoiceStore((s) => s.getLocalParticipant());
-  const remoteParticipants = useVoiceStore((s) => s.getRemoteParticipants());
-  const participantsArray = useVoiceStore((s) => s.getParticipantsArray());
+  const participants = useVoiceStore((s) => s.participants);
   const setPermissionStep = useVoiceStore((s) => s.setPermissionStep);
   const setChannelId = useVoiceStore((s) => s.setChannelId);
+
+  // Compute derived values with useMemo (stable references)
+  const localParticipant = useMemo(
+    () => Object.values(participants).find((p) => p.isLocal),
+    [participants]
+  );
+
+  const remoteParticipantIds = useMemo(
+    () =>
+      Object.entries(participants)
+        .filter(([_, p]) => !p.isLocal)
+        .map(([id]) => id),
+    [participants]
+  );
+
+  const remoteParticipants = useMemo(
+    () => remoteParticipantIds.map((id) => participants[id]!),
+    [remoteParticipantIds, participants]
+  );
+
+  const participantsArray = useMemo(
+    () => Object.values(participants),
+    [participants]
+  );
 
   // Daily.co hook
   const { join, leave } = useDailyCall(channelId);
 
-  // Set channel ID in store and start permission flow on mount/channel change
+  // Set channel state on mount/change - cleanup handled by unmount effect
   useEffect(() => {
-    // Tear down previous call when switching voice channels
-    // (idempotent on first mount - nothing to clean up)
-    leave();
-
     leavingRef.current = false;
     setChannelId(channelId);
     setPermissionStep("mic");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Exclude Zustand actions - stable
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId]);
 
   // Cleanup on unmount only
@@ -73,18 +92,18 @@ export function VoiceChannel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Orbital layout calculations
+  // Orbital layout calculations - use primitive dependencies only
   const radius = useMemo(
-    () => getOrbitRadius(remoteParticipants.length),
-    [remoteParticipants.length]
+    () => getOrbitRadius(remoteParticipantIds.length),
+    [remoteParticipantIds.length]
   );
 
   const orbitalPositions = useMemo(
     () =>
-      remoteParticipants.map((_, i) =>
-        getOrbitalPosition(i, remoteParticipants.length, radius)
+      Array.from({ length: remoteParticipantIds.length }, (_, i) =>
+        getOrbitalPosition(i, remoteParticipantIds.length, radius)
       ),
-    [remoteParticipants.length, radius]
+    [remoteParticipantIds.length, radius]
   );
 
   const handlePermissionAllow = useCallback(async () => {
@@ -348,13 +367,16 @@ export function VoiceChannel({
           {/* Orbiting remote participants */}
           {isConnected && (
             <AnimatePresence>
-              {remoteParticipants.map((participant, index) => {
+              {remoteParticipantIds.map((id, index) => {
+                const participant = participants[id];
+                if (!participant) return null;
+
                 const pos = orbitalPositions[index];
                 if (!pos) return null;
 
                 return (
                   <motion.div
-                    key={participant.sessionId}
+                    key={id}
                     className="absolute z-5"
                     style={{
                       left: "50%",

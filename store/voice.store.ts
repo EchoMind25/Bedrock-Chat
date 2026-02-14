@@ -168,13 +168,6 @@ export const useVoiceStore = create<VoiceState>()(
       // Permission modal
       setPermissionStep: (step) => set({ permissionStep: step }),
 
-      // Derived helpers
-      getParticipantsArray: () => Object.values(get().participants),
-      getLocalParticipant: () =>
-        Object.values(get().participants).find((p) => p.isLocal),
-      getRemoteParticipants: () =>
-        Object.values(get().participants).filter((p) => !p.isLocal),
-
       // Full reset on leave/disconnect
       reset: () => set(initialState),
     }),
