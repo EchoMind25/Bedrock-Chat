@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     properties: {
       enable_screenshare: true,
       enable_chat: false,
-      max_participants: 50,
+      // max_participants removed - let Daily.co use plan default
     },
   };
 
