@@ -73,7 +73,7 @@ export function VoiceChannel({
   );
 
   // Daily.co hook
-  const { join, leave } = useDailyCall(channelId);
+  const { join, leave } = useDailyCall(channelId, serverId);
 
   // Set channel state on mount/change - cleanup handled by unmount effect
   useEffect(() => {

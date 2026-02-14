@@ -30,6 +30,7 @@ interface VoiceState {
   // Connection
   channelId: string | null;
   roomUrl: string | null;
+  meetingToken: string | null;
   connectionStatus: ConnectionStatus;
   reconnectAttempts: number;
   error: string | null;
@@ -50,6 +51,7 @@ interface VoiceState {
   setConnectionStatus: (status: ConnectionStatus) => void;
   setChannelId: (channelId: string | null) => void;
   setRoomUrl: (url: string | null) => void;
+  setMeetingToken: (token: string | null) => void;
   setError: (error: string | null) => void;
   incrementReconnectAttempts: () => void;
   resetReconnectAttempts: () => void;
@@ -81,6 +83,7 @@ interface VoiceState {
 const initialState = {
   channelId: null,
   roomUrl: null,
+  meetingToken: null,
   connectionStatus: "idle" as ConnectionStatus,
   reconnectAttempts: 0,
   error: null,
@@ -103,6 +106,7 @@ export const useVoiceStore = create<VoiceState>()(
       setConnectionStatus: (status) => set({ connectionStatus: status }),
       setChannelId: (channelId) => set({ channelId }),
       setRoomUrl: (url) => set({ roomUrl: url }),
+      setMeetingToken: (token) => set({ meetingToken: token }),
       setError: (error) => set({ error }),
       incrementReconnectAttempts: () =>
         set((s) => ({ reconnectAttempts: s.reconnectAttempts + 1 })),

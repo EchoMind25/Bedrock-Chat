@@ -42,7 +42,7 @@ function mapDailyParticipant(p: DailyParticipant): VoiceParticipant {
   };
 }
 
-export function useDailyCall(channelId: string | null) {
+export function useDailyCall(channelId: string | null, serverId: string | null) {
   const callRef = useRef<DailyCall | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const activeSpeakerRef = useRef<string | null>(null);
@@ -50,6 +50,7 @@ export function useDailyCall(channelId: string | null) {
 
   // Refs to prevent callback recreation (React Error #185 fix)
   const channelIdRef = useRef<string | null>(channelId);
+  const serverIdRef = useRef<string | null>(serverId);
   const shouldReconnectRef = useRef(true);
   const totalRetriesRef = useRef(0); // Track total retries to prevent infinite loops
 
@@ -61,10 +62,11 @@ export function useDailyCall(channelId: string | null) {
   // Auth info for participant mapping
   const user = useAuthStore ((s) => s.user);
 
-  // Sync channelId to ref without recreating callbacks
+  // Sync channelId and serverId to refs without recreating callbacks
   useEffect(() => {
     channelIdRef.current = channelId;
-  }, [channelId]);
+    serverIdRef.current = serverId;
+  }, [channelId, serverId]);
 
   // Reset reconnect guard and retry counter when channel changes
   useEffect(() => {
@@ -96,13 +98,20 @@ export function useDailyCall(channelId: string | null) {
 
   const join = useCallback(async () => {
     const currentChannelId = channelIdRef.current;
+    const currentServerId = serverIdRef.current;
     console.log('🟢 [use-daily-call] Starting join process for channel:', currentChannelId, {
+      serverId: currentServerId,
       totalRetries: totalRetriesRef.current,
       maxRetries: MAX_TOTAL_RETRIES,
     });
 
     if (!currentChannelId) {
       console.warn("[use-daily-call] Cannot join - no channel ID");
+      return;
+    }
+
+    if (!currentServerId) {
+      console.warn("[use-daily-call] Cannot join - no server ID");
       return;
     }
 
@@ -136,8 +145,8 @@ export function useDailyCall(channelId: string | null) {
 
     try {
       // Race room creation against timeout and abort
-      const roomUrl = await Promise.race([
-        createDailyRoom(currentChannelId),
+      const roomResponse = await Promise.race([
+        createDailyRoom(currentChannelId, currentServerId),
         new Promise<never>((_, reject) => {
           const timer = setTimeout(
             () => reject(new Error("Connection timed out")),
@@ -152,8 +161,11 @@ export function useDailyCall(channelId: string | null) {
 
       if (signal.aborted) return;
 
-      console.log('✅ Room URL received:', {
+      const { url: roomUrl, token: meetingToken } = roomResponse;
+
+      console.log('✅ Room response received:', {
         url: roomUrl,
+        hasToken: !!meetingToken,
         isString: typeof roomUrl === 'string',
         length: roomUrl?.length,
         startsWithHttp: roomUrl?.startsWith('http'),
@@ -168,6 +180,7 @@ export function useDailyCall(channelId: string | null) {
       }
 
       store.setRoomUrl(roomUrl);
+      store.setMeetingToken(meetingToken || null);
 
       // Lazy-load and create call object
       console.log('🔵 Creating Daily.co call object...');
@@ -278,14 +291,24 @@ export function useDailyCall(channelId: string | null) {
       console.log('🔵 Attempting to join Daily.co room...', {
         url: roomUrl,
         userName,
+        hasToken: !!meetingToken,
         timeout: JOIN_TIMEOUT_MS,
         callState: call.meetingState?.(),
       });
 
       // Race join against timeout
       try {
+        // Build join options with optional token for private rooms
+        const joinOptions: { url: string; userName: string; token?: string } = {
+          url: roomUrl,
+          userName,
+        };
+        if (meetingToken) {
+          joinOptions.token = meetingToken;
+        }
+
         const joinResult = await Promise.race([
-          call.join({ url: roomUrl, userName }),
+          call.join(joinOptions),
           new Promise<never>((_, reject) => {
             const timer = setTimeout(
               () => reject(new Error("Connection timed out")),

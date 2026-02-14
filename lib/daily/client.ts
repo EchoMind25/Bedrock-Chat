@@ -1,12 +1,20 @@
 import type { DailyCall } from "@daily-co/daily-js";
 
-export async function createDailyRoom(channelId: string): Promise<string> {
-  console.log('🔵 Creating Daily.co room for channel:', channelId);
+export interface DailyRoomResponse {
+  url: string;
+  token?: string;
+}
+
+export async function createDailyRoom(
+  channelId: string,
+  serverId: string
+): Promise<DailyRoomResponse> {
+  console.log('🔵 Creating Daily.co room for channel:', channelId, 'in server:', serverId);
 
   const response = await fetch("/api/daily/rooms", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ channelId }),
+    body: JSON.stringify({ channelId, serverId }),
   });
 
   console.log('🔵 Daily.co API response status:', response.status, response.statusText);
@@ -23,9 +31,13 @@ export async function createDailyRoom(channelId: string): Promise<string> {
     throw new Error(data.error || "Failed to create voice room");
   }
 
-  const { url } = await response.json();
-  console.log('✅ Daily.co room created successfully:', url);
-  return url;
+  const { url, token } = await response.json();
+  console.log('✅ Daily.co room created successfully:', {
+    url,
+    hasToken: !!token,
+    tokenPreview: token ? token.substring(0, 20) + '...' : 'none',
+  });
+  return { url, token };
 }
 
 export async function createDailyCall(): Promise<DailyCall> {
