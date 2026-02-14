@@ -7,6 +7,7 @@ import { useServerStore } from "@/store/server.store";
 import { useFriendsStore } from "@/store/friends.store";
 import { useDMStore } from "@/store/dm.store";
 import { useUIStore } from "@/store/ui.store";
+import { useFavoritesStore } from "@/store/favorites.store";
 import { useIsMobile } from "@/lib/hooks/use-media-query";
 import { ServerList } from "@/components/navigation/server-list/server-list";
 import { ChannelList } from "@/components/navigation/channel-list/channel-list";
@@ -131,6 +132,7 @@ export default function MainLayout({
 					const dmState = useDMStore.getState();
 
 					const promises: Promise<void>[] = [];
+					promises.push(useFavoritesStore.getState().loadFavorites());
 					if (!serverState.isInitialized) promises.push(serverState.loadServers());
 					// Note: init() methods are synchronous wrappers that kick off async work
 					// They set isInitialized = true internally after loading completes

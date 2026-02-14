@@ -5,6 +5,7 @@ import { Settings, X, Plus, Folder } from "lucide-react";
 import { useServerStore } from "@/store/server.store";
 import { useUIStore } from "@/store/ui.store";
 import { useServerManagementStore } from "@/store/server-management.store";
+import { useFavoritesStore } from "@/store/favorites.store";
 import { useIsMobile } from "@/lib/hooks/use-media-query";
 import { ChannelCategory } from "./channel-category";
 import { ChannelItem } from "./channel-item";
@@ -172,6 +173,9 @@ export function ChannelList() {
 		}
 	};
 
+	// Get favorite channels
+	const isFavorite = useFavoritesStore((s) => s.isFavorite);
+
 	// Memoize channel grouping to prevent unnecessary recalculations
 	const channelsByCategory = useMemo(() => {
 		// Guard against undefined currentServer during rapid navigation
@@ -197,6 +201,12 @@ export function ChannelList() {
 
 		return grouped;
 	}, [currentServer]);
+
+	// Get favorited channels from current server
+	const favoriteChannels = useMemo(() => {
+		if (!currentServer) return [];
+		return currentServer.channels.filter((ch) => isFavorite(ch.id));
+	}, [currentServer, isFavorite]);
 
 	const channelListContent = (
 		<div className="w-60 h-screen bg-[oklch(0.15_0.02_250)] flex flex-col">
@@ -314,6 +324,24 @@ export function ChannelList() {
 						},
 					}}
 				>
+					{/* Starred Channels Section */}
+					{favoriteChannels.length > 0 && (
+						<div className="mb-4 pb-4 border-b border-white/10">
+							<div className="px-3 mb-1">
+								<h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+									Starred Channels
+								</h3>
+							</div>
+							{favoriteChannels.map((channel) => (
+								<ChannelItem
+									key={channel.id}
+									channel={channel}
+									isActive={currentChannelId === channel.id}
+								/>
+							))}
+						</div>
+					)}
+
 					{currentServer.categories.map((category) => {
 						const channels = channelsByCategory[category.id] || [];
 						const isCollapsed = category.collapsed ?? false;

@@ -3,10 +3,12 @@
 import type { Channel, VoiceUser } from "@/lib/types/server";
 import { useServerStore } from "@/store/server.store";
 import { useServerManagementStore } from "@/store/server-management.store";
+import { useFavoritesStore } from "@/store/favorites.store";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils/cn";
 import { Avatar } from "@/components/ui/avatar/avatar";
+import { Star } from "lucide-react";
 
 interface ChannelItemProps {
 	channel: Channel;
@@ -18,6 +20,8 @@ export function ChannelItem({ channel, isActive }: ChannelItemProps) {
 	const setCurrentChannel = useServerStore((s) => s.setCurrentChannel);
 	const currentServerId = useServerStore((s) => s.currentServerId);
 	const openChannelSettings = useServerManagementStore((s) => s.openChannelSettings);
+	const isFavorite = useFavoritesStore((s) => s.isFavorite(channel.id));
+	const toggleFavorite = useFavoritesStore((s) => s.toggleFavorite);
 
 	const getChannelIcon = () => {
 		switch (channel.type) {
@@ -96,6 +100,14 @@ export function ChannelItem({ channel, isActive }: ChannelItemProps) {
 		}
 	};
 
+	const handleToggleFavorite = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		e.preventDefault();
+		if (currentServerId) {
+			toggleFavorite(channel.id, currentServerId);
+		}
+	};
+
 	return (
 		<div>
 			<motion.button
@@ -141,6 +153,31 @@ export function ChannelItem({ channel, isActive }: ChannelItemProps) {
 							</span>
 						</div>
 					)}
+
+					{/* Star/Favorite Icon */}
+					<motion.div
+						role="button"
+						tabIndex={0}
+						aria-label={isFavorite ? `Remove ${channel.name} from favorites` : `Add ${channel.name} to favorites`}
+						className="p-2 md:p-1 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center hover:bg-white/10 rounded-sm transition-colors cursor-pointer md:opacity-0 md:group-hover:opacity-100 touch-manipulation"
+						onClick={handleToggleFavorite}
+						onKeyDown={(e) => {
+							if (e.key === "Enter" || e.key === " ") {
+								e.preventDefault();
+								e.stopPropagation();
+								handleToggleFavorite(e as any);
+							}
+						}}
+						whileHover={{ scale: 1.1 }}
+						whileTap={{ scale: 0.9 }}
+					>
+						<Star
+							className={cn(
+								"w-4 h-4 transition-colors",
+								isFavorite ? "fill-yellow-400 text-yellow-400" : "text-white/40"
+							)}
+						/>
+					</motion.div>
 
 					{/* Channel Settings (visible on hover) */}
 					<div

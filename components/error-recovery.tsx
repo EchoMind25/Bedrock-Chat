@@ -155,11 +155,11 @@ export function ErrorRecovery({ error, onRetry }: ErrorRecoveryProps) {
 
                 {/* Log Actions */}
                 <div className="flex gap-2">
-                  <Button onClick={handleExportLogs} variant="outline" size="sm" className="flex items-center gap-2">
+                  <Button onClick={handleExportLogs} variant="secondary" size="sm" className="flex items-center gap-2">
                     <Download className="w-3.5 h-3.5" />
                     Export Logs
                   </Button>
-                  <Button onClick={handleClearLogs} variant="outline" size="sm" className="flex items-center gap-2">
+                  <Button onClick={handleClearLogs} variant="secondary" size="sm" className="flex items-center gap-2">
                     <Trash2 className="w-3.5 h-3.5" />
                     Clear Logs
                   </Button>
