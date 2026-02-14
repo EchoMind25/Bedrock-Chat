@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "motion/react";
 import { X, Minimize2, Maximize2, Monitor } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Avatar } from "../ui/avatar";
 import { useVoiceStore } from "@/store/voice.store";
 
@@ -16,7 +16,12 @@ const springConfig = {
 export function ScreenShare() {
   const isActive = useVoiceStore((s) => s.isScreenSharing);
   const setScreenSharing = useVoiceStore((s) => s.setScreenSharing);
-  const localParticipant = useVoiceStore((s) => s.getLocalParticipant());
+  const participants = useVoiceStore((s) => s.participants);
+
+  const localParticipant = useMemo(
+    () => Object.values(participants).find((p) => p.isLocal),
+    [participants]
+  );
 
   const [isMinimized, setIsMinimized] = useState(false);
 

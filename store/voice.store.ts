@@ -72,11 +72,6 @@ interface VoiceState {
   // Permission modal
   setPermissionStep: (step: "none" | "mic" | "camera") => void;
 
-  // Derived helpers
-  getParticipantsArray: () => VoiceParticipant[];
-  getLocalParticipant: () => VoiceParticipant | undefined;
-  getRemoteParticipants: () => VoiceParticipant[];
-
   // Full reset
   reset: () => void;
 }
@@ -152,10 +147,12 @@ export const useVoiceStore = create<VoiceState>()(
 
       // Local control actions with privacy audit logging
       setMuted: (muted) => {
-        const user = get().getLocalParticipant();
-        if (user) {
+        const localParticipant = (
+          Object.values(get().participants) as VoiceParticipant[]
+        ).find((p) => p.isLocal);
+        if (localParticipant) {
           console.info(
-            `[Privacy Audit] User ${user.username} ${muted ? "muted" : "unmuted"} microphone at ${new Date().toISOString()}`
+            `[Privacy Audit] User ${localParticipant.username} ${muted ? "muted" : "unmuted"} microphone at ${new Date().toISOString()}`
           );
         }
         set({ isMuted: muted });
