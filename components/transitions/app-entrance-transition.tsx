@@ -4,10 +4,12 @@ import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { createPortal } from "react-dom";
 import { getPerformanceTier } from "@/lib/utils/webgl";
+import { useServerStore } from "@/store/server.store";
 
 interface AppEntranceTransitionProps {
   isActive: boolean;
   onComplete: () => void;
+  preloadData?: boolean; // Whether to preload server data during transition
 }
 
 /**
@@ -23,14 +25,61 @@ interface AppEntranceTransitionProps {
 export function AppEntranceTransition({
   isActive,
   onComplete,
+  preloadData = true,
 }: AppEntranceTransitionProps) {
   const [mounted, setMounted] = useState(false);
   const [tier, setTier] = useState<"low" | "medium" | "high">("low");
+  const [animationComplete, setAnimationComplete] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
+
+  const loadServers = useServerStore((s) => s.loadServers);
+  const isInitialized = useServerStore((s) => s.isInitialized);
 
   useEffect(() => {
     setMounted(true);
     setTier(getPerformanceTier());
   }, []);
+
+  // Reset states when transition becomes inactive
+  useEffect(() => {
+    if (!isActive) {
+      setAnimationComplete(false);
+      setDataLoaded(false);
+    }
+  }, [isActive]);
+
+  // Preload server data when transition becomes active
+  useEffect(() => {
+    if (!isActive || !preloadData) {
+      setDataLoaded(true); // If not preloading, mark as loaded immediately
+      return;
+    }
+
+    // If already initialized, mark as loaded
+    if (isInitialized) {
+      setDataLoaded(true);
+      return;
+    }
+
+    // Start loading servers
+    loadServers()
+      .then(() => {
+        setDataLoaded(true);
+      })
+      .catch((err) => {
+        console.error("Error preloading servers:", err);
+        setDataLoaded(true); // Mark as loaded even on error to not block transition
+      });
+  }, [isActive, preloadData, isInitialized, loadServers]);
+
+  // Complete transition only when both animation and data are ready
+  useEffect(() => {
+    if (animationComplete && dataLoaded) {
+      // Small delay for smooth transition
+      const timer = setTimeout(onComplete, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [animationComplete, dataLoaded, onComplete]);
 
   // ESC to skip
   useEffect(() => {
@@ -46,11 +95,10 @@ export function AppEntranceTransition({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isActive, onComplete]);
 
-  // Auto-complete after animation finishes
+  // Mark animation as complete when B animation finishes
   const handleAnimationComplete = useCallback(() => {
-    // Delay slightly after animation completes before calling onComplete
-    setTimeout(onComplete, 300);
-  }, [onComplete]);
+    setAnimationComplete(true);
+  }, []);
 
   if (!mounted || typeof document === "undefined") return null;
 
@@ -132,11 +180,16 @@ export function AppEntranceTransition({
           <motion.div
             className="relative z-10"
             initial={{ opacity: 0, scale: 0.3, rotateY: -45 }}
-            animate={{ opacity: 1, scale: 1, rotateY: 0 }}
+            animate={{
+              opacity: 1,
+              scale: animationComplete && !dataLoaded ? [1, 1.05, 1] : 1,
+              rotateY: 0
+            }}
             exit={{ opacity: 0, scale: 1.5 }}
             transition={{
-              duration: 1.5,
+              duration: animationComplete && !dataLoaded ? 1.5 : 1.5,
               ease: [0.25, 0.1, 0.25, 1],
+              repeat: animationComplete && !dataLoaded ? Infinity : 0,
             }}
             style={{ perspective: "1000px" }}
             onAnimationComplete={handleAnimationComplete}

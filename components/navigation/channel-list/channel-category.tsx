@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { ChannelCategory as ChannelCategoryType } from "@/lib/types/server";
-import { Plus, Edit, Trash2, GripVertical } from "lucide-react";
+import { Plus, Edit, Trash2 } from "lucide-react";
 import { useServerManagementStore } from "@/store/server-management.store";
 import { useServerStore } from "@/store/server.store";
 import { motion } from "motion/react";
@@ -11,12 +11,14 @@ interface ChannelCategoryProps {
 	category: ChannelCategoryType;
 	isCollapsed: boolean;
 	onToggle: () => void;
+	dragHandleProps?: Record<string, unknown>;
 }
 
 export function ChannelCategory({
 	category,
 	isCollapsed,
 	onToggle,
+	dragHandleProps,
 }: ChannelCategoryProps) {
 	// ✅ Use selector to subscribe only to specific value, not entire store
 	const openCreateChannel = useServerManagementStore((state) => state.openCreateChannel);
@@ -52,9 +54,6 @@ export function ChannelCategory({
 
 	return (
 		<div className="relative w-full px-2 py-1 flex items-center gap-1 text-xs font-semibold text-white/60 hover:text-white/80 uppercase tracking-wide group">
-			{/* Drag handle */}
-			<GripVertical className="w-3 h-3 shrink-0 opacity-0 group-hover:opacity-60 cursor-grab" />
-
 			{isEditing ? (
 				<input
 					type="text"

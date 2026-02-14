@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, lazy, Suspense, useState } from "react";
+import React, { useMemo, lazy, Suspense, useState } from "react";
 import { Settings, X, Plus, Folder } from "lucide-react";
 import { useServerStore } from "@/store/server.store";
 import { useUIStore } from "@/store/ui.store";
@@ -13,9 +13,6 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { Input } from "@/components/ui/input/input";
 import { Button } from "@/components/ui/button/button";
 import { motion, AnimatePresence } from "motion/react";
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 
 // Lazy load modal components for better performance (30% smaller initial bundle)
 const ServerSettingsModal = lazy(() => import("@/components/server-management/modals/server-settings-modal/server-settings-modal").then(m => ({ default: m.ServerSettingsModal })));
@@ -43,11 +40,6 @@ export function ChannelList() {
 	const [isCreatingCategory, setIsCreatingCategory] = useState(false);
 	const [newCategoryName, setNewCategoryName] = useState("");
 	const [isCreatingLoading, setIsCreatingLoading] = useState(false);
-
-	const sensors = useSensors(
-		useSensor(PointerSensor),
-		useSensor(KeyboardSensor)
-	);
 
 	const isMobile = useIsMobile();
 	const isMobileChannelListOpen = useUIStore(
@@ -163,22 +155,6 @@ export function ChannelList() {
 
 	const toggleCategory = (categoryId: string) => {
 		toggleCategoryStore(currentServer.id, categoryId);
-	};
-
-	const handleDragEnd = (event: DragEndEvent) => {
-		const { active, over } = event;
-
-		if (over && active.id !== over.id) {
-			const oldIndex = currentServer.categories.findIndex(c => c.id === active.id);
-			const newIndex = currentServer.categories.findIndex(c => c.id === over.id);
-
-			const reordered = [...currentServer.categories];
-			const [moved] = reordered.splice(oldIndex, 1);
-			reordered.splice(newIndex, 0, moved);
-
-			const categoryIds = reordered.map(c => c.id);
-			reorderCategories(currentServer.id, categoryIds);
-		}
 	};
 
 	const handleCreateCategory = async () => {
@@ -338,52 +314,36 @@ export function ChannelList() {
 						},
 					}}
 				>
-					<DndContext
-						sensors={sensors}
-						collisionDetection={closestCenter}
-						onDragEnd={handleDragEnd}
-					>
-						<SortableContext
-							items={currentServer.categories.map(c => c.id)}
-							strategy={verticalListSortingStrategy}
-						>
-							{currentServer.categories.map((category) => {
-								const channels = channelsByCategory[category.id] || [];
-								const isCollapsed = category.collapsed ?? false;
+					{currentServer.categories.map((category) => {
+						const channels = channelsByCategory[category.id] || [];
+						const isCollapsed = category.collapsed ?? false;
 
-								return (
-									<SortableCategoryWrapper
-										key={category.id}
-										categoryId={category.id}
+						return (
+							<div key={category.id} className="mb-2">
+								<ChannelCategory
+									category={category}
+									isCollapsed={isCollapsed}
+									onToggle={() => toggleCategory(category.id)}
+								/>
+								{!isCollapsed && (
+									<motion.div
+										initial={{ height: 0, opacity: 0 }}
+										animate={{ height: "auto", opacity: 1 }}
+										exit={{ height: 0, opacity: 0 }}
+										transition={{ duration: 0.2 }}
 									>
-										<div className="mb-2">
-											<ChannelCategory
-												category={category}
-												isCollapsed={isCollapsed}
-												onToggle={() => toggleCategory(category.id)}
+										{channels.map((channel) => (
+											<ChannelItem
+												key={channel.id}
+												channel={channel}
+												isActive={currentChannelId === channel.id}
 											/>
-											{!isCollapsed && (
-												<motion.div
-													initial={{ height: 0, opacity: 0 }}
-													animate={{ height: "auto", opacity: 1 }}
-													exit={{ height: 0, opacity: 0 }}
-													transition={{ duration: 0.2 }}
-												>
-													{channels.map((channel) => (
-														<ChannelItem
-															key={channel.id}
-															channel={channel}
-															isActive={currentChannelId === channel.id}
-														/>
-													))}
-												</motion.div>
-											)}
-										</div>
-									</SortableCategoryWrapper>
-								);
-							})}
-						</SortableContext>
-					</DndContext>
+										))}
+									</motion.div>
+								)}
+							</div>
+						);
+					})}
 
 					{/* Uncategorized channels */}
 					{channelsByCategory.uncategorized && (
@@ -451,23 +411,4 @@ export function ChannelList() {
 
 	// Desktop: persistent sidebar
 	return channelListContent;
-}
-
-// Sortable wrapper for drag-and-drop category reordering
-function SortableCategoryWrapper({ categoryId, children }: { categoryId: string; children: React.ReactNode }) {
-	const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-		id: categoryId
-	});
-
-	const style = {
-		transform: CSS.Transform.toString(transform),
-		transition,
-		opacity: isDragging ? 0.5 : 1,
-	};
-
-	return (
-		<div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-			{children}
-		</div>
-	);
 }

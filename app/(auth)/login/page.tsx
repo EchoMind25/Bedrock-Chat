@@ -44,6 +44,7 @@ export default function LoginPage() {
 			<AppEntranceTransition
 				isActive={showEntranceTransition}
 				onComplete={handleEntranceComplete}
+				preloadData={true}
 			/>
 		</div>
 	);

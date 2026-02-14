@@ -31,6 +31,7 @@ export default function MainLayout({
 	const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 	const user = useAuthStore((s) => s.user);
 	const isInitializing = useAuthStore((s) => s.isInitializing);
+	const serversInitialized = useServerStore((s) => s.isInitialized);
 
 	// Idle detection: pauses CSS animations after 30s of inactivity
 	const isIdle = useIdleDetection();
@@ -133,7 +134,8 @@ export default function MainLayout({
 	}, [isAuthenticated, isInitializing, router]);
 
 	// Show loading while auth is being checked
-	if (isInitializing) {
+	// BUT skip if servers are already loaded (user came from entrance transition)
+	if (isInitializing && !serversInitialized) {
 		return (
 			<div className="min-h-screen bg-[oklch(0.12_0.02_250)] flex items-center justify-center">
 				<div className="text-center">
