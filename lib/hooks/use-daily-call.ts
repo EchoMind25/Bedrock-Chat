@@ -313,6 +313,62 @@ export function useDailyCall(channelId: string | null, serverId: string | null) 
         }
       );
 
+      // Listen for track-started event (CRITICAL for screen sharing detection)
+      // This event fires when a media track (including screen share) becomes available
+      call.on(
+        "track-started",
+        (event: any) => {
+          if (!event) return;
+          const store = useVoiceStore.getState();
+
+          // Check if this is a screen video track
+          if (event.track && event.track.kind === "video" && event.participant?.screen) {
+            const sessionId = event.participant.session_id;
+            const username = event.participant.user_name || "Unknown";
+            const isLocal = event.participant.local || false;
+
+            console.info('[Screen Share] Track started event received:', {
+              sessionId,
+              username,
+              isLocal,
+              trackKind: event.track.kind,
+              timestamp: new Date().toISOString(),
+            });
+
+            // Set active screen share when track starts
+            store.setActiveScreenShare({
+              sessionId,
+              username,
+              isLocal,
+            });
+          }
+        }
+      );
+
+      // Listen for track-stopped event (when screen sharing stops)
+      call.on(
+        "track-stopped",
+        (event: any) => {
+          if (!event) return;
+          const store = useVoiceStore.getState();
+
+          // Check if this is a screen video track stopping
+          if (event.track && event.track.kind === "video" && event.participant) {
+            const sessionId = event.participant.session_id;
+            const currentScreenShare = store.activeScreenShare;
+
+            // Clear screen share if this participant was sharing
+            if (currentScreenShare?.sessionId === sessionId) {
+              console.info('[Screen Share] Track stopped event received:', {
+                sessionId,
+                timestamp: new Date().toISOString(),
+              });
+              store.setActiveScreenShare(null);
+            }
+          }
+        }
+      );
+
       call.on(
         "active-speaker-change",
         (event: DailyEventObjectActiveSpeakerChange | undefined) => {

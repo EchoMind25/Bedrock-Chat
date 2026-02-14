@@ -198,6 +198,9 @@ export function ChannelList() {
 
 	// Memoize channel grouping to prevent unnecessary recalculations
 	const channelsByCategory = useMemo(() => {
+		// Guard against undefined currentServer during rapid navigation
+		if (!currentServer) return {};
+
 		// Group channels by category
 		const grouped = currentServer.channels.reduce(
 			(acc, channel) => {
@@ -217,7 +220,7 @@ export function ChannelList() {
 		}
 
 		return grouped;
-	}, [currentServer.channels]);
+	}, [currentServer]);
 
 	const channelListContent = (
 		<div className="w-60 h-screen bg-[oklch(0.15_0.02_250)] flex flex-col">
