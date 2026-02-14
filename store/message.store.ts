@@ -179,18 +179,24 @@ export const useMessageStore = create<MessageState>()(
 
         try {
           const supabase = createClient();
-          const { data, error } = await supabase
-            .from('messages')
-            .select(`
-              *,
-              user:profiles(id, username, display_name, avatar_url),
-              attachments:message_attachments(*),
-              reactions:message_reactions(*)
-            `)
-            .eq('channel_id', channelId)
-            .eq('is_deleted', false)
-            .order('created_at', { ascending: false })
-            .limit(50);
+          const timeout = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Message load timed out')), 10000)
+          );
+          const { data, error } = await Promise.race([
+            supabase
+              .from('messages')
+              .select(`
+                *,
+                user:profiles(id, username, display_name, avatar_url),
+                attachments:message_attachments(*),
+                reactions:message_reactions(*)
+              `)
+              .eq('channel_id', channelId)
+              .eq('is_deleted', false)
+              .order('created_at', { ascending: false })
+              .limit(50),
+            timeout,
+          ]);
 
           if (error) throw error;
 

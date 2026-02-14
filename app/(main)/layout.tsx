@@ -87,10 +87,11 @@ export default function MainLayout({
 			const { isAuthenticated: authed } = useAuthStore.getState();
 			if (!authed) return;
 
-			// Step 2.5: DEV MODE - Ensure user is member of all servers
+			// Step 2.5: DEV MODE - Ensure user is member of all servers (fire-and-forget to not block init)
 			if (process.env.NODE_ENV !== 'production') {
-				const { ensureUserInAllServers } = await import('@/lib/dev-mode-helpers');
-				await ensureUserInAllServers();
+				import('@/lib/dev-mode-helpers')
+					.then(({ ensureUserInAllServers }) => ensureUserInAllServers())
+					.catch(() => {});
 			}
 
 			// Step 3: Init stores (servers awaited, friends/dm fire-and-forget)

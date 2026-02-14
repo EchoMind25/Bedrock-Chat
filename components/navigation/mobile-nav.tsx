@@ -2,8 +2,9 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { useServerStore } from "@/store/server.store";
+import { useAuthStore } from "@/store/auth.store";
 import { useUIStore } from "@/store/ui.store";
-import { Home, Hash, Users, Bell, Settings } from "lucide-react";
+import { Home, Hash, Users, Bell, LogOut } from "lucide-react";
 import { motion } from "motion/react";
 
 /**
@@ -61,13 +62,14 @@ export function MobileNav() {
       isActive: pathname === "/notifications",
     },
     {
-      id: "settings",
-      label: "Settings",
-      icon: Settings,
-      onClick: () => {
-        router.push("/settings");
+      id: "logout",
+      label: "Log Out",
+      icon: LogOut,
+      onClick: async () => {
+        await useAuthStore.getState().logout();
+        router.push("/login");
       },
-      isActive: pathname === "/settings",
+      isActive: false,
     },
   ];
 

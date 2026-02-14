@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Hash, Volume2, Megaphone, Lock } from "lucide-react";
 import { Modal } from "../../ui/modal/modal";
 import { Input } from "../../ui/input/input";
@@ -48,6 +49,7 @@ export function CreateChannelModal() {
   const preselectedCategoryId = useServerManagementStore((state) => state.preselectedCategoryId);
   const servers = useServerStore((s) => s.servers);
   const currentServerId = useServerStore((s) => s.currentServerId);
+  const router = useRouter();
 
   const [channelName, setChannelName] = useState("");
   const [channelType, setChannelType] = useState<ChannelType>("text");
@@ -163,7 +165,7 @@ export function CreateChannelModal() {
       handleClose();
 
       // Navigate to new channel
-      window.location.href = `/servers/${currentServer.id}/${newChannel.id}`;
+      router.push(`/servers/${currentServer.id}/${newChannel.id}`);
     } catch (err) {
       console.error("Error creating channel:", err);
       toast.error("Creation Failed", "Could not create channel. Please try again.");
