@@ -84,6 +84,8 @@ export function useDailyCall(channelId: string | null) {
 
   const join = useCallback(async () => {
     const currentChannelId = channelIdRef.current;
+    console.log('🟢 [use-daily-call] Starting join process for channel:', currentChannelId);
+
     if (!currentChannelId) {
       console.warn("[use-daily-call] Cannot join - no channel ID");
       return;
@@ -102,6 +104,7 @@ export function useDailyCall(channelId: string | null) {
     store.setConnectionStatus("connecting");
     store.setError(null);
     destroyedRef.current = false;
+    console.log('🟢 [use-daily-call] Store reset, status set to connecting');
 
     try {
       // Race room creation against timeout and abort
@@ -228,10 +231,18 @@ export function useDailyCall(channelId: string | null) {
         }),
       ]);
     } catch (err) {
-      if (signal.aborted) return; // User cancelled - don't show error
+      if (signal.aborted) {
+        console.log('🟡 [use-daily-call] Join cancelled by user');
+        return; // User cancelled - don't show error
+      }
 
       const message =
         err instanceof Error ? err.message : "Failed to join voice channel";
+      console.error('❌ [use-daily-call] Join failed:', {
+        error: err,
+        message,
+        channelId: currentChannelId
+      });
       failWithError(message);
     }
   // Exclude channelId - read from ref to prevent callback recreation
