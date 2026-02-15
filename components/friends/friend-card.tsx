@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useCallback } from "react";
 import { motion } from "motion/react";
 import { Avatar } from "@/components/ui/avatar/avatar";
 import { Button } from "@/components/ui/button/button";
@@ -9,6 +10,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/comp
 import type { Friend } from "@/lib/types/friend";
 import { useFriendsStore } from "@/store/friends.store";
 import { useDMStore } from "@/store/dm.store";
+import { usePresenceStore } from "@/store/presence.store";
 
 interface FriendCardProps {
 	friend: Friend;
@@ -19,6 +21,17 @@ export function FriendCard({ friend }: FriendCardProps) {
 	const removeFriend = useFriendsStore((state) => state.removeFriend);
 	const blockUser = useFriendsStore((state) => state.blockUser);
 	const createDm = useDMStore((state) => state.createDm);
+
+	// Real-time presence status — only re-renders when THIS friend's status changes
+	const liveStatus = usePresenceStore(
+		useCallback((s) => {
+			const presence = s.onlineUsers.get(friend.userId);
+			return presence?.status ?? null;
+		}, [friend.userId])
+	);
+
+	// Use live presence if available, fall back to stored friend status
+	const effectiveStatus = liveStatus ?? friend.status;
 
 	const handleMessage = () => {
 		// Create or get existing DM
@@ -41,9 +54,9 @@ export function FriendCard({ friend }: FriendCardProps) {
 	};
 
 	const statusVariant =
-		friend.status === "online"
+		effectiveStatus === "online"
 			? "success"
-			: friend.status === "dnd"
+			: effectiveStatus === "dnd"
 				? "danger"
 				: "default";
 
@@ -61,11 +74,13 @@ export function FriendCard({ friend }: FriendCardProps) {
 						src={friend.avatar}
 						fallback={friend.displayName.slice(0, 2)}
 						status={
-							friend.status === "idle"
+							effectiveStatus === "idle"
 								? "away"
-								: friend.status === "dnd"
+								: effectiveStatus === "dnd"
 									? "busy"
-									: friend.status
+									: effectiveStatus === "online"
+										? "online"
+										: "offline"
 						}
 						size="lg"
 					/>
@@ -77,10 +92,10 @@ export function FriendCard({ friend }: FriendCardProps) {
 						)}
 					</div>
 					<div className="flex flex-col items-end gap-1">
-						<Badge variant={statusVariant} pulse={friend.status === "online"}>
-							{friend.status}
+						<Badge variant={statusVariant} pulse={effectiveStatus === "online"}>
+							{effectiveStatus}
 						</Badge>
-						{friend.status === "offline" && friend.lastSeen && (
+						{effectiveStatus === "offline" && friend.lastSeen && (
 							<span className="text-[10px] text-white/40">
 								{new Date(friend.lastSeen).toLocaleDateString()}
 							</span>

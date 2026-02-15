@@ -20,6 +20,7 @@ const statusToAvatar: Record<UserStatus, AvatarStatus> = {
 	idle: "away",
 	dnd: "busy",
 	offline: "offline",
+	invisible: "offline",
 };
 
 const statusOptions: { value: UserStatus; label: string; color: string }[] = [

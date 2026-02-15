@@ -15,10 +15,11 @@ export default function MainPage() {
 		if (!isInitialized) return;
 
 		// Redirect to current server/channel or default
+		// Use replace to avoid polluting browser history with redirect entries
 		if (currentServerId && currentChannelId && currentServerId !== "home") {
-			router.push(`/servers/${currentServerId}/${currentChannelId}`);
+			router.replace(`/servers/${currentServerId}/${currentChannelId}`);
 		} else {
-			router.push("/friends");
+			router.replace("/friends");
 		}
 	}, [currentServerId, currentChannelId, isInitialized, router]);
 

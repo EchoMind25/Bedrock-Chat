@@ -65,8 +65,8 @@ const THRESHOLDS = {
 	fid: { warning: 100, critical: 300 },
 	cls: { warning: 0.1, critical: 0.25 },
 	inp: { warning: 200, critical: 500 },
-	memoryIdleMB: { warning: 50, critical: 75 },
-	memoryActiveMB: { warning: 150, critical: 200 },
+	memoryIdleMB: { warning: 75, critical: 100 },
+	memoryActiveMB: { warning: 75, critical: 100 },
 	cpuIdlePercent: { warning: 2, critical: 5 },
 	cpuActivePercent: { warning: 10, critical: 20 },
 };

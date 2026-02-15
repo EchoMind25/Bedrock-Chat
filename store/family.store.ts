@@ -8,12 +8,26 @@ import type {
 	ServerApproval,
 	FriendApproval,
 	TransparencyLogEntry,
+	TransparencyLogAction,
 	KeywordAlert,
 	TimeLimitConfig,
 	ParentDashboardSettings,
 } from "@/lib/types/family";
 import type { User } from "@/store/auth.store";
 import { createClient } from "@/lib/supabase/client";
+import {
+	persistTransparencyLogEntry,
+	updateMonitoringLevel as updateMonitoringLevelDb,
+	insertKeywordAlert as insertKeywordAlertDb,
+	deleteKeywordAlert as deleteKeywordAlertDb,
+	toggleKeywordAlertActive,
+	upsertTimeLimit,
+	deleteTimeLimit as deleteTimeLimitDb,
+	upsertBlockedCategory,
+	insertRestrictedServer,
+	deleteRestrictedServer,
+} from "@/lib/supabase/family-mutations";
+import { useAuthStore } from "@/store/auth.store";
 
 interface FamilyState {
 	// Account type flags
@@ -28,6 +42,11 @@ interface FamilyState {
 	myParent: User | null;
 	myMonitoringLevel: MonitoringLevel | null;
 	myTransparencyLog: TransparencyLogEntry[];
+
+	// Internal DB mapping (not persisted, not exposed to UI)
+	_familyId: string | null;
+	_teenUserIdMap: Record<string, string>; // Maps "teen-account-{uid}" -> Supabase user UUID
+	_realtimeCleanup: (() => void) | null;
 
 	// Initialization
 	isInitialized: boolean;
@@ -87,11 +106,14 @@ interface FamilyState {
 const initialState = {
 	isParent: false,
 	isTeen: false,
-	teenAccounts: [],
-	selectedTeenId: null,
-	myParent: null,
-	myMonitoringLevel: null,
-	myTransparencyLog: [],
+	teenAccounts: [] as TeenAccount[],
+	selectedTeenId: null as string | null,
+	myParent: null as User | null,
+	myMonitoringLevel: null as MonitoringLevel | null,
+	myTransparencyLog: [] as TransparencyLogEntry[],
+	_familyId: null as string | null,
+	_teenUserIdMap: {} as Record<string, string>,
+	_realtimeCleanup: null as (() => void) | null,
 	isInitialized: false,
 };
 
@@ -116,6 +138,9 @@ export const useFamilyStore = create<FamilyState>()(
 									.eq("role", "parent");
 
 								const teenAccounts: TeenAccount[] = [];
+								const teenUserIdMap: Record<string, string> = {};
+								const familyId = (families && families.length > 0) ? families[0].family_id : null;
+
 								for (const fam of families || []) {
 									const family = fam.family as unknown as Record<string, unknown>;
 									const { data: teens } = await supabase
@@ -133,10 +158,33 @@ export const useFamilyStore = create<FamilyState>()(
 
 									for (const teen of teens || []) {
 										const u = teen.user as unknown as Record<string, unknown>;
+										const teenUid = u.id as string;
+
+										// Load persisted restrictions from DB (4 parallel queries per teen)
+										const [
+											{ data: dbKeywords },
+											{ data: dbTimeLimit },
+											{ data: dbBlockedCats },
+											{ data: dbRestrictedServers },
+										] = await Promise.all([
+											supabase.from("family_keyword_alerts").select("*")
+												.eq("family_id", fam.family_id).eq("teen_user_id", teenUid),
+											supabase.from("family_time_limits").select("*")
+												.eq("family_id", fam.family_id).eq("teen_user_id", teenUid)
+												.maybeSingle(),
+											supabase.from("family_blocked_categories").select("*")
+												.eq("family_id", fam.family_id).eq("teen_user_id", teenUid),
+											supabase.from("family_restricted_servers").select("*")
+												.eq("family_id", fam.family_id).eq("teen_user_id", teenUid),
+										]);
+
+										const accountId = `teen-account-${teenUid}`;
+										teenUserIdMap[accountId] = teenUid;
+
 										teenAccounts.push({
-											id: `teen-account-${u.id}`,
+											id: accountId,
 											user: {
-												id: u.id as string, email: "",
+												id: teenUid, email: "",
 												username: u.username as string,
 												displayName: (u.display_name as string) || (u.username as string),
 												avatar: (u.avatar_url as string) || "",
@@ -154,7 +202,39 @@ export const useFamilyStore = create<FamilyState>()(
 												timestamp: new Date(log.occurred_at),
 												metadata: log.details as Record<string, unknown>,
 											})),
-											restrictions: {}, createdAt: new Date(), lastActivityAt: new Date(),
+											restrictions: {
+												keywordAlerts: (dbKeywords || []).map((k: Record<string, unknown>) => ({
+													id: k.id as string,
+													keyword: k.keyword as string,
+													isRegex: k.is_regex as boolean,
+													isActive: k.is_active as boolean,
+													severity: k.severity as "low" | "medium" | "high",
+													createdAt: new Date(k.created_at as string),
+													matchCount: (k.match_count as number) || 0,
+													lastMatchAt: k.last_match_at ? new Date(k.last_match_at as string) : undefined,
+												})),
+												timeLimitConfig: dbTimeLimit ? {
+													dailyLimitMinutes: dbTimeLimit.daily_limit_minutes as number,
+													weekdaySchedule: dbTimeLimit.weekday_start
+														? { start: dbTimeLimit.weekday_start as string, end: dbTimeLimit.weekday_end as string }
+														: null,
+													weekendSchedule: dbTimeLimit.weekend_start
+														? { start: dbTimeLimit.weekend_start as string, end: dbTimeLimit.weekend_end as string }
+														: null,
+													isActive: dbTimeLimit.is_active as boolean,
+													overrideUntil: dbTimeLimit.override_until
+														? new Date(dbTimeLimit.override_until as string) : undefined,
+												} : undefined,
+												blockedCategories: (dbBlockedCats || []).map((c: Record<string, unknown>) => ({
+													id: c.id as string,
+													name: c.category_name as string,
+													description: c.category_description as string,
+													icon: c.category_icon as string,
+													isActive: c.is_active as boolean,
+												})),
+												restrictedServers: (dbRestrictedServers || []).map((r: Record<string, unknown>) => r.server_id as string),
+											},
+											createdAt: new Date(), lastActivityAt: new Date(),
 										});
 									}
 								}
@@ -162,6 +242,8 @@ export const useFamilyStore = create<FamilyState>()(
 								set({
 									isParent: true, isTeen: false, teenAccounts,
 									selectedTeenId: teenAccounts[0]?.id || null, isInitialized: true,
+									_familyId: familyId,
+									_teenUserIdMap: teenUserIdMap,
 								});
 							} catch (err) {
 								console.error("Error loading parent data:", err);
@@ -210,7 +292,38 @@ export const useFamilyStore = create<FamilyState>()(
 											metadata: log.details as Record<string, unknown>,
 										})),
 										isInitialized: true,
+										_familyId: membership.family_id,
 									});
+
+									// Subscribe to realtime transparency log updates for this teen
+									const channel = supabase
+										.channel(`family_activity:${membership.family_id}`)
+										.on(
+											"postgres_changes",
+											{
+												event: "INSERT",
+												schema: "public",
+												table: "family_activity_log",
+												filter: `family_id=eq.${membership.family_id}`,
+											},
+											(payload) => {
+												const log = payload.new as Record<string, unknown>;
+												const entry: TransparencyLogEntry = {
+													id: log.id as string,
+													action: log.activity_type as TransparencyLogAction,
+													details: JSON.stringify(log.details),
+													timestamp: new Date(log.occurred_at as string),
+													metadata: log.details as Record<string, unknown>,
+												};
+												set((s) => ({
+													myTransparencyLog: [entry, ...s.myTransparencyLog],
+												}));
+											},
+										)
+										.subscribe();
+
+									// Store cleanup function
+									set({ _realtimeCleanup: () => channel.unsubscribe() });
 								} else {
 									set({ isParent: false, isTeen: true, isInitialized: true });
 								}
@@ -268,6 +381,15 @@ export const useFamilyStore = create<FamilyState>()(
 								: ta,
 						),
 					}));
+
+					// Persist to DB
+					const familyId = get()._familyId;
+					const parentUserId = useAuthStore.getState().user?.id;
+					if (familyId && parentUserId) {
+						const levelMap: Record<number, string> = { 1: "minimal", 2: "moderate", 3: "transparent", 4: "restricted" };
+						updateMonitoringLevelDb(familyId, levelMap[level] || "minimal");
+						persistTransparencyLogEntry(familyId, parentUserId, "changed_monitoring_level", { oldLevel, newLevel: level });
+					}
 				},
 
 				// Parent: View messages (logs access)
@@ -295,6 +417,13 @@ export const useFamilyStore = create<FamilyState>()(
 								: ta,
 						),
 					}));
+
+					// Persist to DB
+					const familyId = get()._familyId;
+					const parentUserId = useAuthStore.getState().user?.id;
+					if (familyId && parentUserId) {
+						persistTransparencyLogEntry(familyId, parentUserId, "viewed_messages", { channelId, channelName, serverId, serverName });
+					}
 				},
 
 				// Parent: View friends list (logs access)
@@ -316,6 +445,13 @@ export const useFamilyStore = create<FamilyState>()(
 								: ta,
 						),
 					}));
+
+					// Persist to DB
+					const familyId = get()._familyId;
+					const parentUserId = useAuthStore.getState().user?.id;
+					if (familyId && parentUserId) {
+						persistTransparencyLogEntry(familyId, parentUserId, "viewed_friends", {});
+					}
 				},
 
 				// Parent: View servers list (logs access)
@@ -337,6 +473,13 @@ export const useFamilyStore = create<FamilyState>()(
 								: ta,
 						),
 					}));
+
+					// Persist to DB
+					const familyId = get()._familyId;
+					const parentUserId = useAuthStore.getState().user?.id;
+					if (familyId && parentUserId) {
+						persistTransparencyLogEntry(familyId, parentUserId, "viewed_servers", {});
+					}
 				},
 
 				// Parent: View content flags (logs access)
@@ -358,6 +501,13 @@ export const useFamilyStore = create<FamilyState>()(
 								: ta,
 						),
 					}));
+
+					// Persist to DB
+					const familyId = get()._familyId;
+					const parentUserId = useAuthStore.getState().user?.id;
+					if (familyId && parentUserId) {
+						persistTransparencyLogEntry(familyId, parentUserId, "viewed_flags", {});
+					}
 				},
 
 				// Parent: Approve server request
@@ -390,7 +540,7 @@ export const useFamilyStore = create<FamilyState>()(
 										...ta,
 										pendingServers: ta.pendingServers.map((s) =>
 											s.id === approvalId
-												? { ...s, status: "approved", resolvedAt: new Date() }
+												? { ...s, status: "approved" as const, resolvedAt: new Date() }
 												: s,
 										),
 										transparencyLog: [logEntry, ...ta.transparencyLog],
@@ -398,6 +548,13 @@ export const useFamilyStore = create<FamilyState>()(
 								: ta,
 						),
 					}));
+
+					// Persist to DB
+					const familyId = get()._familyId;
+					const parentUserId = useAuthStore.getState().user?.id;
+					if (familyId && parentUserId) {
+						persistTransparencyLogEntry(familyId, parentUserId, "approved_server", { serverId: approval.server.id, serverName: approval.server.name });
+					}
 				},
 
 				// Parent: Deny server request
@@ -430,7 +587,7 @@ export const useFamilyStore = create<FamilyState>()(
 										...ta,
 										pendingServers: ta.pendingServers.map((s) =>
 											s.id === approvalId
-												? { ...s, status: "denied", resolvedAt: new Date() }
+												? { ...s, status: "denied" as const, resolvedAt: new Date() }
 												: s,
 										),
 										transparencyLog: [logEntry, ...ta.transparencyLog],
@@ -438,6 +595,13 @@ export const useFamilyStore = create<FamilyState>()(
 								: ta,
 						),
 					}));
+
+					// Persist to DB
+					const familyId = get()._familyId;
+					const parentUserId = useAuthStore.getState().user?.id;
+					if (familyId && parentUserId) {
+						persistTransparencyLogEntry(familyId, parentUserId, "denied_server", { serverId: approval.server.id, serverName: approval.server.name });
+					}
 				},
 
 				// Parent: Approve friend request
@@ -470,7 +634,7 @@ export const useFamilyStore = create<FamilyState>()(
 										...ta,
 										pendingFriends: ta.pendingFriends.map((f) =>
 											f.id === approvalId
-												? { ...f, status: "approved", resolvedAt: new Date() }
+												? { ...f, status: "approved" as const, resolvedAt: new Date() }
 												: f,
 										),
 										transparencyLog: [logEntry, ...ta.transparencyLog],
@@ -478,6 +642,13 @@ export const useFamilyStore = create<FamilyState>()(
 								: ta,
 						),
 					}));
+
+					// Persist to DB
+					const familyId = get()._familyId;
+					const parentUserId = useAuthStore.getState().user?.id;
+					if (familyId && parentUserId) {
+						persistTransparencyLogEntry(familyId, parentUserId, "approved_friend", { friendId: approval.friend.id, friendName: approval.friend.username });
+					}
 				},
 
 				// Parent: Deny friend request
@@ -510,7 +681,7 @@ export const useFamilyStore = create<FamilyState>()(
 										...ta,
 										pendingFriends: ta.pendingFriends.map((f) =>
 											f.id === approvalId
-												? { ...f, status: "denied", resolvedAt: new Date() }
+												? { ...f, status: "denied" as const, resolvedAt: new Date() }
 												: f,
 										),
 										transparencyLog: [logEntry, ...ta.transparencyLog],
@@ -518,6 +689,13 @@ export const useFamilyStore = create<FamilyState>()(
 								: ta,
 						),
 					}));
+
+					// Persist to DB
+					const familyId = get()._familyId;
+					const parentUserId = useAuthStore.getState().user?.id;
+					if (familyId && parentUserId) {
+						persistTransparencyLogEntry(familyId, parentUserId, "denied_friend", { friendId: approval.friend.id, friendName: approval.friend.username });
+					}
 				},
 
 				// Parent: Dismiss content flag
@@ -528,7 +706,7 @@ export const useFamilyStore = create<FamilyState>()(
 								? {
 										...ta,
 										contentFlags: ta.contentFlags.map((f) =>
-											f.id === flagId ? { ...f, status: "dismissed" } : f,
+											f.id === flagId ? { ...f, status: "dismissed" as const } : f,
 										),
 									}
 								: ta,
@@ -544,7 +722,7 @@ export const useFamilyStore = create<FamilyState>()(
 								? {
 										...ta,
 										contentFlags: ta.contentFlags.map((f) =>
-											f.id === flagId ? { ...f, status: "addressed" } : f,
+											f.id === flagId ? { ...f, status: "addressed" as const } : f,
 										),
 									}
 								: ta,
@@ -583,6 +761,32 @@ export const useFamilyStore = create<FamilyState>()(
 								: ta,
 						),
 					}));
+
+					// Persist to DB
+					const familyId = get()._familyId;
+					const teenUserId = get()._teenUserIdMap?.[teenId];
+					const parentUserId = useAuthStore.getState().user?.id;
+					if (familyId && teenUserId && parentUserId) {
+						insertKeywordAlertDb(familyId, teenUserId, keyword, false, severity).then((result) => {
+							// Update the synthetic ID with the real DB ID for future operations
+							if (result.success && result.data) {
+								set((state) => ({
+									teenAccounts: state.teenAccounts.map((ta) =>
+										ta.id === teenId ? {
+											...ta,
+											restrictions: {
+												...ta.restrictions,
+												keywordAlerts: (ta.restrictions.keywordAlerts || []).map((a) =>
+													a.id === newAlert.id ? { ...a, id: result.data!.id } : a,
+												),
+											},
+										} : ta,
+									),
+								}));
+							}
+						});
+						persistTransparencyLogEntry(familyId, parentUserId, "added_keyword_alert", { keyword });
+					}
 				},
 
 				// Parent: Remove keyword alert
@@ -607,6 +811,14 @@ export const useFamilyStore = create<FamilyState>()(
 								: ta,
 						),
 					}));
+
+					// Persist to DB
+					const familyId = get()._familyId;
+					const parentUserId = useAuthStore.getState().user?.id;
+					if (familyId && parentUserId) {
+						deleteKeywordAlertDb(alertId);
+						persistTransparencyLogEntry(familyId, parentUserId, "removed_keyword_alert", {});
+					}
 				},
 
 				// Parent: Toggle keyword alert
@@ -626,6 +838,13 @@ export const useFamilyStore = create<FamilyState>()(
 								: ta,
 						),
 					}));
+
+					// Persist to DB — read the new isActive value after toggle
+					const teenAccount = get().teenAccounts.find((ta) => ta.id === teenId);
+					const alert = teenAccount?.restrictions.keywordAlerts?.find((a) => a.id === alertId);
+					if (alert) {
+						toggleKeywordAlertActive(alertId, alert.isActive);
+					}
 				},
 
 				// Parent: Dismiss keyword match
@@ -666,6 +885,15 @@ export const useFamilyStore = create<FamilyState>()(
 								: ta,
 						),
 					}));
+
+					// Persist to DB
+					const familyId = get()._familyId;
+					const teenUserId = get()._teenUserIdMap?.[teenId];
+					const parentUserId = useAuthStore.getState().user?.id;
+					if (familyId && teenUserId && parentUserId) {
+						upsertTimeLimit(familyId, teenUserId, config);
+						persistTransparencyLogEntry(familyId, parentUserId, "changed_time_limit", { dailyLimitMinutes: config.dailyLimitMinutes });
+					}
 				},
 
 				// Parent: Remove time limit
@@ -687,21 +915,34 @@ export const useFamilyStore = create<FamilyState>()(
 								: ta,
 						),
 					}));
+
+					// Persist to DB
+					const familyId = get()._familyId;
+					const teenUserId = get()._teenUserIdMap?.[teenId];
+					const parentUserId = useAuthStore.getState().user?.id;
+					if (familyId && teenUserId && parentUserId) {
+						deleteTimeLimitDb(familyId, teenUserId);
+						persistTransparencyLogEntry(familyId, parentUserId, "changed_time_limit", { removed: true });
+					}
 				},
 
 				// Parent: Toggle blocked category
 				toggleBlockedCategory: (teenId, categoryId) => {
+					// Read category before toggle for DB write
+					const teenAccount = get().teenAccounts.find((ta) => ta.id === teenId);
+					const cat = teenAccount?.restrictions.blockedCategories?.find((c) => c.id === categoryId);
+
 					set((state) => ({
 						teenAccounts: state.teenAccounts.map((ta) => {
 							if (ta.id !== teenId) return ta;
 							const categories = ta.restrictions.blockedCategories || [];
-							const cat = categories.find((c) => c.id === categoryId);
-							if (!cat) return ta;
-							const action = cat.isActive ? "unblocked_category" : "blocked_category";
+							const category = categories.find((c) => c.id === categoryId);
+							if (!category) return ta;
+							const action = category.isActive ? "unblocked_category" : "blocked_category";
 							const logEntry: TransparencyLogEntry = {
 								id: `log-${Date.now()}`,
 								action,
-								details: `Parent ${cat.isActive ? "unblocked" : "blocked"} category: ${cat.name}`,
+								details: `Parent ${category.isActive ? "unblocked" : "blocked"} category: ${category.name}`,
 								timestamp: new Date(),
 							};
 							return {
@@ -716,6 +957,16 @@ export const useFamilyStore = create<FamilyState>()(
 							};
 						}),
 					}));
+
+					// Persist to DB
+					const familyId = get()._familyId;
+					const teenUserId = get()._teenUserIdMap?.[teenId];
+					const parentUserId = useAuthStore.getState().user?.id;
+					if (familyId && teenUserId && parentUserId && cat) {
+						const action = cat.isActive ? "unblocked_category" : "blocked_category";
+						upsertBlockedCategory(familyId, teenUserId, cat.name, cat.description, cat.icon, !cat.isActive);
+						persistTransparencyLogEntry(familyId, parentUserId, action, { categoryName: cat.name });
+					}
 				},
 
 				// Parent: Restrict server
@@ -741,6 +992,15 @@ export const useFamilyStore = create<FamilyState>()(
 								: ta,
 						),
 					}));
+
+					// Persist to DB
+					const familyId = get()._familyId;
+					const teenUserId = get()._teenUserIdMap?.[teenId];
+					const parentUserId = useAuthStore.getState().user?.id;
+					if (familyId && teenUserId && parentUserId) {
+						insertRestrictedServer(familyId, teenUserId, serverId, parentUserId);
+						persistTransparencyLogEntry(familyId, parentUserId, "restricted_server", { serverId, serverName });
+					}
 				},
 
 				// Parent: Unrestrict server
@@ -766,6 +1026,15 @@ export const useFamilyStore = create<FamilyState>()(
 								: ta,
 						),
 					}));
+
+					// Persist to DB
+					const familyId = get()._familyId;
+					const teenUserId = get()._teenUserIdMap?.[teenId];
+					const parentUserId = useAuthStore.getState().user?.id;
+					if (familyId && teenUserId && parentUserId) {
+						deleteRestrictedServer(familyId, teenUserId, serverId);
+						persistTransparencyLogEntry(familyId, parentUserId, "unrestricted_server", { serverId, serverName });
+					}
 				},
 
 				// Parent: Log voice metadata access
@@ -783,6 +1052,13 @@ export const useFamilyStore = create<FamilyState>()(
 								: ta,
 						),
 					}));
+
+					// Persist to DB
+					const familyId = get()._familyId;
+					const parentUserId = useAuthStore.getState().user?.id;
+					if (familyId && parentUserId) {
+						persistTransparencyLogEntry(familyId, parentUserId, "viewed_voice_metadata", {});
+					}
 				},
 
 				// Parent: Log export
@@ -800,6 +1076,13 @@ export const useFamilyStore = create<FamilyState>()(
 								: ta,
 						),
 					}));
+
+					// Persist to DB
+					const familyId = get()._familyId;
+					const parentUserId = useAuthStore.getState().user?.id;
+					if (familyId && parentUserId) {
+						persistTransparencyLogEntry(familyId, parentUserId, "exported_activity_log", {});
+					}
 				},
 
 				// Teen: Get my transparency log
@@ -809,6 +1092,8 @@ export const useFamilyStore = create<FamilyState>()(
 
 				// Reset store
 				reset: () => {
+					const cleanup = get()._realtimeCleanup;
+					if (cleanup) cleanup();
 					set(initialState);
 				},
 			}),
@@ -818,7 +1103,7 @@ export const useFamilyStore = create<FamilyState>()(
 					isParent: state.isParent,
 					isTeen: state.isTeen,
 					selectedTeenId: state.selectedTeenId,
-					// Don't persist teen accounts - reload on each session
+					// Exclude: _familyId, _teenUserIdMap, _realtimeCleanup, teenAccounts
 				}),
 			},
 		),

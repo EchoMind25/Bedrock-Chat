@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useFamilyStore } from "@/store/family.store";
 import { MONITORING_LEVELS } from "@/lib/types/family";
 import { Avatar } from "@/components/ui/avatar/avatar";
+import { usePresenceStore } from "@/store/presence.store";
 import {
 	MessageSquare,
 	Clock,
@@ -29,6 +30,39 @@ export default function OverviewPage() {
 	const router = useRouter();
 	const getSelectedTeenAccount = useFamilyStore((s) => s.getSelectedTeenAccount);
 	const teenAccount = getSelectedTeenAccount();
+
+	// Real-time teen presence — only available at monitoring level 2+
+	const teenUserId = teenAccount?.user.id;
+	const teenPresenceStatus = usePresenceStore(
+		useCallback((s) => {
+			if (!teenUserId) return null;
+			const presence = s.onlineUsers.get(teenUserId);
+			return presence?.status ?? null;
+		}, [teenUserId])
+	);
+
+	// Log transparency entry when parent views teen's presence (once per page view)
+	const hasLoggedRef = useRef(false);
+	useEffect(() => {
+		if (!teenAccount || hasLoggedRef.current) return;
+		if (teenAccount.monitoringLevel >= 2 && teenPresenceStatus) {
+			hasLoggedRef.current = true;
+			const logEntry = {
+				id: `log-${Date.now()}`,
+				action: "viewed_presence" as const,
+				details: "Parent viewed your online status",
+				timestamp: new Date(),
+			};
+			useFamilyStore.setState((state) => ({
+				teenAccounts: state.teenAccounts.map((ta) =>
+					ta.id === teenAccount.id
+						? { ...ta, transparencyLog: [logEntry, ...ta.transparencyLog] }
+						: ta,
+				),
+			}));
+		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [teenPresenceStatus, teenAccount?.monitoringLevel]);
 
 	const stats = useMemo(() => {
 		if (!teenAccount) return null;
@@ -111,15 +145,41 @@ export default function OverviewPage() {
 						>
 							{levelInfo.name} Monitoring
 						</span>
-						<span
-							className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs"
-							style={{
-								background: teenAccount.user.status === "online" ? "var(--pd-success-light)" : "var(--pd-bg-secondary)",
-								color: teenAccount.user.status === "online" ? "var(--pd-success)" : "var(--pd-text-muted)",
-							}}
-						>
-							{teenAccount.user.status === "online" ? "Online" : "Offline"}
-						</span>
+						{/* Real-time presence: level 2+ sees online/offline, level 3+ sees full status */}
+						{teenAccount.monitoringLevel >= 2 && (
+							<span
+								className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs"
+								style={{
+									background: (teenPresenceStatus === "online" || teenPresenceStatus === "idle" || teenPresenceStatus === "dnd")
+										? "var(--pd-success-light)"
+										: "var(--pd-bg-secondary)",
+									color: teenPresenceStatus === "online"
+										? "var(--pd-success)"
+										: teenPresenceStatus === "idle"
+											? "var(--pd-warning)"
+											: teenPresenceStatus === "dnd"
+												? "var(--pd-danger)"
+												: "var(--pd-text-muted)",
+								}}
+							>
+								<span
+									className="w-2 h-2 rounded-full"
+									style={{
+										backgroundColor: teenPresenceStatus === "online"
+											? "oklch(0.72 0.19 145)"
+											: teenPresenceStatus === "idle"
+												? "oklch(0.80 0.18 85)"
+												: teenPresenceStatus === "dnd"
+													? "oklch(0.63 0.21 25)"
+													: "oklch(0.50 0.01 250)",
+									}}
+								/>
+								{teenAccount.monitoringLevel >= 3
+									? (teenPresenceStatus ?? "Offline")
+									: (teenPresenceStatus === "online" || teenPresenceStatus === "idle" || teenPresenceStatus === "dnd") ? "Online" : "Offline"
+								}
+							</span>
+						)}
 					</div>
 				</div>
 			</div>

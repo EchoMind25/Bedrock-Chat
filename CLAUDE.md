@@ -594,10 +594,10 @@ The app has dev mode enabled. Users can:
 - [ ] Command palette (/)
 
 ### 3.3 Real-time Features
-- [ ] Mock real-time message updates
-- [ ] Typing indicators
-- [ ] Presence indicators
-- [ ] Optimistic updates
+- [x] Real-time message updates (Supabase postgres_changes)
+- [x] Typing indicators (Supabase Presence broadcast, 2s debounce)
+- [x] Presence indicators (online/idle/dnd/invisible via Supabase Presence)
+- [x] Optimistic updates (messages, reactions)
 - [ ] Read receipts
 
 ---
@@ -610,6 +610,7 @@ The app has dev mode enabled. Users can:
 | First Contentful Paint | < 0.8s | ✅ |
 | Time to Interactive | < 1.5s | ✅ |
 | Animation FPS | 60fps | ✅ |
+| RAM Usage | < 100MB (unified) | ✅ |
 | Lighthouse Performance | > 95 | 🔄 |
 
 ---

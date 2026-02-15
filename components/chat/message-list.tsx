@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useMessageStore } from '@/store/message.store';
+import { usePresenceStore } from '@/store/presence.store';
 import { Message } from './message';
 import { TypingIndicator } from './typing-indicator';
 import { ScrollToBottom } from './scroll-to-bottom';
@@ -24,7 +25,7 @@ export function MessageList({ channelId }: MessageListProps) {
 	// Subscribe ONLY to this channel's messages with stable fallback references
 	const channelMessages = useMessageStore((s) => s.messages[channelId] ?? EMPTY_MESSAGES);
 	const isLoading = useMessageStore((s) => s.loadingChannels[channelId] ?? false);
-	const typing = useMessageStore((s) => s.typingUsers[channelId] ?? EMPTY_STRINGS);
+	const typing = usePresenceStore((s) => s.typingUsers[channelId] ?? EMPTY_STRINGS);
 
 	// Load messages and subscribe to real-time updates
 	useEffect(() => {

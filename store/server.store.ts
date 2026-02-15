@@ -5,8 +5,10 @@ import type { Server, Channel, ChannelType, ChannelCategory } from "@/lib/types/
 import { generateDefaultRoles } from "@/lib/constants/roles";
 import { DEFAULT_SERVER_SETTINGS } from "@/lib/types/server-settings";
 import { createClient } from "@/lib/supabase/client";
+import { useAuthStore } from "@/store/auth.store";
 import { useUIStore } from "@/store/ui.store";
 import { toast } from "@/lib/stores/toast-store";
+import { logError } from "@/lib/utils/error-logger";
 
 const DEFAULT_THEME_COLOR = "oklch(0.65 0.25 265)";
 
@@ -75,15 +77,15 @@ export const useServerStore = create<ServerState>()(
 
 					const doLoad = async () => {
 						set({ isLoadingServers: true });
+						// Use cached auth state instead of making a network round-trip
+						const userId = useAuthStore.getState().user?.id;
+						if (!userId) {
+							set({ servers: [], isInitialized: true, isLoadingServers: false });
+							return;
+						}
 						try {
+
 							const supabase = createClient();
-							const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-							if (authError || !user) {
-								set({ servers: [], isInitialized: true, isLoadingServers: false });
-								return;
-							}
-
 							const { data: memberships, error } = await supabase
 								.from("server_members")
 								.select(`
@@ -93,7 +95,7 @@ export const useServerStore = create<ServerState>()(
 										owner_id, member_count, is_public, created_at
 									)
 								`)
-								.eq("user_id", user.id);
+								.eq("user_id", userId);
 
 							if (error) throw error;
 
@@ -101,7 +103,7 @@ export const useServerStore = create<ServerState>()(
 								id: "home",
 								name: "Home",
 								icon: null,
-								ownerId: user.id,
+								ownerId: userId,
 								memberCount: 1,
 								isOwner: true,
 								categories: [],
@@ -178,7 +180,7 @@ export const useServerStore = create<ServerState>()(
 									icon: (srv.icon_url as string) || null,
 									ownerId: srv.owner_id as string,
 									memberCount: (srv.member_count as number) || 0,
-									isOwner: srv.owner_id === user.id,
+									isOwner: srv.owner_id === userId,
 									themeColor: deriveThemeColor(srv.name as string),
 									categories: categories.map(cat => ({
 										id: cat.id as string,
@@ -246,7 +248,7 @@ export const useServerStore = create<ServerState>()(
 									id: "home",
 									name: "Home",
 									icon: null,
-									ownerId: "current-user",
+									ownerId: userId ?? "unknown",
 									memberCount: 1,
 									isOwner: true,
 									categories: [],

@@ -8,6 +8,7 @@ import { useFriendsStore } from "@/store/friends.store";
 import { useDMStore } from "@/store/dm.store";
 import { useUIStore } from "@/store/ui.store";
 import { useFavoritesStore } from "@/store/favorites.store";
+import { usePresenceStore } from "@/store/presence.store";
 import { useIsMobile } from "@/lib/hooks/use-media-query";
 import { ServerList } from "@/components/navigation/server-list/server-list";
 import { ChannelList } from "@/components/navigation/channel-list/channel-list";
@@ -49,11 +50,12 @@ export default function MainLayout({
 	// Mobile detection
 	const isMobile = useIsMobile();
 
-	// Initialize enhanced performance monitoring pipeline
+	// Initialize enhanced performance monitoring pipeline (deferred until app is ready)
 	useEffect(() => {
+		if (loadingStage !== "ready") return;
 		const cleanup = initPerformanceMonitoring();
 		return cleanup;
-	}, []);
+	}, [loadingStage]);
 
 	useEffect(() => {
 		const root = document.documentElement;
@@ -66,6 +68,14 @@ export default function MainLayout({
 
 		// Sync idle state to performance monitor for threshold switching
 		PerformanceMonitor.getInstance().setIdleState(isIdle);
+
+		// Sync idle state to presence — auto-set "idle" / restore previous status
+		const presenceState = usePresenceStore.getState();
+		if (isIdle && presenceState.status === "online") {
+			presenceState.setStatus("idle");
+		} else if (!isIdle && presenceState.status === "idle") {
+			presenceState.setStatus("online");
+		}
 	}, [isIdle]);
 
 	// Sync mobile detection to UI store
@@ -172,6 +182,32 @@ export default function MainLayout({
 		} catch {
 			// Supabase client may fail to initialize (e.g. missing env vars)
 		}
+	}, []);
+
+	// Join/leave presence channel when current server changes
+	const currentServerId = useServerStore((s) => s.currentServerId);
+
+	useEffect(() => {
+		if (!isAuthenticated || !currentServerId) return;
+
+		// Sync persisted status from auth store to presence before joining
+		const authStatus = useAuthStore.getState().user?.status;
+		if (authStatus && authStatus !== "offline") {
+			usePresenceStore.getState().setStatus(authStatus);
+		}
+
+		usePresenceStore.getState().joinServer(currentServerId);
+		return () => {
+			usePresenceStore.getState().leaveServer();
+		};
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [currentServerId, isAuthenticated]); // Exclude store actions — stable Zustand actions
+
+	// Destroy presence on full unmount
+	useEffect(() => {
+		return () => {
+			usePresenceStore.getState().destroy();
+		};
 	}, []);
 
 	// Redirect to login only after auth check completes

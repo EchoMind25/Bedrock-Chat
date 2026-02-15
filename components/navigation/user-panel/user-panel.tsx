@@ -5,6 +5,8 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth.store";
 import type { UserStatus } from "@/store/auth.store";
+import { usePresenceStore } from "@/store/presence.store";
+import { useFamilyStore } from "@/store/family.store";
 import { Avatar } from "@/components/ui/avatar/avatar";
 import type { AvatarStatus } from "@/components/ui/avatar/avatar";
 import { Tooltip } from "@/components/ui/tooltip/tooltip";
@@ -67,17 +69,32 @@ export function UserPanel() {
 		}
 	};
 
+	const monitoringLevel = useFamilyStore((s) => s.myMonitoringLevel);
+
 	const statusToAvatar: Record<UserStatus, AvatarStatus> = {
 		online: "online",
 		idle: "away",
 		dnd: "busy",
 		offline: "offline",
+		invisible: "offline",
 	};
 
 	const avatarStatus = statusToAvatar[user.status] || "online";
 
+	// Data-driven status options — Invisible disabled for Restricted teens (Level 4)
+	const statusOptions: { value: UserStatus; label: string; color: string }[] = [
+		{ value: "online", label: "Online", color: "oklch(0.72 0.19 145)" },
+		{ value: "idle", label: "Idle", color: "oklch(0.80 0.18 85)" },
+		{ value: "dnd", label: "Do Not Disturb", color: "oklch(0.63 0.21 25)" },
+		...(monitoringLevel === 4
+			? []
+			: [{ value: "invisible" as UserStatus, label: "Invisible", color: "oklch(0.50 0.01 250)" }]
+		),
+	];
+
 	const handleSetStatus = (status: UserStatus) => {
 		updateUser({ status });
+		usePresenceStore.getState().setStatus(status);
 		setShowSettings(false);
 	};
 
@@ -231,28 +248,27 @@ export function UserPanel() {
 									My Profile
 								</button>
 								<div className="h-px bg-white/10 my-1" />
-								<button
-									type="button"
-									className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded-sm transition-colors flex items-center gap-2"
-									onClick={() => handleSetStatus("online")}
-								>
-									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<title>Online</title>
-										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-									</svg>
-									Set Online
-								</button>
-								<button
-									type="button"
-									className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded-sm transition-colors flex items-center gap-2"
-									onClick={() => handleSetStatus("dnd")}
-								>
-									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<title>DND</title>
-										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-									</svg>
-									Do Not Disturb
-								</button>
+								{statusOptions.map((option) => (
+									<button
+										key={option.value}
+										type="button"
+										className={`w-full px-3 py-2 text-sm text-left hover:bg-white/5 rounded-sm transition-colors flex items-center gap-2 ${
+											user.status === option.value ? "text-white bg-white/5" : "text-white/80"
+										}`}
+										onClick={() => handleSetStatus(option.value)}
+									>
+										<span
+											className="w-3 h-3 rounded-full shrink-0"
+											style={{ backgroundColor: option.color }}
+										/>
+										{option.label}
+										{user.status === option.value && (
+											<svg className="w-3 h-3 ml-auto text-white/50" fill="currentColor" viewBox="0 0 20 20">
+												<path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+											</svg>
+										)}
+									</button>
+								))}
 								<button
 									type="button"
 									className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded-sm transition-colors flex items-center gap-2"

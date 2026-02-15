@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { NotFoundRedirect } from "@/components/not-found-redirect";
 
 export default function NotFound() {
 	return (
 		<div className="min-h-screen bg-[oklch(0.12_0.02_250)] flex items-center justify-center p-8">
+			{/* Auto-redirect authenticated users to /friends */}
+			<NotFoundRedirect />
 			<div className="text-center max-w-md">
 				<div className="w-16 h-16 mx-auto mb-6 rounded-full bg-white/5 flex items-center justify-center">
 					<svg
@@ -26,7 +29,7 @@ export default function NotFound() {
 				</p>
 				<div className="flex gap-3 justify-center">
 					<Link
-						href="/channels"
+						href="/friends"
 						className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors"
 					>
 						Go to Chat

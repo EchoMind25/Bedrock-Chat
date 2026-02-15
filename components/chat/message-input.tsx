@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { useState, useRef, useEffect, type KeyboardEvent } from 'react';
 import { EmojiPicker } from './emoji-picker';
 import { useMessageStore } from '@/store/message.store';
+import { usePresenceStore } from '@/store/presence.store';
 import { useAuthStore } from '@/store/auth.store';
 
 interface MessageInputProps {
@@ -18,7 +19,7 @@ export function MessageInput({ channelId, channelName }: MessageInputProps) {
 	const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const sendMessage = useMessageStore((s) => s.sendMessage);
-	const setTyping = useMessageStore((s) => s.setTyping);
+	const broadcastTyping = usePresenceStore((s) => s.broadcastTyping);
 	const user = useAuthStore((s) => s.user);
 
 	// Auto-resize textarea
@@ -30,13 +31,13 @@ export function MessageInput({ channelId, channelName }: MessageInputProps) {
 		textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
 	}, [content]);
 
-	// Typing indicator (debounced to prevent excessive store updates)
+	// Typing indicator — broadcast via Supabase Presence (debounced 2s in store)
 	useEffect(() => {
 		if (content.length > 0 && user?.username) {
-			setTyping(channelId, user.username);
+			broadcastTyping(channelId);
 		}
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [content, channelId, user?.username]); // Exclude setTyping - it's a stable Zustand action
+	}, [content, channelId]); // Exclude broadcastTyping — stable Zustand action
 
 	const handleSubmit = () => {
 		if (!content.trim()) return;

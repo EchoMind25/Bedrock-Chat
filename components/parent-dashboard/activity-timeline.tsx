@@ -48,6 +48,7 @@ const actionIcons: Record<TransparencyLogAction, typeof Eye> = {
   changed_data_retention: Clock,
   restricted_server: Lock,
   unrestricted_server: Lock,
+  viewed_presence: Eye,
 };
 
 function getActionColor(action: TransparencyLogAction): string {

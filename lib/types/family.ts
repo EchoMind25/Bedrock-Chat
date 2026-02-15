@@ -79,7 +79,8 @@ export type TransparencyLogAction =
 	| "exported_activity_log"
 	| "changed_data_retention"
 	| "restricted_server"
-	| "unrestricted_server";
+	| "unrestricted_server"
+	| "viewed_presence";
 
 export interface TransparencyLogEntry {
 	id: string;

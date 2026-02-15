@@ -23,28 +23,34 @@ interface TransparencyLogProps {
 	 * Show as compact list
 	 */
 	compact?: boolean;
+
+	/**
+	 * Show skeleton loading state while fetching from DB
+	 */
+	isLoading?: boolean;
 }
 
 const actionIcons: Record<string, string> = {
-	viewed_messages: "👁️",
-	viewed_friends: "👥",
-	viewed_servers: "🏰",
-	viewed_flags: "🚩",
-	changed_monitoring_level: "⚙️",
-	approved_server: "✅",
-	denied_server: "❌",
-	approved_friend: "✅",
-	denied_friend: "❌",
-	added_keyword_alert: "🔍",
-	removed_keyword_alert: "🔍",
-	changed_time_limit: "⏰",
-	blocked_category: "🚫",
-	unblocked_category: "🚫",
-	viewed_voice_metadata: "🎙️",
-	exported_activity_log: "📤",
-	changed_data_retention: "🗄️",
-	restricted_server: "🔒",
-	unrestricted_server: "🔓",
+	viewed_messages: "\u{1F441}\uFE0F",
+	viewed_friends: "\u{1F465}",
+	viewed_servers: "\u{1F3F0}",
+	viewed_flags: "\u{1F6A9}",
+	changed_monitoring_level: "\u2699\uFE0F",
+	approved_server: "\u2705",
+	denied_server: "\u274C",
+	approved_friend: "\u2705",
+	denied_friend: "\u274C",
+	added_keyword_alert: "\u{1F50D}",
+	removed_keyword_alert: "\u{1F50D}",
+	changed_time_limit: "\u23F0",
+	blocked_category: "\u{1F6AB}",
+	unblocked_category: "\u{1F6AB}",
+	viewed_voice_metadata: "\u{1F399}\uFE0F",
+	exported_activity_log: "\u{1F4E4}",
+	changed_data_retention: "\u{1F5C4}\uFE0F",
+	restricted_server: "\u{1F512}",
+	unrestricted_server: "\u{1F513}",
+	viewed_presence: "\u{1F7E2}",
 };
 
 const actionColors: Record<string, string> = {
@@ -67,6 +73,7 @@ const actionColors: Record<string, string> = {
 	changed_data_retention: "text-gray-400",
 	restricted_server: "text-red-400",
 	unrestricted_server: "text-green-400",
+	viewed_presence: "text-emerald-400",
 };
 
 /**
@@ -77,6 +84,7 @@ export function TransparencyLog({
 	entries,
 	maxEntries,
 	compact = false,
+	isLoading = false,
 }: TransparencyLogProps) {
 	const displayEntries = maxEntries ? entries.slice(0, maxEntries) : entries;
 
@@ -119,7 +127,7 @@ export function TransparencyLog({
 				{/* Info Banner */}
 				<div className="mb-4 p-3 bg-blue-500/20 border border-blue-500/30 rounded-lg">
 					<p className="text-sm text-blue-200 flex items-center gap-2">
-						<span>ℹ️</span>
+						<span>{"\u2139\uFE0F"}</span>
 						<span>
 							This log shows all parent access to your account. It cannot be
 							deleted or hidden.
@@ -128,7 +136,21 @@ export function TransparencyLog({
 				</div>
 
 				{/* Log Entries */}
-				{displayEntries.length > 0 ? (
+				{isLoading ? (
+					<div className="space-y-3">
+						{Array.from({ length: 3 }).map((_, i) => (
+							<div key={i} className="p-4 bg-white/5 rounded-lg border border-white/10 animate-pulse">
+								<div className="flex items-start gap-4">
+									<div className="w-8 h-8 rounded bg-white/10 shrink-0" />
+									<div className="flex-1 space-y-2">
+										<div className="h-4 bg-white/10 rounded w-3/4" />
+										<div className="h-3 bg-white/10 rounded w-1/2" />
+									</div>
+								</div>
+							</div>
+						))}
+					</div>
+				) : displayEntries.length > 0 ? (
 					<div className="space-y-3 max-h-[500px] overflow-y-auto scrollbar-thin">
 						{displayEntries.map((entry, idx) => (
 							<motion.div

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useFriendsStore } from "@/store/friends.store";
+import { usePresenceStore } from "@/store/presence.store";
 import type { FriendTab } from "@/store/friends.store";
 import { FriendCard } from "@/components/friends/friend-card";
 import { FriendRequestCard } from "@/components/friends/friend-request-card";
@@ -27,6 +28,7 @@ export default function FriendsPage() {
 	const setSearchQuery = useFriendsStore((state) => state.setSearchQuery);
 	const openAddFriendModal = useFriendsStore((state) => state.openAddFriendModal);
 	const unblockUser = useFriendsStore((state) => state.unblockUser);
+	const onlineUsers = usePresenceStore((state) => state.onlineUsers);
 
 	const pendingCount = friendRequests.incoming.length + friendRequests.outgoing.length;
 
@@ -34,7 +36,8 @@ export default function FriendsPage() {
 		let list = friends;
 
 		if (currentTab === "online") {
-			list = list.filter((f) => f.status === "online");
+			// Use real-time presence data for online filtering
+			list = list.filter((f) => onlineUsers.has(f.userId));
 		}
 
 		if (searchQuery.trim()) {
@@ -47,7 +50,7 @@ export default function FriendsPage() {
 		}
 
 		return list;
-	}, [friends, currentTab, searchQuery]);
+	}, [friends, currentTab, searchQuery, onlineUsers]);
 
 	return (
 		<div className="flex-1 flex flex-col bg-[oklch(0.14_0.02_250)]">

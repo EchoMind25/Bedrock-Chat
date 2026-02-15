@@ -1,8 +1,8 @@
 "use client";
 
-import { use, useEffect, useMemo, lazy, Suspense } from "react";
+import { use, useEffect, useRef, useMemo, lazy, Suspense } from "react";
+import { useRouter } from "next/navigation";
 import { useServerStore } from "@/store/server.store";
-import { Glass } from "@/components/ui/glass/glass";
 
 // Lazy load heavy chat components (includes @tanstack/react-virtual)
 const ChannelHeader = lazy(() =>
@@ -24,6 +24,18 @@ interface PageProps {
 
 export default function ChannelPage({ params }: PageProps) {
 	const { serverId, channelId } = use(params);
+	const router = useRouter();
+	const mountedRef = useRef(true);
+	const hasRedirectedRef = useRef(false);
+
+	// Track unmount to prevent competing router calls during navigation
+	useEffect(() => {
+		mountedRef.current = true;
+		hasRedirectedRef.current = false;
+		return () => {
+			mountedRef.current = false;
+		};
+	}, [serverId, channelId]);
 
 	// Use individual selectors to prevent re-renders from unrelated state changes
 	const setCurrentServer = useServerStore((s) => s.setCurrentServer);
@@ -44,7 +56,7 @@ export default function ChannelPage({ params }: PageProps) {
 
 	// Update store when URL changes (with defensive checks to prevent loops)
 	useEffect(() => {
-		if (!serverId || !channelId) return;
+		if (!serverId || !channelId || !mountedRef.current) return;
 
 		// Only update if different from current store state
 		const state = useServerStore.getState();
@@ -66,17 +78,22 @@ export default function ChannelPage({ params }: PageProps) {
 		);
 	}
 
+	// Redirect to a valid channel if URL contains stale/invalid IDs
+	// Guard: only redirect once and only if component is still mounted
 	if (!server || !channel) {
+		if (mountedRef.current && !hasRedirectedRef.current) {
+			hasRedirectedRef.current = true;
+			const fallbackServer = server || servers.find((s) => s.id !== "home" && s.channels.length > 0);
+			const fallbackChannel = fallbackServer?.channels.find((c) => c.type === "text") || fallbackServer?.channels[0];
+			if (fallbackServer && fallbackChannel) {
+				router.replace(`/servers/${fallbackServer.id}/${fallbackChannel.id}`);
+			} else {
+				router.replace("/friends");
+			}
+		}
 		return (
-			<div className="flex-1 flex items-center justify-center bg-[oklch(0.14_0.02_250)]">
-				<Glass variant="strong" border="medium" className="p-8 text-center">
-					<h2 className="text-xl font-semibold text-white mb-2">
-						Channel Not Found
-					</h2>
-					<p className="text-white/60">
-						The channel you're looking for doesn't exist.
-					</p>
-				</Glass>
+			<div className="flex-1 flex flex-col bg-[oklch(0.14_0.02_250)]">
+				<ChannelLoadingSkeleton />
 			</div>
 		);
 	}

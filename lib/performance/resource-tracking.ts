@@ -3,7 +3,7 @@
  * Uses frame-time analysis for CPU load estimation
  * and performance.memory for heap tracking (Chrome).
  *
- * Targets: <50MB RAM idle, <2% CPU idle
+ * Targets: <100MB RAM, <2% CPU idle
  */
 
 // ── Types ──────────────────────────────────────────────────
@@ -19,7 +19,7 @@ export interface ResourceSnapshot {
 }
 
 export interface ResourceBudget {
-	maxMemoryMB: number; // 50 idle, 150 active
+	maxMemoryMB: number; // 100 unified
 	maxCPUPercent: number; // 2 idle, 10 active
 	maxDOMNodes: number; // 1500
 	maxAnimations: number; // 20 idle, 60 active
@@ -35,14 +35,14 @@ export interface BudgetViolation {
 // ── Constants ──────────────────────────────────────────────
 
 export const IDLE_BUDGET: ResourceBudget = {
-	maxMemoryMB: 50,
+	maxMemoryMB: 100,
 	maxCPUPercent: 2,
 	maxDOMNodes: 1500,
 	maxAnimations: 20,
 };
 
 export const ACTIVE_BUDGET: ResourceBudget = {
-	maxMemoryMB: 150,
+	maxMemoryMB: 100,
 	maxCPUPercent: 10,
 	maxDOMNodes: 3000,
 	maxAnimations: 60,

@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 interface MessageState {
   messages: Record<string, Message[]>; // channelId -> messages
   loadingChannels: Record<string, boolean>; // channelId -> loading state (per-channel, not global)
-  typingUsers: Record<string, string[]>; // channelId -> usernames
+  loadErrors: Record<string, boolean>; // channelId -> had load error (allows retry)
   subscriptions: Record<string, () => void>; // channelId -> cleanup function
 
   // Actions
@@ -19,7 +19,6 @@ interface MessageState {
   removeReaction: (channelId: string, messageId: string, emoji: string) => void;
   editMessage: (channelId: string, messageId: string, content: string) => void;
   deleteMessage: (channelId: string, messageId: string) => void;
-  setTyping: (channelId: string, username: string) => void;
 }
 
 export const useMessageStore = create<MessageState>()(
@@ -27,7 +26,7 @@ export const useMessageStore = create<MessageState>()(
     (set, get) => ({
       messages: {},
       loadingChannels: {},
-      typingUsers: {},
+      loadErrors: {},
       subscriptions: {},
 
       subscribeToChannel: (channelId) => {
@@ -159,9 +158,9 @@ export const useMessageStore = create<MessageState>()(
       },
 
       loadMessages: async (channelId) => {
-        // Check if already loading or already loaded
+        // Check if already loading or already loaded (allow retry on error)
         const state = get();
-        if (state.messages[channelId] !== undefined) {
+        if (state.messages[channelId] !== undefined && !state.loadErrors[channelId]) {
           console.log('[MessageStore] Messages already loaded for channel:', channelId);
           return;
         }
@@ -222,12 +221,14 @@ export const useMessageStore = create<MessageState>()(
           set((prev) => ({
             messages: { ...prev.messages, [channelId]: messages },
             loadingChannels: { ...prev.loadingChannels, [channelId]: false },
+            loadErrors: { ...prev.loadErrors, [channelId]: false },
           }));
         } catch (err) {
           console.error('Error loading messages:', err);
           set((prev) => ({
-            messages: { ...prev.messages, [channelId]: [] },
+            messages: { ...prev.messages, [channelId]: prev.messages[channelId] ?? [] },
             loadingChannels: { ...prev.loadingChannels, [channelId]: false },
+            loadErrors: { ...prev.loadErrors, [channelId]: true },
           }));
         }
       },
@@ -396,26 +397,6 @@ export const useMessageStore = create<MessageState>()(
         }));
       },
 
-      setTyping: (channelId, username) => {
-        const current = get().typingUsers[channelId] || [];
-        if (current.includes(username)) return;
-
-        set((state) => ({
-          typingUsers: {
-            ...state.typingUsers,
-            [channelId]: [...(state.typingUsers[channelId] || []), username],
-          },
-        }));
-
-        setTimeout(() => {
-          set((s) => ({
-            typingUsers: {
-              ...s.typingUsers,
-              [channelId]: (s.typingUsers[channelId] || []).filter(u => u !== username),
-            },
-          }));
-        }, 3000);
-      },
     }),
     { name: 'MessageStore' }
   )

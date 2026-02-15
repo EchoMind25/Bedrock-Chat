@@ -2,6 +2,7 @@
 
 import type { Server } from "@/lib/types/server";
 import { motion } from "motion/react";
+import { MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 interface ServerButtonProps {
@@ -62,7 +63,11 @@ export function ServerButton({
 				}}
 			>
 				{/* Server Icon */}
-				<span className="relative z-10">{server.icon}</span>
+				{isHome ? (
+					<MessageCircle className="relative z-10 w-6 h-6" />
+				) : (
+					<span className="relative z-10">{server.icon}</span>
+				)}
 			</motion.button>
 
 			{/* Unread Badge */}

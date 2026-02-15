@@ -4,7 +4,7 @@ import { conditionalDevtools } from "@/lib/utils/devtools-config";
 import { createClient } from "@/lib/supabase/client";
 import { logError } from "@/lib/utils/error-logger";
 
-export type UserStatus = "online" | "idle" | "dnd" | "offline";
+export type UserStatus = "online" | "idle" | "dnd" | "offline" | "invisible";
 
 export interface User {
 	id: string;
@@ -128,12 +128,11 @@ export const useAuthStore = create<AuthState>()(
 
 						set({ isLoading: false, error: "Profile not found" });
 						return false;
-				} catch (err) {
-					// Auth check failed or timed out
-					logError("AUTH", err);
-				}
-
-				set({ user: null, isAuthenticated: false, isLoading: false, isInitializing: false });
+					} catch (err) {
+						logError("AUTH", err);
+						set({ isLoading: false, isInitializing: false, error: err instanceof Error ? err.message : "Login failed" });
+						return false;
+					}
 			},
 
 				// Step 1: Register with Supabase — sends a confirmation email with a magic link
@@ -203,12 +202,11 @@ export const useAuthStore = create<AuthState>()(
 						// Store pending signup data for the confirmation screen
 						set({ pendingSignup: data, isLoading: false });
 						return true;
-				} catch (err) {
-					// Auth check failed or timed out
-					logError("AUTH", err);
-				}
-
-				set({ user: null, isAuthenticated: false, isLoading: false, isInitializing: false });
+					} catch (err) {
+						logError("AUTH", err);
+						set({ isLoading: false, error: err instanceof Error ? err.message : "Signup failed" });
+						return false;
+					}
 			},
 
 				// Resend the confirmation email
@@ -232,12 +230,11 @@ export const useAuthStore = create<AuthState>()(
 
 						set({ isLoading: false });
 						return true;
-				} catch (err) {
-					// Auth check failed or timed out
-					logError("AUTH", err);
-				}
-
-				set({ user: null, isAuthenticated: false, isLoading: false, isInitializing: false });
+					} catch (err) {
+						logError("AUTH", err);
+						set({ isLoading: false, error: err instanceof Error ? err.message : "Resend failed" });
+						return false;
+					}
 			},
 
 				// Called after the user clicks the confirmation link and lands on /auth/callback.
@@ -323,12 +320,11 @@ export const useAuthStore = create<AuthState>()(
 							pendingSignup: null,
 						});
 						return true;
-				} catch (err) {
-					// Auth check failed or timed out
-					logError("AUTH", err);
-				}
-
-				set({ user: null, isAuthenticated: false, isLoading: false, isInitializing: false });
+					} catch (err) {
+						logError("AUTH", err);
+						set({ isLoading: false, isInitializing: false, error: err instanceof Error ? err.message : "Signup completion failed" });
+						return false;
+					}
 			},
 
 				logout: async () => {
@@ -367,12 +363,11 @@ export const useAuthStore = create<AuthState>()(
 						if (Object.keys(profileUpdates).length > 0) {
 							await supabase.from("profiles").update(profileUpdates).eq("id", current.id);
 						}
-				} catch (err) {
-					// Auth check failed or timed out
-					logError("AUTH", err);
-				}
-
-				set({ user: null, isAuthenticated: false, isLoading: false, isInitializing: false });
+					} catch (err) {
+						logError("AUTH", err);
+						// Revert optimistic update on error
+						set({ user: current });
+					}
 			},
 
 				setPendingSignup: (data) => set({ pendingSignup: data }),

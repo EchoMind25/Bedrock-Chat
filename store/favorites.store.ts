@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { conditionalDevtools } from "@/lib/utils/devtools-config";
 import { createClient } from "@/lib/supabase/client";
-import { toast } from "sonner";
+import { toast } from "@/lib/stores/toast-store";
 
 interface FavoritesState {
 	favoriteChannelIds: Set<string>;
@@ -101,7 +101,7 @@ export const useFavoritesStore = create<FavoritesState>()(
 						console.error("Error toggling favorite:", err);
 						// Rollback optimistic update
 						set({ favoriteChannelIds });
-						toast.error("Failed to update favorite");
+						toast.error("Failed to update favorite", "Please try again");
 					}
 				},
 

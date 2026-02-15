@@ -37,65 +37,104 @@ export interface UserDataExport {
 		createdAt: string;
 	}>;
 	consentPreferences: Record<string, unknown>;
+	familyData: {
+		memberships: Array<{ familyId: string; role: string; joinedAt: string }>;
+		activityLog: Array<{
+			actionType: string;
+			details: Record<string, unknown>;
+			occurredAt: string;
+			visibleToChild: boolean;
+		}>;
+		keywordAlertsOnMyAccount: Array<{
+			keyword: string;
+			severity: string;
+			isActive: boolean;
+			createdAt: string;
+		}>;
+	};
 }
 
 export async function exportUserData(userId: string): Promise<UserDataExport> {
 	const supabase = createClient();
 
 	// Fetch all user data in parallel
-	const [profileRes, serversRes, friends1Res, friends2Res, messagesRes, dmsRes] =
-		await Promise.all([
-			supabase.from("profiles").select("*").eq("id", userId).single(),
-			supabase
-				.from("server_members")
-				.select(
-					`
+	const [
+		profileRes,
+		serversRes,
+		friends1Res,
+		friends2Res,
+		messagesRes,
+		dmsRes,
+		familyMemberRes,
+		activityLogRes,
+		keywordAlertsRes,
+	] = await Promise.all([
+		supabase.from("profiles").select("*").eq("id", userId).single(),
+		supabase
+			.from("server_members")
+			.select(
+				`
 				role,
 				joined_at,
 				server:servers(id, name)
 			`,
-				)
-				.eq("user_id", userId),
-			supabase
-				.from("friendships")
-				.select(
-					`
+			)
+			.eq("user_id", userId),
+		supabase
+			.from("friendships")
+			.select(
+				`
 				created_at,
 				friend:profiles!friendships_user2_id_fkey(username, display_name)
 			`,
-				)
-				.eq("user1_id", userId),
-			supabase
-				.from("friendships")
-				.select(
-					`
+			)
+			.eq("user1_id", userId),
+		supabase
+			.from("friendships")
+			.select(
+				`
 				created_at,
 				friend:profiles!friendships_user1_id_fkey(username, display_name)
 			`,
-				)
-				.eq("user2_id", userId),
-			supabase
-				.from("messages")
-				.select("id, channel_id, content, created_at, edited_at")
-				.eq("user_id", userId)
-				.eq("is_deleted", false)
-				.order("created_at", { ascending: false })
-				.limit(10000),
-			supabase
-				.from("direct_messages")
-				.select(
-					`
+			)
+			.eq("user2_id", userId),
+		supabase
+			.from("messages")
+			.select("id, channel_id, content, created_at, edited_at")
+			.eq("user_id", userId)
+			.eq("is_deleted", false)
+			.order("created_at", { ascending: false })
+			.limit(10000),
+		supabase
+			.from("direct_messages")
+			.select(
+				`
 				id,
 				content,
 				created_at,
 				receiver:profiles!direct_messages_receiver_id_fkey(username)
 			`,
-				)
-				.eq("sender_id", userId)
-				.eq("is_deleted", false)
-				.order("created_at", { ascending: false })
-				.limit(5000),
-		]);
+			)
+			.eq("sender_id", userId)
+			.eq("is_deleted", false)
+			.order("created_at", { ascending: false })
+			.limit(5000),
+		// Family data (GDPR Article 20 - all personal data)
+		supabase
+			.from("family_members")
+			.select("family_id, role, created_at")
+			.eq("user_id", userId),
+		supabase
+			.from("family_activity_log")
+			.select("activity_type, details, occurred_at, visible_to_child")
+			.eq("user_id", userId)
+			.order("occurred_at", { ascending: false })
+			.limit(500),
+		supabase
+			.from("family_keyword_alerts")
+			.select("keyword, severity, is_active, created_at")
+			.eq("teen_user_id", userId),
+	]);
 
 	const profile = profileRes.data;
 	const { data: sessionData } = await supabase.auth.getUser();
@@ -159,6 +198,28 @@ export async function exportUserData(userId: string): Promise<UserDataExport> {
 				createdAt: d.created_at,
 			})) ?? [],
 		consentPreferences,
+		familyData: {
+			memberships:
+				familyMemberRes.data?.map((m) => ({
+					familyId: m.family_id,
+					role: m.role,
+					joinedAt: m.created_at,
+				})) ?? [],
+			activityLog:
+				activityLogRes.data?.map((l) => ({
+					actionType: l.activity_type,
+					details: (l.details as Record<string, unknown>) ?? {},
+					occurredAt: l.occurred_at,
+					visibleToChild: l.visible_to_child,
+				})) ?? [],
+			keywordAlertsOnMyAccount:
+				keywordAlertsRes.data?.map((k) => ({
+					keyword: k.keyword,
+					severity: k.severity,
+					isActive: k.is_active,
+					createdAt: k.created_at,
+				})) ?? [],
+		},
 	};
 }
 

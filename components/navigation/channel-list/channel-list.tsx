@@ -53,6 +53,33 @@ export function ChannelList() {
 	// Check if we're in home/DM context
 	const isHomeContext = currentServer?.id === "home";
 
+	// All hooks must be called before any early returns (Rules of Hooks)
+	const isFavorite = useFavoritesStore((s) => s.isFavorite);
+
+	const channelsByCategory = useMemo(() => {
+		if (!currentServer) return {};
+		const grouped = currentServer.channels.reduce(
+			(acc, channel) => {
+				const categoryId = channel.categoryId || "uncategorized";
+				if (!acc[categoryId]) {
+					acc[categoryId] = [];
+				}
+				acc[categoryId].push(channel);
+				return acc;
+			},
+			{} as Record<string, typeof currentServer.channels>
+		);
+		for (const categoryId of Object.keys(grouped)) {
+			grouped[categoryId].sort((a, b) => a.position - b.position);
+		}
+		return grouped;
+	}, [currentServer]);
+
+	const favoriteChannels = useMemo(() => {
+		if (!currentServer) return [];
+		return currentServer.channels.filter((ch) => isFavorite(ch.id));
+	}, [currentServer, isFavorite]);
+
 	// Show loading state while initializing
 	if (!isInitialized || !currentServer) {
 		const loadingContent = (
@@ -172,41 +199,6 @@ export function ChannelList() {
 			setIsCreatingLoading(false);
 		}
 	};
-
-	// Get favorite channels
-	const isFavorite = useFavoritesStore((s) => s.isFavorite);
-
-	// Memoize channel grouping to prevent unnecessary recalculations
-	const channelsByCategory = useMemo(() => {
-		// Guard against undefined currentServer during rapid navigation
-		if (!currentServer) return {};
-
-		// Group channels by category
-		const grouped = currentServer.channels.reduce(
-			(acc, channel) => {
-				const categoryId = channel.categoryId || "uncategorized";
-				if (!acc[categoryId]) {
-					acc[categoryId] = [];
-				}
-				acc[categoryId].push(channel);
-				return acc;
-			},
-			{} as Record<string, typeof currentServer.channels>
-		);
-
-		// Sort channels by position within each category
-		for (const categoryId of Object.keys(grouped)) {
-			grouped[categoryId].sort((a, b) => a.position - b.position);
-		}
-
-		return grouped;
-	}, [currentServer]);
-
-	// Get favorited channels from current server
-	const favoriteChannels = useMemo(() => {
-		if (!currentServer) return [];
-		return currentServer.channels.filter((ch) => isFavorite(ch.id));
-	}, [currentServer, isFavorite]);
 
 	const channelListContent = (
 		<div className="w-60 h-screen bg-[oklch(0.15_0.02_250)] flex flex-col">

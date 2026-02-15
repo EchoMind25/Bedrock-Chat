@@ -1,13 +1,15 @@
 'use client';
 
 import { motion } from 'motion/react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Avatar } from '@/components/ui/avatar/avatar';
+import type { AvatarStatus } from '@/components/ui/avatar/avatar';
 import { ReactionBar } from './reaction-bar';
 import { EmojiPicker } from './emoji-picker';
 import type { Message } from '@/lib/types/message';
 import { parseMarkdown, renderMarkdown } from '@/lib/utils/markdown';
 import { useMessageStore } from '@/store/message.store';
+import { usePresenceStore } from '@/store/presence.store';
 import { useAuthStore } from '@/store/auth.store';
 
 interface MessageProps {
@@ -25,6 +27,18 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 	const editMessage = useMessageStore((state) => state.editMessage);
 	const deleteMessage = useMessageStore((state) => state.deleteMessage);
 	const currentUser = useAuthStore(state => state.user);
+
+	// Presence-aware status: only re-renders when THIS author's status changes
+	const authorPresenceStatus = usePresenceStore(
+		useCallback((s) => {
+			const presence = s.onlineUsers.get(message.author.id);
+			if (!presence) return undefined;
+			const statusMap: Record<string, AvatarStatus> = {
+				online: "online", idle: "away", dnd: "busy", offline: "offline",
+			};
+			return statusMap[presence.status] ?? undefined;
+		}, [message.author.id])
+	);
 
 	const isOwnMessage = currentUser?.id === message.author.id;
 
@@ -100,6 +114,7 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 							alt={message.author.displayName}
 							fallback={message.author.displayName}
 							size="md"
+							status={authorPresenceStatus}
 						/>
 					)}
 				</div>
