@@ -62,11 +62,6 @@ export default function SignupPage() {
 		if (resendCooldown > 0 || !formData.email) return;
 		clearError();
 
-		const success = await resendConfirmationEmail(formData.email);
-		if (success) {
-			setEmailSent(true);
-		}
-
 		setResendCooldown(60);
 		const interval = setInterval(() => {
 			setResendCooldown((prev) => {
@@ -77,6 +72,11 @@ export default function SignupPage() {
 				return prev - 1;
 			});
 		}, 1000);
+
+		const success = await resendConfirmationEmail(formData.email);
+		if (success) {
+			setEmailSent(true);
+		}
 	};
 
 	return (

@@ -21,7 +21,7 @@ export function ChannelItem({ channel, isActive }: ChannelItemProps) {
 	const setCurrentChannel = useServerStore((s) => s.setCurrentChannel);
 	const currentServerId = useServerStore((s) => s.currentServerId);
 	const openChannelSettings = useServerManagementStore((s) => s.openChannelSettings);
-	const isFavorite = useFavoritesStore((s) => s.isFavorite(channel.id));
+	const isFavorite = useFavoritesStore((s) => s.favoriteChannelIds.has(channel.id));
 	const toggleFavorite = useFavoritesStore((s) => s.toggleFavorite);
 
 	const getChannelIcon = () => {

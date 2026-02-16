@@ -145,19 +145,28 @@ export const useFriendsStore = create<FriendsState>()(
         setSearchQuery: (query) => set({ searchQuery: query }),
 
         sendFriendRequest: async (username, message) => {
+          const timeout = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Request timed out")), 10000)
+          );
+
           try {
             const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await Promise.race([supabase.auth.getUser(), timeout]);
             if (!user) return false;
 
-            const { data: targetUser } = await supabase
-              .from("profiles").select("id").ilike("username", username).single();
+            const { data: targetUser } = await Promise.race([
+              supabase.from("profiles").select("id").eq("username", username.toLowerCase()).single(),
+              timeout,
+            ]);
 
             if (!targetUser) return false;
 
-            const { error } = await supabase.from("friend_requests").insert({
-              sender_id: user.id, receiver_id: targetUser.id, message: message || null,
-            });
+            const { error } = await Promise.race([
+              supabase.from("friend_requests").insert({
+                sender_id: user.id, receiver_id: targetUser.id, message: message || null,
+              }),
+              timeout,
+            ]);
 
             if (error) return false;
             return true;

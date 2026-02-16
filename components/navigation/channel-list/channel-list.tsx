@@ -54,7 +54,7 @@ export function ChannelList() {
 	const isHomeContext = currentServer?.id === "home";
 
 	// All hooks must be called before any early returns (Rules of Hooks)
-	const isFavorite = useFavoritesStore((s) => s.isFavorite);
+	const favoriteChannelIds = useFavoritesStore((s) => s.favoriteChannelIds);
 
 	const channelsByCategory = useMemo(() => {
 		if (!currentServer) return {};
@@ -77,8 +77,8 @@ export function ChannelList() {
 
 	const favoriteChannels = useMemo(() => {
 		if (!currentServer) return [];
-		return currentServer.channels.filter((ch) => isFavorite(ch.id));
-	}, [currentServer, isFavorite]);
+		return currentServer.channels.filter((ch) => favoriteChannelIds.has(ch.id));
+	}, [currentServer, favoriteChannelIds]);
 
 	// Show loading state while initializing
 	if (!isInitialized || !currentServer) {

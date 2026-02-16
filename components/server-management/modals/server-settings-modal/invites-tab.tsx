@@ -9,6 +9,7 @@ import { Toggle } from "../../../ui/toggle/toggle";
 import { InviteItem } from "../../invite-manager/invite-item";
 import { useServerManagementStore } from "../../../../store/server-management.store";
 import { cn } from "../../../../lib/utils/cn";
+import { createClient } from "../../../../lib/supabase/client";
 import type { Server } from "../../../../lib/types/server";
 import type { InviteExpirationOption, InviteMaxUsesOption, InviteTargetType } from "../../../../lib/types/invites";
 
@@ -89,13 +90,17 @@ export function InvitesTab({ server }: InvitesTabProps) {
 
     setIsLoading(true);
     try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
       await createInvite(
         server.id,
         targetType,
         targetType === "server" ? null : selectedChannelId,
-        "current-user",
-        "You",
-        "",
+        user.id,
+        user.user_metadata?.username || user.email?.split("@")[0] || "Unknown",
+        user.user_metadata?.avatar_url || "",
         {
           expiresAfter: expiresAfter as InviteExpirationOption,
           maxUses: Number.parseInt(maxUses) as InviteMaxUsesOption,

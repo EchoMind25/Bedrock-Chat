@@ -7,6 +7,8 @@ import { calculateExpirationDate } from "../lib/types/invites";
 import { toast } from "../lib/stores/toast-store";
 import { createClient } from "../lib/supabase/client";
 
+const EMPTY_ARRAY: never[] = [];
+
 export type ServerSettingsTab = "overview" | "roles" | "channels" | "categories" | "moderation" | "invites";
 export type ChannelSettingsTab = "overview" | "permissions";
 
@@ -449,7 +451,7 @@ export const useServerManagementStore = create<ServerManagementState>()(
         },
 
         getInvitesByServer: (serverId) => {
-          return get().invites.get(serverId) || [];
+          return get().invites.get(serverId) || EMPTY_ARRAY;
         },
 
         // Moderation operations
@@ -546,7 +548,7 @@ export const useServerManagementStore = create<ServerManagementState>()(
         },
 
         getBansByServer: (serverId) => {
-          return get().bans.get(serverId) || [];
+          return get().bans.get(serverId) || EMPTY_ARRAY;
         },
 
         loadAuditLog: async (serverId) => {
@@ -588,7 +590,7 @@ export const useServerManagementStore = create<ServerManagementState>()(
         },
 
         getAuditLogByServer: (serverId) => {
-          return get().auditLogs.get(serverId) || [];
+          return get().auditLogs.get(serverId) || EMPTY_ARRAY;
         },
 
         addAuditLogEntry: async (serverId, action, actorId, actorUsername, actorAvatar, targetId, targetName, targetType, changes, reason) => {
