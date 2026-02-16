@@ -2,22 +2,14 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/store/auth.store";
 
 export default function ChannelsPage() {
 	const router = useRouter();
-	const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
 	useEffect(() => {
-		// Redirect based on persisted auth state immediately.
-		// No need to wait for isInitializing — this page only redirects,
-		// and the (main) layout will verify auth with Supabase.
-		if (!isAuthenticated) {
-			router.push("/login");
-		} else {
-			router.push("/friends");
-		}
-	}, [isAuthenticated, router]);
+		// Always redirect to /friends; let (main) layout verify auth
+		router.push("/friends");
+	}, [router]);
 
 	return (
 		<div className="min-h-screen bg-[oklch(0.12_0.02_250)] flex items-center justify-center">

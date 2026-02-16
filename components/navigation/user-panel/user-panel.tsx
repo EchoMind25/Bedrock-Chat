@@ -7,6 +7,7 @@ import { useAuthStore } from "@/store/auth.store";
 import type { UserStatus } from "@/store/auth.store";
 import { usePresenceStore } from "@/store/presence.store";
 import { useFamilyStore } from "@/store/family.store";
+import { performFullLogout } from "@/lib/utils/logout";
 import { Avatar } from "@/components/ui/avatar/avatar";
 import type { AvatarStatus } from "@/components/ui/avatar/avatar";
 import { Tooltip } from "@/components/ui/tooltip/tooltip";
@@ -289,7 +290,7 @@ export function UserPanel() {
 									className="w-full px-3 py-2 text-sm text-left text-error hover:bg-error/10 rounded-sm transition-colors flex items-center gap-2"
 									onClick={async () => {
 										setShowSettings(false);
-										await logout();
+										await performFullLogout();
 										router.push("/login");
 									}}
 								>

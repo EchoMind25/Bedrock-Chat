@@ -40,7 +40,14 @@ export default function GlobalError({
 							{error.message}
 						</p>
 					)}
-					<div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+					<div
+						style={{
+							display: "flex",
+							gap: 12,
+							justifyContent: "center",
+							flexWrap: "wrap",
+						}}
+					>
 						<button
 							type="button"
 							onClick={reset}
@@ -72,6 +79,22 @@ export default function GlobalError({
 							}}
 						>
 							Reload
+						</button>
+						<button
+							type="button"
+							onClick={() => (window.location.href = "/login")}
+							style={{
+								padding: "10px 24px",
+								backgroundColor: "rgba(255,255,255,0.1)",
+								color: "white",
+								border: "none",
+								borderRadius: 8,
+								cursor: "pointer",
+								fontSize: 14,
+								fontWeight: 500,
+							}}
+						>
+							Go to Login
 						</button>
 					</div>
 				</div>

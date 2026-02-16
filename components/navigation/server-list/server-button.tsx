@@ -42,7 +42,7 @@ export function ServerButton({
 				layoutId={isActive ? "portal-server-icon" : undefined}
 				onClick={onClick}
 				className={cn(
-					"relative w-12 h-12 min-w-[48px] min-h-[48px] rounded-full transition-all duration-200 flex items-center justify-center text-2xl overflow-hidden group touch-manipulation",
+					"relative w-12 h-12 min-w-[48px] min-h-[48px] rounded-full transition-all duration-200 flex items-center justify-center text-2xl overflow-hidden group touch-manipulation focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2",
 					isActive
 						? "rounded-2xl bg-primary text-white"
 						: "bg-[oklch(0.15_0.02_250)] hover:bg-primary/80 hover:rounded-2xl hover:text-white"

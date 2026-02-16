@@ -169,7 +169,7 @@ export function ServerList() {
 
 	// Desktop: persistent sidebar
 	return (
-		<div className="w-[72px] h-screen bg-[oklch(0.12_0.02_250)] flex flex-col items-center py-3 gap-2 overflow-y-auto scrollbar-hide">
+		<nav aria-label="Servers" className="w-[72px] h-screen bg-[oklch(0.12_0.02_250)] flex flex-col items-center py-3 gap-2 overflow-y-auto scrollbar-hide">
 			{/* Home Button */}
 			<Tooltip content="Direct Messages" position="right">
 				<ServerButton
@@ -243,6 +243,6 @@ export function ServerList() {
 					/>
 				</svg>
 			</motion.button>
-		</div>
+		</nav>
 	);
 }

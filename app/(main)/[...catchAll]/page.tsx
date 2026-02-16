@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 export default function CatchAllPage() {
 	const router = useRouter();
+	const pathname = usePathname();
 
 	useEffect(() => {
+		console.warn(`[Navigation] Unknown route "${pathname}" — redirecting to /friends`);
 		router.replace("/friends");
-	}, [router]);
+	}, [router, pathname]);
 
 	return (
 		<div className="flex-1 flex items-center justify-center bg-[oklch(0.14_0.02_250)]">

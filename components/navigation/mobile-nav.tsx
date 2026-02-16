@@ -2,8 +2,8 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { useServerStore } from "@/store/server.store";
-import { useAuthStore } from "@/store/auth.store";
 import { useUIStore } from "@/store/ui.store";
+import { performFullLogout } from "@/lib/utils/logout";
 import { Home, Hash, Users, Bell, LogOut } from "lucide-react";
 import { motion } from "motion/react";
 
@@ -67,7 +67,7 @@ export function MobileNav() {
       label: "Log Out",
       icon: LogOut,
       onClick: async () => {
-        await useAuthStore.getState().logout();
+        await performFullLogout();
         router.push("/login");
       },
       isActive: false,

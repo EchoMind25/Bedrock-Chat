@@ -332,8 +332,25 @@ export const useAuthStore = create<AuthState>()(
 						const supabase = createClient();
 						await supabase.auth.signOut();
 					} catch {
-						// Ignore signout errors
+						// Server invalidation failed — continue with local cleanup
 					}
+
+					// Force-clear Supabase auth tokens from both storages.
+					// This handles the case where signOut() failed silently
+					// (network error, stale client, etc.)
+					for (const storage of [localStorage, sessionStorage]) {
+						const keysToRemove: string[] = [];
+						for (let i = 0; i < storage.length; i++) {
+							const key = storage.key(i);
+							if (key && (key.startsWith("sb-") || key.startsWith("supabase"))) {
+								keysToRemove.push(key);
+							}
+						}
+						for (const key of keysToRemove) {
+							storage.removeItem(key);
+						}
+					}
+
 					localStorage.removeItem("bedrock-remember-me");
 					set({
 						user: null,

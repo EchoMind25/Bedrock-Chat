@@ -14,13 +14,11 @@ type Step = 1 | 2 | 3;
 
 export default function SignupPage() {
 	const router = useRouter();
-	const {
-		signUpWithEmail,
-		resendConfirmationEmail,
-		isLoading,
-		error,
-		clearError,
-	} = useAuthStore();
+	const signUpWithEmail = useAuthStore((s) => s.signUpWithEmail);
+	const resendConfirmationEmail = useAuthStore((s) => s.resendConfirmationEmail);
+	const isLoading = useAuthStore((s) => s.isLoading);
+	const error = useAuthStore((s) => s.error);
+	const clearError = useAuthStore((s) => s.clearError);
 
 	const [step, setStep] = useState<Step>(1);
 	const [formData, setFormData] = useState<Partial<SignupData>>({

@@ -35,6 +35,7 @@ interface PresenceState {
 	_channel: PresenceChannel | null;
 	_reconnectInterval: ReturnType<typeof setInterval> | null;
 	_typingDebounceTimers: Record<string, number>; // channelId → timestamp of last broadcast
+	_typingTimeouts: Record<string, ReturnType<typeof setTimeout>>; // "channelId:username" → timeout
 
 	// Actions
 	joinServer: (serverId: string) => void;
@@ -91,6 +92,7 @@ export const usePresenceStore = create<PresenceState>()(
 			_channel: null,
 			_reconnectInterval: null,
 			_typingDebounceTimers: {},
+			_typingTimeouts: {},
 
 			joinServer: (serverId) => {
 				const state = get();
@@ -135,6 +137,15 @@ export const usePresenceStore = create<PresenceState>()(
 					// Ignore own typing events
 					if (username === user.username) return;
 
+					const timeoutKey = `${channelId}:${username}`;
+
+					// Cancel existing timeout for this user/channel
+					const existingTimeout = get()._typingTimeouts[timeoutKey];
+					if (existingTimeout) {
+						clearTimeout(existingTimeout);
+					}
+
+					// Add user to typing list
 					set((s) => {
 						const current = s.typingUsers[channelId] || [];
 						if (current.includes(username)) return s;
@@ -146,17 +157,30 @@ export const usePresenceStore = create<PresenceState>()(
 						};
 					});
 
-					// Auto-clear typing after 3 seconds
-					setTimeout(() => {
-						set((s) => ({
-							typingUsers: {
+					// Set new timeout and track it
+					const newTimeout = setTimeout(() => {
+						set((s) => {
+							const updatedTyping = {
 								...s.typingUsers,
 								[channelId]: (s.typingUsers[channelId] || []).filter(
 									(u) => u !== username,
 								),
-							},
-						}));
+							};
+							const { [timeoutKey]: _, ...remainingTimeouts } = s._typingTimeouts;
+							return {
+								typingUsers: updatedTyping,
+								_typingTimeouts: remainingTimeouts,
+							};
+						});
 					}, 3000);
+
+					// Store timeout reference
+					set((s) => ({
+						_typingTimeouts: {
+							...s._typingTimeouts,
+							[timeoutKey]: newTimeout,
+						},
+					}));
 				});
 
 				channel.subscribe(async (status) => {
@@ -215,7 +239,13 @@ export const usePresenceStore = create<PresenceState>()(
 			},
 
 			leaveServer: () => {
-				const { _channel, _reconnectInterval } = get();
+				const { _channel, _reconnectInterval, _typingTimeouts } = get();
+
+				// Clear all typing timeouts
+				for (const timeout of Object.values(_typingTimeouts)) {
+					clearTimeout(timeout);
+				}
+
 				if (_channel) {
 					try {
 						_channel.unsubscribe();
@@ -230,6 +260,7 @@ export const usePresenceStore = create<PresenceState>()(
 					currentServerId: null,
 					_channel: null,
 					_reconnectInterval: null,
+					_typingTimeouts: {},
 					onlineUsers: new Map(),
 					typingUsers: {},
 					isConnected: false,
@@ -301,7 +332,13 @@ export const usePresenceStore = create<PresenceState>()(
 			},
 
 			destroy: () => {
-				const { _channel, _reconnectInterval } = get();
+				const { _channel, _reconnectInterval, _typingTimeouts } = get();
+
+				// Clear all typing timeouts
+				for (const timeout of Object.values(_typingTimeouts)) {
+					clearTimeout(timeout);
+				}
+
 				if (_reconnectInterval) clearInterval(_reconnectInterval);
 				if (_channel) {
 					try {
@@ -316,6 +353,7 @@ export const usePresenceStore = create<PresenceState>()(
 					isConnected: false,
 					_channel: null,
 					_reconnectInterval: null,
+					_typingTimeouts: {},
 					currentServerId: null,
 				});
 			},

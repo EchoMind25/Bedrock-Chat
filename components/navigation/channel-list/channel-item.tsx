@@ -118,7 +118,7 @@ export function ChannelItem({ channel, isActive }: ChannelItemProps) {
 				type="button"
 				onClick={handleChannelClick}
 				className={cn(
-					"w-full px-2 py-3 md:py-1.5 mx-1 min-h-[44px] md:min-h-0 rounded-sm flex items-center gap-2 text-sm transition-colors group touch-manipulation",
+					"w-full px-2 py-3 md:py-1.5 mx-1 min-h-[44px] md:min-h-0 rounded-sm flex items-center gap-2 text-sm transition-colors group touch-manipulation focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2",
 					isActive
 						? "bg-white/10 text-white"
 						: "text-white/60 hover:bg-white/5 hover:text-white/80"

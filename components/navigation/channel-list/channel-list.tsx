@@ -201,7 +201,7 @@ export function ChannelList() {
 	};
 
 	const channelListContent = (
-		<div className="w-60 h-screen bg-[oklch(0.15_0.02_250)] flex flex-col">
+		<nav aria-label="Channels" className="w-60 h-screen bg-[oklch(0.15_0.02_250)] flex flex-col">
 			{/* Server Header */}
 			<div className="h-12 px-4 flex items-center justify-between border-b border-white/10 hover:bg-white/5 transition-colors group">
 				{isMobile && (
@@ -389,7 +389,7 @@ export function ChannelList() {
 					<ChannelSettingsModal />
 				</ErrorBoundary>
 			</Suspense>
-		</div>
+		</nav>
 	);
 
 	// Mobile: slide-over overlay pattern

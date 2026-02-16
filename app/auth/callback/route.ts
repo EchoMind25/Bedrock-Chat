@@ -59,5 +59,5 @@ export async function GET(request: Request) {
 	}
 
 	// If code exchange fails, redirect to login
-	return NextResponse.redirect(`${origin}/login`);
+	return NextResponse.redirect(`${origin}/login?error=confirmation_failed`);
 }

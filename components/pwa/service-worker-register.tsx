@@ -25,12 +25,17 @@ export function ServiceWorkerRegister() {
 
 		let refreshing = false;
 
-		// Reload once when a new SW takes control
-		navigator.serviceWorker.addEventListener("controllerchange", () => {
+		const handleControllerChange = () => {
 			if (refreshing) return;
 			refreshing = true;
 			window.location.reload();
-		});
+		};
+
+		// Reload once when a new SW takes control
+		navigator.serviceWorker.addEventListener(
+			"controllerchange",
+			handleControllerChange
+		);
 
 		navigator.serviceWorker
 			.register("/sw.js")
@@ -59,6 +64,14 @@ export function ServiceWorkerRegister() {
 			.catch((err) => {
 				console.error("SW registration failed:", err);
 			});
+
+		// Cleanup listener on unmount
+		return () => {
+			navigator.serviceWorker.removeEventListener(
+				"controllerchange",
+				handleControllerChange
+			);
+		};
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
