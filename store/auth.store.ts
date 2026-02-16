@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import { conditionalDevtools } from "@/lib/utils/devtools-config";
 import { createClient } from "@/lib/supabase/client";
 import { logError } from "@/lib/utils/error-logger";
+import { isAbortError } from "@/lib/utils/is-abort-error";
 
 export type UserStatus = "online" | "idle" | "dnd" | "offline" | "invisible";
 
@@ -598,9 +599,17 @@ export const useAuthStore = create<AuthState>()(
 						}
 				} catch (err) {
 					// Auth check failed or timed out — preserve persisted session if available
-					logError("AUTH", err);
+					if (!isAbortError(err)) {
+						logError("AUTH", err);
+					}
 					const current = get();
 					if (current.isAuthenticated && current.user) {
+						set({ isInitializing: false });
+						return;
+					}
+					if (isAbortError(err)) {
+						// AbortError with no persisted session: don't treat as auth failure.
+						// The auth listener (initAuthListener) will handle real state changes.
 						set({ isInitializing: false });
 						return;
 					}

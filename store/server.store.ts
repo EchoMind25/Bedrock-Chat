@@ -9,21 +9,8 @@ import { useAuthStore } from "@/store/auth.store";
 import { useUIStore } from "@/store/ui.store";
 import { toast } from "@/lib/stores/toast-store";
 import { logError } from "@/lib/utils/error-logger";
-
-const DEFAULT_THEME_COLOR = "oklch(0.65 0.25 265)";
-
-/**
- * Deterministic theme color from server name.
- * Simple hash -> hue rotation in OKLCH space.
- */
-function deriveThemeColor(name: string): string {
-	let hash = 0;
-	for (let i = 0; i < name.length; i++) {
-		hash = name.charCodeAt(i) + ((hash << 5) - hash);
-	}
-	const hue = Math.abs(hash) % 360;
-	return `oklch(0.65 0.2 ${hue})`;
-}
+import { isAbortError } from "@/lib/utils/is-abort-error";
+import { DEFAULT_THEME_COLOR, deriveThemeColor } from "@/lib/utils/derive-theme-color";
 
 interface ServerState {
 	// Current selections
@@ -218,7 +205,7 @@ export const useServerStore = create<ServerState>()(
 							// Validate data integrity - check for orphaned channels
 							for (const server of servers) {
 								const categoryIds = new Set(server.categories.map(c => c.id));
-								
+
 								// Check for orphaned channels (categoryId points to non-existent category)
 								for (const channel of server.channels) {
 									if (channel.categoryId && !categoryIds.has(channel.categoryId)) {
@@ -242,23 +229,35 @@ export const useServerStore = create<ServerState>()(
 								isLoadingServers: false,
 							});
 						} catch (err) {
-							console.error("Error loading servers:", err);
-							set({
-								servers: [{
-									id: "home",
-									name: "Home",
-									icon: null,
-									ownerId: userId ?? "unknown",
-									memberCount: 1,
-									isOwner: true,
-									categories: [],
-									channels: [],
-									unreadCount: 0,
-									createdAt: new Date(),
-								}],
-								isInitialized: true,
-								isLoadingServers: false,
-							});
+							if (!isAbortError(err)) {
+								console.error("Error loading servers:", err);
+							}
+							const existingServers = get().servers;
+							const hasRealServers = existingServers.length > 0 && existingServers.some(s => s.id !== "home");
+
+							if ((isAbortError(err) || hasRealServers) && existingServers.length > 0) {
+								// Transient abort or real error with existing data — keep existing servers
+								set({ isInitialized: true, isLoadingServers: false });
+							} else {
+								// No existing data at all — fallback to Home only
+								set({
+									servers: [{
+										id: "home",
+										name: "Home",
+										icon: null,
+										ownerId: userId ?? "unknown",
+										memberCount: 1,
+										isOwner: true,
+										categories: [],
+										channels: [],
+										unreadCount: 0,
+										createdAt: new Date(),
+										themeColor: DEFAULT_THEME_COLOR,
+									}],
+									isInitialized: true,
+									isLoadingServers: false,
+								});
+							}
 						} finally {
 							loadServersPromise = null;
 						}

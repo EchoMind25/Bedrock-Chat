@@ -17,6 +17,7 @@ import { createClient } from "../../../lib/supabase/client";
 import type { ChannelType } from "../../../lib/types/server";
 import { generateDefaultRoles } from "../../../lib/constants/roles";
 import { DEFAULT_SERVER_SETTINGS } from "../../../lib/types/server-settings";
+import { deriveThemeColor } from "../../../lib/utils/derive-theme-color";
 
 type ServerTemplate = "gaming" | "school" | "friends" | "custom";
 
@@ -266,6 +267,7 @@ export function CreateServerModal() {
         channels,
         unreadCount: 0,
         createdAt: new Date(serverData.created_at),
+        themeColor: deriveThemeColor(serverName.trim()),
         roles: generateDefaultRoles(serverId),
         settings: {
           ...DEFAULT_SERVER_SETTINGS,

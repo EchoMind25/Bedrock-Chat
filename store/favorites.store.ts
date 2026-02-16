@@ -2,7 +2,9 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { conditionalDevtools } from "@/lib/utils/devtools-config";
 import { createClient } from "@/lib/supabase/client";
+import { useAuthStore } from "@/store/auth.store";
 import { toast } from "@/lib/stores/toast-store";
+import { isAbortError } from "@/lib/utils/is-abort-error";
 
 interface FavoritesState {
 	favoriteChannelIds: Set<string>;
@@ -31,27 +33,28 @@ export const useFavoritesStore = create<FavoritesState>()(
 				loadFavorites: async () => {
 					set({ isLoading: true });
 					try {
-						const supabase = createClient();
-						const {
-							data: { user },
-						} = await supabase.auth.getUser();
+						// Use cached auth state instead of making a network round-trip
+						const userId = useAuthStore.getState().user?.id;
 
-						if (!user) {
+						if (!userId) {
 							set({ favoriteChannelIds: new Set(), isLoading: false });
 							return;
 						}
 
+						const supabase = createClient();
 						const { data, error } = await supabase
 							.from("channel_favorites")
 							.select("channel_id")
-							.eq("user_id", user.id);
+							.eq("user_id", userId);
 
 						if (error) throw error;
 
 						const favoriteIds = new Set(data.map((f) => f.channel_id));
 						set({ favoriteChannelIds: favoriteIds, isLoading: false });
 					} catch (err) {
-						console.error("Error loading favorites:", err);
+						if (!isAbortError(err)) {
+							console.error("Error loading favorites:", err);
+						}
 						set({ isLoading: false });
 					}
 				},

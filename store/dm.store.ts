@@ -3,6 +3,8 @@ import { devtools, persist } from "zustand/middleware";
 import { conditionalDevtools } from "@/lib/utils/devtools-config";
 import type { DirectMessage } from "@/lib/types/dm";
 import { createClient } from "@/lib/supabase/client";
+import { useAuthStore } from "@/store/auth.store";
+import { isAbortError } from "@/lib/utils/is-abort-error";
 
 interface DMState {
 	dms: DirectMessage[];
@@ -32,23 +34,25 @@ export const useDMStore = create<DMState>()(
 
 					const loadDMs = async () => {
 						try {
-							const supabase = createClient();
-							const { data: { user } } = await supabase.auth.getUser();
-							if (!user) {
+							// Use cached auth state instead of making a network round-trip
+							const userId = useAuthStore.getState().user?.id;
+							if (!userId) {
 								set({ isInitialized: true });
 								return;
 							}
 
+							const supabase = createClient();
+
 							const { data: sentDMs } = await supabase
 								.from("direct_messages")
 								.select(`id, content, created_at, read_at, receiver:profiles!direct_messages_receiver_id_fkey(id, username, display_name, avatar_url, status)`)
-								.eq("sender_id", user.id).eq("is_deleted", false)
+								.eq("sender_id", userId).eq("is_deleted", false)
 								.order("created_at", { ascending: false }).limit(50);
 
 							const { data: receivedDMs } = await supabase
 								.from("direct_messages")
 								.select(`id, content, created_at, read_at, sender:profiles!direct_messages_sender_id_fkey(id, username, display_name, avatar_url, status)`)
-								.eq("receiver_id", user.id).eq("is_deleted", false)
+								.eq("receiver_id", userId).eq("is_deleted", false)
 								.order("created_at", { ascending: false }).limit(50);
 
 							const conversationMap = new Map<string, DirectMessage>();
@@ -61,9 +65,9 @@ export const useDMStore = create<DMState>()(
 										id: `dm-${otherId}`,
 										participants: [
 											{ id: `p-${otherId}`, userId: otherId, username: other.username as string, displayName: (other.display_name as string) || (other.username as string), avatar: (other.avatar_url as string) || "", status: (other.status as "online" | "idle" | "dnd" | "offline") || "offline" },
-											{ id: `p-${user.id}`, userId: user.id, username: "You", displayName: "You", avatar: "", status: "online" },
+											{ id: `p-${userId}`, userId, username: "You", displayName: "You", avatar: "", status: "online" },
 										],
-										lastMessage: { content: msg.content, timestamp: new Date(msg.created_at), authorId: user.id },
+										lastMessage: { content: msg.content, timestamp: new Date(msg.created_at), authorId: userId },
 										unreadCount: 0, isEncrypted: true, createdAt: new Date(msg.created_at),
 									});
 								}
@@ -80,7 +84,7 @@ export const useDMStore = create<DMState>()(
 										id: `dm-${otherId}`,
 										participants: [
 											{ id: `p-${otherId}`, userId: otherId, username: other.username as string, displayName: (other.display_name as string) || (other.username as string), avatar: (other.avatar_url as string) || "", status: (other.status as "online" | "idle" | "dnd" | "offline") || "offline" },
-											{ id: `p-${user.id}`, userId: user.id, username: "You", displayName: "You", avatar: "", status: "online" },
+											{ id: `p-${userId}`, userId, username: "You", displayName: "You", avatar: "", status: "online" },
 										],
 										lastMessage: { content: msg.content, timestamp: new Date(msg.created_at), authorId: otherId },
 										unreadCount: isUnread ? 1 : 0, isEncrypted: true, createdAt: new Date(msg.created_at),
@@ -98,7 +102,9 @@ export const useDMStore = create<DMState>()(
 
 							set({ dms, isInitialized: true });
 						} catch (err) {
-							console.error("Error loading DMs:", err);
+							if (!isAbortError(err)) {
+								console.error("Error loading DMs:", err);
+							}
 							set({ isInitialized: true });
 						}
 					};

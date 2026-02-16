@@ -3,6 +3,8 @@ import { persist } from "zustand/middleware";
 import { conditionalDevtools } from "@/lib/utils/devtools-config";
 import type { Friend, FriendRequest } from "@/lib/types/friend";
 import { createClient } from "@/lib/supabase/client";
+import { useAuthStore } from "@/store/auth.store";
+import { isAbortError } from "@/lib/utils/is-abort-error";
 
 export type FriendTab = "all" | "online" | "pending" | "blocked";
 
@@ -52,22 +54,24 @@ export const useFriendsStore = create<FriendsState>()(
 
           const loadFriends = async () => {
             try {
-              const supabase = createClient();
-              const { data: { user } } = await supabase.auth.getUser();
-              if (!user) {
+              // Use cached auth state instead of making a network round-trip
+              const userId = useAuthStore.getState().user?.id;
+              if (!userId) {
                 set({ isInitialized: true });
                 return;
               }
 
+              const supabase = createClient();
+
               const { data: f1 } = await supabase
                 .from("friendships")
                 .select(`id, created_at, friend:profiles!friendships_user2_id_fkey(id, username, display_name, avatar_url, status)`)
-                .eq("user1_id", user.id);
+                .eq("user1_id", userId);
 
               const { data: f2 } = await supabase
                 .from("friendships")
                 .select(`id, created_at, friend:profiles!friendships_user1_id_fkey(id, username, display_name, avatar_url, status)`)
-                .eq("user2_id", user.id);
+                .eq("user2_id", userId);
 
               const friends: Friend[] = [...(f1 || []), ...(f2 || [])].map((row) => {
                 const f = row.friend as unknown as Record<string, unknown>;
@@ -86,19 +90,19 @@ export const useFriendsStore = create<FriendsState>()(
               const { data: incoming } = await supabase
                 .from("friend_requests")
                 .select(`id, message, created_at, sender:profiles!friend_requests_sender_id_fkey(id, username, display_name, avatar_url)`)
-                .eq("receiver_id", user.id)
+                .eq("receiver_id", userId)
                 .eq("status", "pending");
 
               const { data: outgoing } = await supabase
                 .from("friend_requests")
                 .select(`id, message, created_at, receiver:profiles!friend_requests_receiver_id_fkey(id, username, display_name, avatar_url)`)
-                .eq("sender_id", user.id)
+                .eq("sender_id", userId)
                 .eq("status", "pending");
 
               const { data: blocked } = await supabase
                 .from("blocked_users")
                 .select(`id, blocked_at, blocked:profiles!blocked_users_blocked_id_fkey(id, username, display_name, avatar_url)`)
-                .eq("blocker_id", user.id);
+                .eq("blocker_id", userId);
 
               set({
                 friends,
@@ -108,14 +112,14 @@ export const useFriendsStore = create<FriendsState>()(
                     return {
                       id: r.id, fromUserId: s.id as string, fromUsername: s.username as string,
                       fromDisplayName: (s.display_name as string) || (s.username as string),
-                      fromAvatar: (s.avatar_url as string) || "", toUserId: user.id,
+                      fromAvatar: (s.avatar_url as string) || "", toUserId: userId,
                       message: r.message || undefined, createdAt: new Date(r.created_at), direction: "incoming" as const,
                     };
                   }),
                   outgoing: (outgoing || []).map((r) => {
                     const recv = r.receiver as unknown as Record<string, unknown>;
                     return {
-                      id: r.id, fromUserId: user.id, fromUsername: "You",
+                      id: r.id, fromUserId: userId, fromUsername: "You",
                       fromDisplayName: "You", fromAvatar: "", toUserId: recv.id as string,
                       message: r.message || undefined, createdAt: new Date(r.created_at), direction: "outgoing" as const,
                     };
@@ -133,7 +137,9 @@ export const useFriendsStore = create<FriendsState>()(
                 isInitialized: true,
               });
             } catch (err) {
-              console.error("Error loading friends:", err);
+              if (!isAbortError(err)) {
+                console.error("Error loading friends:", err);
+              }
               set({ isInitialized: true });
             }
           };
@@ -145,18 +151,19 @@ export const useFriendsStore = create<FriendsState>()(
         setSearchQuery: (query) => set({ searchQuery: query }),
 
         sendFriendRequest: async (username, message) => {
-          const timeout = new Promise<never>((_, reject) =>
+          // Use fresh timeout per race to prevent shared-promise expiry
+          const makeTimeout = () => new Promise<never>((_, reject) =>
             setTimeout(() => reject(new Error("Request timed out")), 10000)
           );
 
           try {
             const supabase = createClient();
-            const { data: { user } } = await Promise.race([supabase.auth.getUser(), timeout]);
+            const { data: { user } } = await Promise.race([supabase.auth.getUser(), makeTimeout()]);
             if (!user) return false;
 
             const { data: targetUser } = await Promise.race([
               supabase.from("profiles").select("id").eq("username", username.toLowerCase()).single(),
-              timeout,
+              makeTimeout(),
             ]);
 
             if (!targetUser) return false;
@@ -165,7 +172,7 @@ export const useFriendsStore = create<FriendsState>()(
               supabase.from("friend_requests").insert({
                 sender_id: user.id, receiver_id: targetUser.id, message: message || null,
               }),
-              timeout,
+              makeTimeout(),
             ]);
 
             if (error) return false;
