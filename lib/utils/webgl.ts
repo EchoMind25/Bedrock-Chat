@@ -77,18 +77,6 @@ export function getPerformanceTier(): PerformanceTier {
     cachedTier = "low";
   }
 
-  // Debug logging
-  if (typeof window !== "undefined") {
-    console.log("🎨 Performance Tier Detection:", {
-      tier: cachedTier,
-      cores,
-      hasWebGL2,
-      hasWebGL1,
-      mobile,
-      userAgent: navigator.userAgent.slice(0, 50) + "...",
-    });
-  }
-
   return cachedTier;
 }
 

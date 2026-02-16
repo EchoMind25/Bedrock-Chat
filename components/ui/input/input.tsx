@@ -119,7 +119,6 @@ export function Input({
             className
           )}
           onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
           aria-invalid={Boolean(error)}
           aria-describedby={
             error
@@ -129,6 +128,10 @@ export function Input({
                 : undefined
           }
           {...props}
+          onBlur={(e) => {
+            setIsFocused(false);
+            props.onBlur?.(e);
+          }}
         />
 
         {rightIcon && (
@@ -216,7 +219,6 @@ export function Textarea({
             className
           )}
           onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
           aria-invalid={Boolean(error)}
           aria-describedby={
             error
@@ -226,6 +228,10 @@ export function Textarea({
                 : undefined
           }
           {...props}
+          onBlur={(e) => {
+            setIsFocused(false);
+            props.onBlur?.(e);
+          }}
         />
 
         {/* Animated focus border */}

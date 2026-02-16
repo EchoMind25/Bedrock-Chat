@@ -14,6 +14,8 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
+const isDev = process.env.NODE_ENV === "development";
+
 /**
  * Security headers for privacy-first architecture
  */
@@ -41,7 +43,7 @@ const securityHeaders = {
 	// Content Security Policy - allow Supabase + Daily.co + Sentry
 	"Content-Security-Policy": [
 		"default-src 'self'",
-		"script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+		`script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
 		"style-src 'self' 'unsafe-inline'",
 		"img-src 'self' data: https:",
 		"font-src 'self' data:",
@@ -54,8 +56,10 @@ const securityHeaders = {
 		"form-action 'self'",
 	].join("; "),
 
-	// HSTS - Force HTTPS (enable in production)
-	// "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+	// HSTS - Force HTTPS (production only, localhost uses HTTP)
+	...(process.env.NODE_ENV === "production"
+		? { "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload" }
+		: {}),
 };
 
 /**

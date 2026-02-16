@@ -8,7 +8,7 @@ export default function ChannelsPage() {
 
 	useEffect(() => {
 		// Always redirect to /friends; let (main) layout verify auth
-		router.push("/friends");
+		router.replace("/friends");
 	}, [router]);
 
 	return (

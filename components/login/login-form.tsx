@@ -22,6 +22,7 @@ interface LoginFormProps {
  */
 export function LoginForm({ onSuccess }: LoginFormProps) {
 	const login = useAuthStore((s) => s.login);
+	const resetPassword = useAuthStore((s) => s.resetPassword);
 	const isLoading = useAuthStore((s) => s.isLoading);
 	const error = useAuthStore((s) => s.error);
 	const clearError = useAuthStore((s) => s.clearError);
@@ -33,6 +34,9 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 	const [password, setPassword] = useState("");
 	const [showPassword, setShowPassword] = useState(false);
 	const [rememberMe, setRememberMe] = useState(false);
+	const [showResetFlow, setShowResetFlow] = useState(false);
+	const [resetEmail, setResetEmail] = useState("");
+	const [resetSent, setResetSent] = useState(false);
 	const emailRef = useRef<HTMLInputElement>(null);
 
 	// Auto-focus email input on mount
@@ -53,6 +57,18 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 		}
 	};
 
+	const handleResetPassword = async (e: React.FormEvent) => {
+		e.preventDefault();
+		clearError();
+
+		if (!resetEmail) return;
+
+		const success = await resetPassword(resetEmail);
+		if (success) {
+			setResetSent(true);
+		}
+	};
+
 	return (
 		<motion.div
 			className="relative z-10 min-h-screen flex items-center justify-center p-4"
@@ -62,7 +78,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 			exit="exit"
 			transition={worldSprings.formSlide}
 		>
-			<div className="w-full max-w-[420px]">
+			<div className="w-full max-w-[420px] relative">
 				<Glass
 					variant="liquid-elevated"
 					border="liquid"
@@ -232,6 +248,12 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 							<button
 								type="button"
 								className="text-sm text-blue-400 hover:text-blue-300"
+								onClick={() => {
+									clearError();
+									setResetSent(false);
+									setShowResetFlow(true);
+									setResetEmail(email);
+								}}
 							>
 								Forgot password?
 							</button>
@@ -309,6 +331,151 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 						</motion.div>
 					)}
 				</Glass>
+
+				{/* Password Reset Flow Overlay */}
+				<AnimatePresence>
+					{showResetFlow && (
+						<motion.div
+							initial={{ opacity: 0, y: 10 }}
+							animate={{ opacity: 1, y: 0 }}
+							exit={{ opacity: 0, y: 10 }}
+							transition={{ type: "spring", stiffness: 260, damping: 20 }}
+							className="absolute inset-0"
+						>
+							<Glass
+								variant="liquid-elevated"
+								border="liquid"
+								className="p-8 h-full"
+							>
+								<AnimatePresence mode="wait">
+									{!resetSent ? (
+										<motion.div
+											key="reset-form"
+											initial={{ opacity: 0, x: 20 }}
+											animate={{ opacity: 1, x: 0 }}
+											exit={{ opacity: 0, x: -20 }}
+										>
+											<h2 className="text-2xl font-bold text-blue-400 text-center mb-2">
+												Reset Password
+											</h2>
+											<p className="text-blue-300/60 text-center mb-8">
+												Enter your email and we&apos;ll send a reset link
+											</p>
+
+											<AnimatePresence>
+												{error && (
+													<motion.div
+														initial={{ opacity: 0, x: -10 }}
+														animate={{ opacity: 1, x: 0 }}
+														exit={{ opacity: 0 }}
+														className="bg-red-500/20 border border-red-500/50 rounded-lg p-3 mb-6"
+													>
+														<p className="text-red-400 text-sm">{error}</p>
+													</motion.div>
+												)}
+											</AnimatePresence>
+
+											<form onSubmit={handleResetPassword} className="space-y-6">
+												<Input
+													type="email"
+													label="Email"
+													labelClassName="text-blue-400"
+													value={resetEmail}
+													onChange={(e) => setResetEmail(e.target.value)}
+													placeholder="you@example.com"
+													required
+													autoComplete="email"
+													id="reset-email"
+												/>
+
+												<Button
+													type="submit"
+													variant="primary"
+													size="lg"
+													className="w-full"
+													loading={isLoading}
+												>
+													Send Reset Link
+												</Button>
+											</form>
+
+											<p className="text-center mt-6">
+												<button
+													type="button"
+													onClick={() => {
+														clearError();
+														setShowResetFlow(false);
+													}}
+													className="text-blue-300/60 hover:text-blue-300 text-sm"
+												>
+													Back to login
+												</button>
+											</p>
+										</motion.div>
+									) : (
+										<motion.div
+											key="reset-sent"
+											initial={{ opacity: 0, x: 20 }}
+											animate={{ opacity: 1, x: 0 }}
+											exit={{ opacity: 0, x: -20 }}
+											className="text-center"
+										>
+											<motion.div
+												initial={{ scale: 0 }}
+												animate={{ scale: 1 }}
+												transition={{ type: "spring", stiffness: 200, damping: 15 }}
+												className="w-20 h-20 mx-auto mb-6 bg-blue-500/20 rounded-full flex items-center justify-center"
+											>
+												<svg
+													width="40"
+													height="40"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													strokeWidth="1.5"
+													strokeLinecap="round"
+													strokeLinejoin="round"
+													className="text-blue-400"
+												>
+													<rect width="20" height="16" x="2" y="4" rx="2" />
+													<path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+												</svg>
+											</motion.div>
+
+											<h2 className="text-2xl font-bold text-blue-400 mb-2">
+												Check Your Email
+											</h2>
+											<p className="text-blue-300/60 mb-2">
+												We sent a password reset link to
+											</p>
+											<p className="text-blue-300 font-medium mb-6">
+												{resetEmail}
+											</p>
+
+											<div className="bg-white/5 rounded-lg p-5 mb-6 text-left">
+												<p className="text-blue-200/70 text-sm leading-relaxed">
+													Click the link in the email to reset your password. The link will expire in 24 hours.
+												</p>
+											</div>
+
+											<button
+												type="button"
+												onClick={() => {
+													clearError();
+													setResetSent(false);
+													setShowResetFlow(false);
+												}}
+												className="text-blue-300/60 hover:text-blue-300 text-sm"
+											>
+												Back to login
+											</button>
+										</motion.div>
+									)}
+								</AnimatePresence>
+							</Glass>
+						</motion.div>
+					)}
+				</AnimatePresence>
 			</div>
 		</motion.div>
 	);

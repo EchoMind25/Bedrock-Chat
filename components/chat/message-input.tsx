@@ -1,11 +1,14 @@
 'use client';
 
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useState, useRef, useEffect, type KeyboardEvent } from 'react';
 import { EmojiPicker } from './emoji-picker';
+import { FilePreview } from './file-preview';
 import { useMessageStore } from '@/store/message.store';
 import { usePresenceStore } from '@/store/presence.store';
 import { useAuthStore } from '@/store/auth.store';
+import { uploadFile } from '@/lib/supabase/storage';
+import { toast } from '@/lib/stores/toast-store';
 
 interface MessageInputProps {
 	channelId: string;
@@ -13,10 +16,13 @@ interface MessageInputProps {
 }
 
 const MAX_LENGTH = 2000;
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export function MessageInput({ channelId, channelName }: MessageInputProps) {
 	const [content, setContent] = useState('');
 	const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+	const [pendingFile, setPendingFile] = useState<File | null>(null);
+	const [isUploading, setIsUploading] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const sendMessage = useMessageStore((s) => s.sendMessage);
 	const broadcastTyping = usePresenceStore((s) => s.broadcastTyping);
@@ -39,10 +45,26 @@ export function MessageInput({ channelId, channelName }: MessageInputProps) {
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [content, channelId]); // Exclude broadcastTyping — stable Zustand action
 
-	const handleSubmit = () => {
-		if (!content.trim()) return;
+	const handleSubmit = async () => {
+		if (!content.trim() && !pendingFile) return;
+		if (isUploading) return;
 
-		sendMessage(channelId, content);
+		let attachmentData: { url: string; fileName: string; fileSize: number; mimeType: string } | undefined;
+
+		if (pendingFile) {
+			setIsUploading(true);
+			try {
+				attachmentData = await uploadFile(pendingFile, channelId);
+			} catch (err) {
+				toast.error('Upload failed', err instanceof Error ? err.message : 'Could not upload file');
+				setIsUploading(false);
+				return;
+			}
+			setIsUploading(false);
+			setPendingFile(null);
+		}
+
+		sendMessage(channelId, content || '', attachmentData);
 		setContent('');
 
 		// Reset textarea height
@@ -66,9 +88,15 @@ export function MessageInput({ channelId, channelName }: MessageInputProps) {
 	const handleFileUpload = () => {
 		const input = document.createElement('input');
 		input.type = 'file';
-		input.accept = 'image/*,video/*,.pdf,.doc,.docx,.txt';
+		input.accept = 'image/jpeg,image/png,image/gif,image/webp,video/mp4,application/pdf,text/plain';
 		input.onchange = () => {
-			// File selected - upload functionality will be connected later
+			const file = input.files?.[0];
+			if (!file) return;
+			if (file.size > MAX_FILE_SIZE) {
+				toast.error('File too large', 'Maximum file size is 10MB');
+				return;
+			}
+			setPendingFile(file);
 		};
 		input.click();
 	};
@@ -85,12 +113,24 @@ export function MessageInput({ channelId, channelName }: MessageInputProps) {
 					border: '1px solid oklch(0.25 0.02 285 / 0.5)',
 				}}
 			>
+				{/* File preview */}
+				<AnimatePresence>
+					{pendingFile && (
+						<FilePreview
+							file={pendingFile}
+							isUploading={isUploading}
+							onRemove={() => setPendingFile(null)}
+						/>
+					)}
+				</AnimatePresence>
+
 				{/* Input area */}
 				<div className="flex items-end gap-2 p-3">
 					{/* File upload button */}
 					<button
 						onClick={handleFileUpload}
-						className="shrink-0 p-2 rounded-lg hover:bg-white/10 transition-colors"
+						disabled={isUploading}
+						className="shrink-0 p-2 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-40"
 						title="Upload file"
 					>
 						<svg className="w-5 h-5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">

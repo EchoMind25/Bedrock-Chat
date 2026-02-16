@@ -74,7 +74,6 @@ export function DMHeader({ dm }: DMHeaderProps) {
 					className="p-2 rounded-sm hover:bg-white/5 transition-colors text-white/60 hover:text-white"
 					onClick={() => {
 						// TODO: Implement voice call
-						console.log("Start voice call");
 					}}
 				>
 					<svg
@@ -98,7 +97,6 @@ export function DMHeader({ dm }: DMHeaderProps) {
 					className="p-2 rounded-sm hover:bg-white/5 transition-colors text-white/60 hover:text-white"
 					onClick={() => {
 						// TODO: Implement video call
-						console.log("Start video call");
 					}}
 				>
 					<svg

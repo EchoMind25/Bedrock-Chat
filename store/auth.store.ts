@@ -12,6 +12,7 @@ export interface User {
 	username: string;
 	displayName: string;
 	avatar: string;
+	bio?: string;
 	status: UserStatus;
 	accountType: "standard" | "parent" | "teen";
 	createdAt: Date;
@@ -30,6 +31,8 @@ interface AuthState {
 	isLoading: boolean;
 	isInitializing: boolean;
 	error: string | null;
+	failedLoginAttempts: number;
+	lockoutUntil: number | null;
 
 	// Pending signup data (stored between signUp and email confirmation)
 	pendingSignup: SignupData | null;
@@ -40,11 +43,14 @@ interface AuthState {
 	resendConfirmationEmail: (email: string) => Promise<boolean>;
 	completeSignup: () => Promise<boolean>;
 	logout: () => Promise<void>;
+	deleteAccount: (password: string) => Promise<boolean>;
 	clearError: () => void;
 	updateUser: (updates: Partial<User>) => void;
 	checkAuth: () => Promise<void>;
 	initAuthListener: () => () => void;
 	setPendingSignup: (data: SignupData | null) => void;
+	resetPassword: (email: string) => Promise<boolean>;
+	updatePassword: (newPassword: string) => Promise<boolean>;
 }
 
 interface SignupData {
@@ -62,6 +68,7 @@ function profileToUser(profile: Record<string, unknown>, email: string): User {
 		username: profile.username as string,
 		displayName: (profile.display_name as string) || (profile.username as string),
 		avatar: (profile.avatar_url as string) || "",
+		bio: (profile.bio as string) || "",
 		status: (profile.status as UserStatus) || "online",
 		accountType: (profile.account_type as User["accountType"]) || "standard",
 		createdAt: new Date(profile.created_at as string),
@@ -82,10 +89,30 @@ export const useAuthStore = create<AuthState>()(
 				isLoading: false,
 				isInitializing: true,
 				error: null,
+				failedLoginAttempts: 0,
+				lockoutUntil: null,
 				pendingSignup: null,
 
 				login: async (email, password, rememberMe = false) => {
 					set({ isLoading: true, error: null });
+
+					const { failedLoginAttempts, lockoutUntil } = get();
+
+					// Check lockout
+					if (lockoutUntil && Date.now() < lockoutUntil) {
+						const remainingSec = Math.ceil((lockoutUntil - Date.now()) / 1000);
+						set({
+							isLoading: false,
+							error: `Too many failed attempts. Try again in ${remainingSec} seconds.`,
+						});
+						return false;
+					}
+
+					// Exponential backoff: 0s, 2s, 4s, 8s, 16s, 32s max
+					if (failedLoginAttempts > 0) {
+						const delay = Math.min(2 ** failedLoginAttempts * 1000, 32_000);
+						await new Promise((r) => setTimeout(r, delay));
+					}
 
 					try {
 						// CRITICAL: Set rememberMe flag BEFORE creating Supabase client
@@ -103,7 +130,14 @@ export const useAuthStore = create<AuthState>()(
 						});
 
 						if (error) {
-							set({ isLoading: false, error: error.message });
+							const newAttempts = failedLoginAttempts + 1;
+							const lockout = newAttempts >= 5 ? Date.now() + 15 * 60 * 1000 : null;
+							set({
+								isLoading: false,
+								error: error.message,
+								failedLoginAttempts: newAttempts,
+								lockoutUntil: lockout,
+							});
 							return false;
 						}
 
@@ -121,6 +155,8 @@ export const useAuthStore = create<AuthState>()(
 									isAuthenticated: true,
 									isLoading: false,
 									isInitializing: false,
+									failedLoginAttempts: 0,
+									lockoutUntil: null,
 								});
 								return true;
 							}
@@ -130,7 +166,15 @@ export const useAuthStore = create<AuthState>()(
 						return false;
 					} catch (err) {
 						logError("AUTH", err);
-						set({ isLoading: false, isInitializing: false, error: err instanceof Error ? err.message : "Login failed" });
+						const newAttempts = failedLoginAttempts + 1;
+						const lockout = newAttempts >= 5 ? Date.now() + 15 * 60 * 1000 : null;
+						set({
+							isLoading: false,
+							isInitializing: false,
+							error: err instanceof Error ? err.message : "Login failed",
+							failedLoginAttempts: newAttempts,
+							lockoutUntil: lockout,
+						});
 						return false;
 					}
 			},
@@ -173,17 +217,32 @@ export const useAuthStore = create<AuthState>()(
 						// Call signUp — sends confirmation email with a magic link.
 						// The emailRedirectTo tells Supabase where to redirect after
 						// the user clicks the confirmation link.
+						const redirectTo = `${window.location.origin}/auth/callback`;
+
+						if (process.env.NODE_ENV === "development") {
+							console.log("[AUTH DEBUG] signUp called", { email: data.email, redirectTo });
+						}
+
 						const { data: authData, error } = await supabase.auth.signUp({
 							email: data.email,
 							password: data.password,
 							options: {
-								emailRedirectTo: `${window.location.origin}/auth/callback`,
+								emailRedirectTo: redirectTo,
 								data: {
 									username: data.username,
 									account_type: data.accountType,
 								},
 							},
 						});
+
+						if (process.env.NODE_ENV === "development") {
+							console.log("[AUTH DEBUG] signUp response", {
+								userId: authData.user?.id ?? null,
+								hasSession: !!authData.session,
+								identities: authData.user?.identities?.length ?? 0,
+								error: error?.message ?? null,
+							});
+						}
 
 						if (error) {
 							set({ isLoading: false, error: error.message });
@@ -215,13 +274,23 @@ export const useAuthStore = create<AuthState>()(
 
 					try {
 						const supabase = createClient();
+						const redirectTo = `${window.location.origin}/auth/callback`;
+
+						if (process.env.NODE_ENV === "development") {
+							console.log("[AUTH DEBUG] resend called", { email, type: "signup", redirectTo });
+						}
+
 						const { error } = await supabase.auth.resend({
 							type: "signup",
 							email,
 							options: {
-								emailRedirectTo: `${window.location.origin}/auth/callback`,
+								emailRedirectTo: redirectTo,
 							},
 						});
+
+						if (process.env.NODE_ENV === "development") {
+							console.log("[AUTH DEBUG] resend response", { error: error?.message ?? null });
+						}
 
 						if (error) {
 							set({ isLoading: false, error: error.message });
@@ -361,6 +430,51 @@ export const useAuthStore = create<AuthState>()(
 					});
 				},
 
+				deleteAccount: async (password) => {
+					set({ isLoading: true, error: null });
+
+					try {
+						const response = await fetch("/api/account/delete", {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({ password }),
+						});
+
+						if (!response.ok) {
+							const data = await response.json().catch(() => ({}));
+							const message =
+								response.status === 403
+									? "Incorrect password"
+									: response.status === 401
+										? "Session expired. Please log in again."
+										: data.error || "Account deletion failed";
+							set({ isLoading: false, error: message });
+							return false;
+						}
+
+						// Clear all local state
+						localStorage.clear();
+						sessionStorage.clear();
+
+						set({
+							user: null,
+							isAuthenticated: false,
+							isLoading: false,
+							isInitializing: false,
+							error: null,
+							pendingSignup: null,
+							failedLoginAttempts: 0,
+							lockoutUntil: null,
+						});
+
+						return true;
+					} catch (err) {
+						logError("AUTH", err);
+						set({ isLoading: false, error: "Account deletion failed" });
+						return false;
+					}
+				},
+
 				clearError: () => set({ error: null }),
 
 				updateUser: async (updates) => {
@@ -376,6 +490,7 @@ export const useAuthStore = create<AuthState>()(
 						if (updates.displayName !== undefined) profileUpdates.display_name = updates.displayName;
 						if (updates.avatar !== undefined) profileUpdates.avatar_url = updates.avatar;
 						if (updates.status !== undefined) profileUpdates.status = updates.status;
+						if (updates.bio !== undefined) profileUpdates.bio = updates.bio;
 
 						if (Object.keys(profileUpdates).length > 0) {
 							await supabase.from("profiles").update(profileUpdates).eq("id", current.id);
@@ -387,7 +502,61 @@ export const useAuthStore = create<AuthState>()(
 					}
 			},
 
-				setPendingSignup: (data) => set({ pendingSignup: data }),
+				resetPassword: async (email) => {
+				set({ isLoading: true, error: null });
+
+				try {
+					const supabase = createClient();
+					const redirectTo = `${window.location.origin}/auth/callback?next=/auth/reset-password`;
+
+					if (process.env.NODE_ENV === "development") {
+						console.log("[AUTH DEBUG] resetPassword called", { email, redirectTo });
+					}
+
+					const { error } = await supabase.auth.resetPasswordForEmail(email, {
+						redirectTo,
+					});
+
+					if (process.env.NODE_ENV === "development") {
+						console.log("[AUTH DEBUG] resetPassword response", { error: error?.message ?? null });
+					}
+
+					if (error) {
+						set({ isLoading: false, error: error.message });
+						return false;
+					}
+
+					set({ isLoading: false });
+					return true;
+				} catch (err) {
+					logError("AUTH", err);
+					set({ isLoading: false, error: err instanceof Error ? err.message : "Password reset failed" });
+					return false;
+				}
+			},
+
+			updatePassword: async (newPassword) => {
+				set({ isLoading: true, error: null });
+
+				try {
+					const supabase = createClient();
+					const { error } = await supabase.auth.updateUser({ password: newPassword });
+
+					if (error) {
+						set({ isLoading: false, error: error.message });
+						return false;
+					}
+
+					set({ isLoading: false });
+					return true;
+				} catch (err) {
+					logError("AUTH", err);
+					set({ isLoading: false, error: err instanceof Error ? err.message : "Password update failed" });
+					return false;
+				}
+			},
+
+			setPendingSignup: (data) => set({ pendingSignup: data }),
 
 				// Checks Supabase for a valid session. No client-side gatekeeping —
 				// proxy.ts refreshes the session cookie on every request, so if
@@ -497,6 +666,8 @@ export const useAuthStore = create<AuthState>()(
 					user: state.user,
 					isAuthenticated: state.isAuthenticated,
 					pendingSignup: state.pendingSignup,
+					failedLoginAttempts: state.failedLoginAttempts,
+					lockoutUntil: state.lockoutUntil,
 					// isInitializing is intentionally NOT persisted —
 					// it always starts as true on fresh page loads
 				}),

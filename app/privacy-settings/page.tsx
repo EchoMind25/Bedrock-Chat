@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 import { useConsentStore } from "@/store/consent.store";
 import { Toggle } from "@/components/ui/toggle";
 import { Glass } from "@/components/ui/glass";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
 function PrivacySettingsContent() {
@@ -16,8 +15,15 @@ function PrivacySettingsContent() {
 	const savePreferences = useConsentStore((s) => s.savePreferences);
 
 	return (
-		<div className="flex-1 overflow-y-auto scrollbar-thin p-6">
+		<div className="min-h-screen bg-[oklch(0.12_0.02_250)] overflow-y-auto scrollbar-thin p-6 py-12">
 			<div className="max-w-3xl mx-auto space-y-6">
+				<Link
+					href="/"
+					className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-white transition-colors"
+				>
+					&larr; Back to Home
+				</Link>
+
 				{/* Page header */}
 				<div>
 					<h1 className="text-3xl font-bold text-white mb-2">
@@ -235,7 +241,7 @@ export default function PrivacySettingsPage() {
 	return (
 		<Suspense
 			fallback={
-				<div className="flex-1 flex items-center justify-center">
+				<div className="min-h-screen bg-[oklch(0.12_0.02_250)] flex items-center justify-center">
 					<div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
 				</div>
 			}

@@ -3,8 +3,14 @@ import Link from "next/link";
 
 export default function PrivacyPolicyPage() {
 	return (
-		<div className="flex-1 overflow-y-auto scrollbar-thin p-6">
+		<div className="min-h-screen bg-[oklch(0.12_0.02_250)] overflow-y-auto scrollbar-thin p-6 py-12">
 			<div className="max-w-4xl mx-auto">
+				<Link
+					href="/"
+					className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-white transition-colors mb-6"
+				>
+					&larr; Back to Home
+				</Link>
 				<Glass
 					variant="liquid-elevated"
 					border="liquid"

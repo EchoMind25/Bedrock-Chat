@@ -1,7 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { checkRateLimit } from '@/lib/utils/rate-limiter';
 
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get('x-forwarded-for') || 'unknown';
+  const { allowed, retryAfterMs } = checkRateLimit(`daily-rooms:${ip}`, 10, 60_000);
+
+  if (!allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(retryAfterMs / 1000)) } }
+    );
+  }
+
   const { channelId, serverId } = await request.json();
 
   if (!process.env.DAILY_API_KEY) {
@@ -43,20 +54,28 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // TODO: When you implement server members table, check if user is a member:
-  // const { data: membership } = await supabase
-  //   .from('server_members')
-  //   .select('*')
-  //   .eq('server_id', serverId)
-  //   .eq('user_id', user.id)
-  //   .single();
-  //
-  // if (!membership) {
-  //   return NextResponse.json(
-  //     { error: 'You are not a member of this server' },
-  //     { status: 403 }
-  //   );
-  // }
+  // Validate required inputs
+  if (!channelId || !serverId) {
+    return NextResponse.json(
+      { error: 'channelId and serverId are required' },
+      { status: 400 }
+    );
+  }
+
+  // Verify user is a member of this server
+  const { data: membership } = await supabase
+    .from('server_members')
+    .select('id')
+    .eq('server_id', serverId)
+    .eq('user_id', user.id)
+    .single();
+
+  if (!membership) {
+    return NextResponse.json(
+      { error: 'You are not a member of this server' },
+      { status: 403 }
+    );
+  }
 
   // Determine privacy based on environment or server settings
   // For development: use 'public' for easy testing

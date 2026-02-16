@@ -38,6 +38,7 @@ const DATA_SECTIONS = [
 export default function DataExportPage() {
 	const [isExporting, setIsExporting] = useState(false);
 	const user = useAuthStore((s) => s.user);
+	const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
 	const handleExport = async () => {
 		if (!user) return;
@@ -55,9 +56,42 @@ export default function DataExportPage() {
 		}
 	};
 
+	if (!isAuthenticated || !user) {
+		return (
+			<div className="min-h-screen bg-[oklch(0.12_0.02_250)] overflow-y-auto scrollbar-thin p-6 py-12">
+				<div className="max-w-3xl mx-auto space-y-6">
+					<Link
+						href="/"
+						className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-white transition-colors"
+					>
+						&larr; Back to Home
+					</Link>
+					<Glass variant="liquid-elevated" border="liquid" className="p-8 text-center">
+						<h1 className="text-2xl font-bold text-white mb-3">
+							Data Export
+						</h1>
+						<p className="text-slate-300 mb-6">
+							You need to be logged in to export your data.
+						</p>
+						<Link href="/login">
+							<Button variant="primary">Log In</Button>
+						</Link>
+					</Glass>
+				</div>
+			</div>
+		);
+	}
+
 	return (
-		<div className="flex-1 overflow-y-auto scrollbar-thin p-6">
+		<div className="min-h-screen bg-[oklch(0.12_0.02_250)] overflow-y-auto scrollbar-thin p-6 py-12">
 			<div className="max-w-3xl mx-auto space-y-6">
+				<Link
+					href="/"
+					className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-white transition-colors"
+				>
+					&larr; Back to Home
+				</Link>
+
 				{/* Header */}
 				<div>
 					<h1 className="text-3xl font-bold text-white mb-2">

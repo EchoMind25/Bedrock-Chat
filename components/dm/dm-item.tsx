@@ -127,13 +127,11 @@ export function DMItem({ dm, isActive }: DMItemProps) {
 				onClick={(e) => {
 					e.stopPropagation();
 					// TODO: Implement close DM functionality
-					console.log("Close DM:", dm.id);
 				}}
 				onKeyDown={(e) => {
 					if (e.key === "Enter" || e.key === " ") {
 						e.preventDefault();
 						e.stopPropagation();
-						console.log("Close DM:", dm.id);
 					}
 				}}
 			>

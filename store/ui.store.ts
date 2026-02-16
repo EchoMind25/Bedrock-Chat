@@ -28,7 +28,14 @@ interface UIState {
 	portalSourceColor: string | null;
 	portalTargetColor: string | null;
 
+	// Settings panel
+	isSettingsOpen: boolean;
+	settingsTab: string;
+
 	// Actions
+	openSettings: (tab?: string) => void;
+	closeSettings: () => void;
+	setSettingsTab: (tab: string) => void;
 	toggleServerList: () => void;
 	toggleChannelList: () => void;
 	toggleMemberList: () => void;
@@ -66,8 +73,17 @@ export const useUIStore = create<UIState>()(
 				portalTargetServerId: null,
 				portalSourceColor: null,
 				portalTargetColor: null,
+				isSettingsOpen: false,
+				settingsTab: "profile",
 
 				// Actions
+				openSettings: (tab = "profile") =>
+					set({ isSettingsOpen: true, settingsTab: tab }),
+
+				closeSettings: () => set({ isSettingsOpen: false }),
+
+				setSettingsTab: (tab) => set({ settingsTab: tab }),
+
 				toggleServerList: () =>
 					set((state) => ({
 						isServerListCollapsed: !state.isServerListCollapsed,
@@ -131,6 +147,7 @@ export const useUIStore = create<UIState>()(
 					isServerListCollapsed: state.isServerListCollapsed,
 					isChannelListCollapsed: state.isChannelListCollapsed,
 					isMemberListVisible: state.isMemberListVisible,
+					settingsTab: state.settingsTab,
 				}),
 			}
 		),

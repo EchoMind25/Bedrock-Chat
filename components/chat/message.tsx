@@ -6,11 +6,13 @@ import { Avatar } from '@/components/ui/avatar/avatar';
 import type { AvatarStatus } from '@/components/ui/avatar/avatar';
 import { ReactionBar } from './reaction-bar';
 import { EmojiPicker } from './emoji-picker';
+import { ReportDialog } from './report-dialog';
 import type { Message } from '@/lib/types/message';
 import { parseMarkdown, renderMarkdown } from '@/lib/utils/markdown';
 import { useMessageStore } from '@/store/message.store';
 import { usePresenceStore } from '@/store/presence.store';
 import { useAuthStore } from '@/store/auth.store';
+import { useServerStore } from '@/store/server.store';
 
 interface MessageProps {
 	message: Message;
@@ -23,10 +25,12 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 	const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
 	const [isEditing, setIsEditing] = useState(false);
 	const [editContent, setEditContent] = useState(message.content);
+	const [isReportOpen, setIsReportOpen] = useState(false);
 	const addReaction = useMessageStore((state) => state.addReaction);
 	const editMessage = useMessageStore((state) => state.editMessage);
 	const deleteMessage = useMessageStore((state) => state.deleteMessage);
 	const currentUser = useAuthStore(state => state.user);
+	const currentServerId = useServerStore((state) => state.currentServerId);
 
 	// Presence-aware status: only re-renders when THIS author's status changes
 	const authorPresenceStatus = usePresenceStore(
@@ -196,17 +200,69 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 							{/* Attachments */}
 							{message.attachments.length > 0 && (
 								<div className="mt-2 space-y-2">
-									{message.attachments.map((attachment) => (
-										<div key={attachment.id} className="max-w-md">
-											<img
-												src={attachment.url}
-												alt={attachment.filename}
-												className="rounded-lg border border-white/10 max-h-80 object-contain"
-												loading="lazy"
-											/>
-											<div className="text-xs text-white/60 mt-1">{attachment.filename}</div>
-										</div>
-									))}
+									{message.attachments.map((attachment) => {
+										const isImage = attachment.contentType?.startsWith('image/');
+										const isVideo = attachment.contentType?.startsWith('video/');
+
+										if (isImage) {
+											return (
+												<div key={attachment.id} className="max-w-md">
+													<img
+														src={attachment.url}
+														alt={attachment.filename}
+														className="rounded-lg border border-white/10 max-h-80 object-contain"
+														loading="lazy"
+													/>
+													<div className="text-xs text-white/60 mt-1">{attachment.filename}</div>
+												</div>
+											);
+										}
+
+										if (isVideo) {
+											return (
+												<div key={attachment.id} className="max-w-md">
+													<video
+														src={attachment.url}
+														controls
+														className="rounded-lg border border-white/10 max-h-80"
+														preload="metadata"
+													/>
+													<div className="text-xs text-white/60 mt-1">{attachment.filename}</div>
+												</div>
+											);
+										}
+
+										// PDF, text, or other document
+										return (
+											<a
+												key={attachment.id}
+												href={attachment.url}
+												target="_blank"
+												rel="noopener noreferrer"
+												className="flex items-center gap-3 p-3 rounded-lg max-w-sm hover:brightness-110 transition-all"
+												style={{
+													backgroundColor: 'oklch(0.15 0.02 250 / 0.6)',
+													border: '1px solid oklch(0.25 0.02 285 / 0.4)',
+												}}
+											>
+												<svg className="w-8 h-8 text-white/50 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+														d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+												</svg>
+												<div className="min-w-0">
+													<div className="text-sm text-[oklch(0.7_0.15_250)] truncate">{attachment.filename}</div>
+													<div className="text-xs text-white/40">
+														{attachment.size < 1024 * 1024
+															? `${(attachment.size / 1024).toFixed(1)} KB`
+															: `${(attachment.size / (1024 * 1024)).toFixed(1)} MB`}
+													</div>
+												</div>
+												<svg className="w-4 h-4 text-white/40 shrink-0 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+													<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+												</svg>
+											</a>
+										);
+									})}
 								</div>
 							)}
 
@@ -236,6 +292,17 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
 							</svg>
 						</button>
+						{!isOwnMessage && (
+							<button
+								onClick={() => setIsReportOpen(true)}
+								className="p-2 rounded-lg bg-[oklch(0.2_0.02_250)] hover:bg-[oklch(0.3_0.05_0)] transition-colors"
+								title="Report message"
+							>
+								<svg className="w-5 h-5 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2z" />
+								</svg>
+							</button>
+						)}
 						{isOwnMessage && (
 							<>
 								<button
@@ -271,6 +338,19 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 						onSelect={handleAddReaction}
 					/>
 				</div>
+			)}
+
+			{/* Report dialog */}
+			{isReportOpen && currentServerId && (
+				<ReportDialog
+					messageId={message.id}
+					channelId={channelId}
+					serverId={currentServerId}
+					messageContent={message.content}
+					messageAuthorId={message.author.id}
+					isOpen={isReportOpen}
+					onClose={() => setIsReportOpen(false)}
+				/>
 			)}
 		</motion.div>
 	);

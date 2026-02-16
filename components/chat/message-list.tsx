@@ -31,11 +31,9 @@ export function MessageList({ channelId }: MessageListProps) {
 	useEffect(() => {
 		// Prevent multiple initializations for the same channel
 		if (initializedRef.current.has(channelId)) {
-			console.log('[MessageList] Already initialized channel:', channelId);
 			return;
 		}
 
-		console.log('[MessageList] Initializing channel:', channelId);
 		initializedRef.current.add(channelId);
 
 		// Call store methods directly to avoid unstable references
@@ -44,7 +42,6 @@ export function MessageList({ channelId }: MessageListProps) {
 
 		// Cleanup subscription when channel changes or component unmounts
 		return () => {
-			console.log('[MessageList] Cleaning up channel:', channelId);
 			initializedRef.current.delete(channelId);
 			useMessageStore.getState().unsubscribeFromChannel(channelId);
 		};

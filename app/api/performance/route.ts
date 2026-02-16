@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/utils/rate-limiter";
 
 /**
  * Privacy-first performance telemetry endpoint.
@@ -44,7 +45,17 @@ const telemetryBuffer: Array<{
 const MAX_BUFFER_SIZE = 1000;
 const RETENTION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+	const ip = request.headers.get("x-forwarded-for") || "unknown";
+	const { allowed, retryAfterMs } = checkRateLimit(`performance:${ip}`, 30, 60_000);
+
+	if (!allowed) {
+		return NextResponse.json(
+			{ error: "Too many requests" },
+			{ status: 429, headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) } },
+		);
+	}
+
 	try {
 		const data: TelemetryPayload = await request.json();
 

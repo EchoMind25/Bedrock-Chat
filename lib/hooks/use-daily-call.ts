@@ -21,14 +21,6 @@ const BASE_BACKOFF_MS = 1000;
 const JOIN_TIMEOUT_MS = 10000;
 const MAX_TOTAL_RETRIES = 5; // Global limit across all reconnect cycles
 
-// Module initialization log
-console.log('✅ [use-daily-call] Module loaded successfully', {
-  timestamp: new Date().toISOString(),
-  maxReconnectAttempts: MAX_RECONNECT_ATTEMPTS,
-  maxTotalRetries: MAX_TOTAL_RETRIES,
-  joinTimeout: JOIN_TIMEOUT_MS,
-});
-
 function mapDailyParticipant(p: DailyParticipant): VoiceParticipant {
   return {
     sessionId: p.session_id,
@@ -75,7 +67,6 @@ export function useDailyCall(channelId: string | null, serverId: string | null) 
   useEffect(() => {
     shouldReconnectRef.current = true;
     totalRetriesRef.current = 0;
-    console.log('🔄 [use-daily-call] Channel changed, reset retry counter');
   }, [channelId]);
 
   // Safely destroy the call object - idempotent, never throws
@@ -110,11 +101,6 @@ export function useDailyCall(channelId: string | null, serverId: string | null) 
   const join = useCallback(async () => {
     const currentChannelId = channelIdRef.current;
     const currentServerId = serverIdRef.current;
-    console.log('🟢 [use-daily-call] Starting join process for channel:', currentChannelId, {
-      serverId: currentServerId,
-      totalRetries: totalRetriesRef.current,
-      maxRetries: MAX_TOTAL_RETRIES,
-    });
 
     if (!currentChannelId) {
       console.warn("[use-daily-call] Cannot join - no channel ID");
@@ -152,7 +138,6 @@ export function useDailyCall(channelId: string | null, serverId: string | null) 
     store.setConnectionStatus("connecting");
     store.setError(null);
     destroyedRef.current = false;
-    console.log('🟢 [use-daily-call] Store reset, status set to connecting');
 
     try {
       // Race room creation against timeout and abort
@@ -174,14 +159,6 @@ export function useDailyCall(channelId: string | null, serverId: string | null) 
 
       const { url: roomUrl, token: meetingToken } = roomResponse;
 
-      console.log('✅ Room response received:', {
-        url: roomUrl,
-        hasToken: !!meetingToken,
-        isString: typeof roomUrl === 'string',
-        length: roomUrl?.length,
-        startsWithHttp: roomUrl?.startsWith('http'),
-      });
-
       if (!roomUrl || typeof roomUrl !== 'string') {
         throw new Error('Invalid room URL received from server');
       }
@@ -194,17 +171,7 @@ export function useDailyCall(channelId: string | null, serverId: string | null) 
       store.setMeetingToken(meetingToken || null);
 
       // Lazy-load and create call object
-      console.log('🔵 Creating Daily.co call object...');
       const call = await createDailyCall();
-      console.log('✅ Daily.co call object created:', {
-        callObjectType: typeof call,
-        hasMethods: {
-          join: typeof call.join === 'function',
-          leave: typeof call.leave === 'function',
-          on: typeof call.on === 'function',
-          destroy: typeof call.destroy === 'function',
-        }
-      });
 
       if (signal.aborted) {
         try { call.destroy(); } catch { /* ignore */ }
@@ -213,12 +180,9 @@ export function useDailyCall(channelId: string | null, serverId: string | null) 
 
       callRef.current = call;
       setCurrentDailyCall(call); // Store in singleton for component access
-      console.log('🔵 Setting up event handlers...');
 
       // Set up event handlers before joining
       call.on("joined-meeting", async (event) => {
-        console.log('🎉 Joined Daily.co meeting!', event);
-
         if (!event) return;
         const store = useVoiceStore.getState();
         store.setConnectionStatus("connected");
@@ -405,13 +369,6 @@ export function useDailyCall(channelId: string | null, serverId: string | null) 
       });
 
       const userName = user?.displayName || user?.username || "User";
-      console.log('🔵 Attempting to join Daily.co room...', {
-        url: roomUrl,
-        userName,
-        hasToken: !!meetingToken,
-        timeout: JOIN_TIMEOUT_MS,
-        callState: call.meetingState?.(),
-      });
 
       // Race join against timeout
       try {
@@ -467,11 +424,6 @@ export function useDailyCall(channelId: string | null, serverId: string | null) 
           }),
         ]);
 
-        console.log('✅ Successfully joined Daily.co room!', {
-          joinResult,
-          callState: call.meetingState?.(),
-          participants: call.participants?.(),
-        });
       } catch (joinError) {
         console.error('❌ Daily.co join() call failed:', {
           error: joinError,
@@ -485,7 +437,6 @@ export function useDailyCall(channelId: string | null, serverId: string | null) 
       }
     } catch (err) {
       if (signal.aborted) {
-        console.log('🟡 [use-daily-call] Join cancelled by user');
         return; // User cancelled - don't show error
       }
 

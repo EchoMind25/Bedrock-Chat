@@ -1,8 +1,15 @@
 import { create } from 'zustand';
 import { conditionalDevtools } from '@/lib/utils/devtools-config';
-import type { Message } from '@/lib/types/message';
+import type { Message, Attachment } from '@/lib/types/message';
 import { useAuthStore } from './auth.store';
 import { createClient } from '@/lib/supabase/client';
+
+interface AttachmentInput {
+  url: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+}
 
 interface MessageState {
   messages: Record<string, Message[]>; // channelId -> messages
@@ -14,11 +21,24 @@ interface MessageState {
   loadMessages: (channelId: string) => Promise<void>;
   subscribeToChannel: (channelId: string) => void;
   unsubscribeFromChannel: (channelId: string) => void;
-  sendMessage: (channelId: string, content: string) => void;
+  sendMessage: (channelId: string, content: string, attachment?: AttachmentInput) => void;
   addReaction: (channelId: string, messageId: string, emoji: string) => void;
   removeReaction: (channelId: string, messageId: string, emoji: string) => void;
   editMessage: (channelId: string, messageId: string, content: string) => void;
   deleteMessage: (channelId: string, messageId: string) => void;
+}
+
+function mapAttachments(rows: Record<string, unknown>[]): Attachment[] {
+  if (!Array.isArray(rows)) return [];
+  return rows.map((row) => ({
+    id: row.id as string,
+    filename: row.filename as string,
+    url: row.file_url as string,
+    contentType: row.mime_type as string,
+    size: row.file_size as number,
+    width: (row.width as number) ?? undefined,
+    height: (row.height as number) ?? undefined,
+  }));
 }
 
 export const useMessageStore = create<MessageState>()(
@@ -32,11 +52,9 @@ export const useMessageStore = create<MessageState>()(
       subscribeToChannel: (channelId) => {
         // Don't subscribe twice
         if (get().subscriptions[channelId]) {
-          console.log('[MessageStore] Already subscribed to channel:', channelId);
           return;
         }
 
-        console.log('[MessageStore] Subscribing to channel:', channelId);
         const supabase = createClient();
         const channel = supabase
           .channel(`messages:${channelId}`)
@@ -49,12 +67,13 @@ export const useMessageStore = create<MessageState>()(
               filter: `channel_id=eq.${channelId}`,
             },
             async (payload) => {
-              // Fetch full message data with user profile
+              // Fetch full message data with user profile and attachments
               const { data: messageData } = await supabase
                 .from('messages')
                 .select(`
                   *,
-                  user:profiles(id, username, display_name, avatar_url)
+                  user:profiles(id, username, display_name, avatar_url),
+                  attachments:message_attachments(*)
                 `)
                 .eq('id', payload.new.id)
                 .single();
@@ -73,7 +92,7 @@ export const useMessageStore = create<MessageState>()(
                 },
                 timestamp: new Date(messageData.created_at as string),
                 reactions: [],
-                attachments: [],
+                attachments: mapAttachments(messageData.attachments as Record<string, unknown>[]),
                 embeds: [],
                 isPinned: messageData.is_pinned as boolean,
                 type: (messageData.type as Message['type']) || 'default',
@@ -161,15 +180,12 @@ export const useMessageStore = create<MessageState>()(
         // Check if already loading or already loaded (allow retry on error)
         const state = get();
         if (state.messages[channelId] !== undefined && !state.loadErrors[channelId]) {
-          console.log('[MessageStore] Messages already loaded for channel:', channelId);
           return;
         }
         if (state.loadingChannels[channelId]) {
-          console.log('[MessageStore] Already loading messages for channel:', channelId);
           return;
         }
 
-        console.log('[MessageStore] Loading messages for channel:', channelId);
 
         // Mark this channel as loading (per-channel, not global)
         set((prev) => ({
@@ -212,7 +228,7 @@ export const useMessageStore = create<MessageState>()(
             timestamp: new Date(msg.created_at as string),
             editedAt: msg.edited_at ? new Date(msg.edited_at as string) : undefined,
             reactions: [],
-            attachments: [],
+            attachments: mapAttachments(msg.attachments as Record<string, unknown>[]),
             embeds: [],
             isPinned: msg.is_pinned as boolean,
             type: (msg.type as Message['type']) || 'default',
@@ -233,18 +249,16 @@ export const useMessageStore = create<MessageState>()(
         }
       },
 
-      sendMessage: async (channelId, content) => {
+      sendMessage: async (channelId, content, attachment) => {
         const user = useAuthStore.getState().user;
         if (!user) {
           console.error('[MessageStore] No user found');
           return;
         }
-        if (!content.trim()) {
+        if (!content.trim() && !attachment) {
           console.warn('[MessageStore] Empty message content');
           return;
         }
-
-        console.log('[MessageStore] Sending message:', { channelId, content: content.trim(), userId: user.id });
 
         try {
           const supabase = createClient();
@@ -259,7 +273,33 @@ export const useMessageStore = create<MessageState>()(
             throw error;
           }
 
-          console.log('[MessageStore] Message inserted into DB:', data);
+          // Insert attachment record if present
+          let attachments: Attachment[] = [];
+          if (attachment) {
+            const { data: attachmentData, error: attachmentError } = await supabase
+              .from('message_attachments')
+              .insert({
+                message_id: data.id,
+                filename: attachment.fileName,
+                file_url: attachment.url,
+                file_size: attachment.fileSize,
+                mime_type: attachment.mimeType,
+              })
+              .select()
+              .single();
+
+            if (attachmentError) {
+              console.error('[MessageStore] Attachment insert error:', attachmentError);
+            } else if (attachmentData) {
+              attachments = [{
+                id: attachmentData.id,
+                filename: attachment.fileName,
+                url: attachment.url,
+                contentType: attachment.mimeType,
+                size: attachment.fileSize,
+              }];
+            }
+          }
 
           const newMessage: Message = {
             id: data.id,
@@ -273,20 +313,18 @@ export const useMessageStore = create<MessageState>()(
             },
             timestamp: new Date(),
             reactions: [],
-            attachments: [],
+            attachments,
             embeds: [],
             isPinned: false,
             type: 'default',
           };
 
-          console.log('[MessageStore] Adding message optimistically to state');
           set((state) => ({
             messages: {
               ...state.messages,
               [channelId]: [...(state.messages[channelId] || []), newMessage],
             },
           }));
-          console.log('[MessageStore] Message added to state successfully');
         } catch (err) {
           console.error('[MessageStore] Error sending message:', err);
         }

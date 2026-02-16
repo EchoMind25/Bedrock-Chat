@@ -73,7 +73,7 @@ export function ServerList() {
 							<button
 								type="button"
 								onClick={() => setMobileServerListOpen(false)}
-								className="w-12 h-12 flex items-center justify-center text-white/60 hover:text-white/80 hover:bg-white/5 rounded-lg transition-colors touch-manipulation"
+								className="w-12 h-12 flex items-center justify-center text-white/60 hover:text-white/80 hover:bg-white/5 rounded-lg transition-colors touch-manipulation focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
 								aria-label="Close server list"
 							>
 								<X className="w-6 h-6" />
@@ -137,7 +137,7 @@ export function ServerList() {
 							{/* Add Server Button */}
 							<motion.button
 								type="button"
-								className="w-12 h-12 rounded-full bg-[oklch(0.15_0.02_250)] hover:bg-primary hover:rounded-2xl transition-all duration-200 flex items-center justify-center text-primary hover:text-white group mt-2 touch-manipulation"
+								className="w-12 h-12 rounded-full bg-[oklch(0.15_0.02_250)] hover:bg-primary hover:rounded-2xl transition-all duration-200 flex items-center justify-center text-primary hover:text-white group mt-2 touch-manipulation focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
 								whileTap={{ scale: 0.95 }}
 								onClick={() => {
 									openAddServer();
@@ -222,7 +222,7 @@ export function ServerList() {
 			{/* Add Server Button - click-only, no hover tooltip */}
 			<motion.button
 				type="button"
-				className="w-12 h-12 rounded-full bg-[oklch(0.15_0.02_250)] hover:bg-primary hover:rounded-2xl transition-all duration-200 flex items-center justify-center text-primary hover:text-white group mt-2"
+				className="w-12 h-12 rounded-full bg-[oklch(0.15_0.02_250)] hover:bg-primary hover:rounded-2xl transition-all duration-200 flex items-center justify-center text-primary hover:text-white group mt-2 focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
 				whileHover={{ scale: 1.05 }}
 				whileTap={{ scale: 0.95 }}
 				onClick={() => openAddServer()}

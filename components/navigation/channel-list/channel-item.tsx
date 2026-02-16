@@ -163,7 +163,7 @@ export function ChannelItem({ channel, isActive }: ChannelItemProps) {
 						role="button"
 						tabIndex={0}
 						aria-label={isFavorite ? `Remove ${channel.name} from favorites` : `Add ${channel.name} to favorites`}
-						className="p-2 md:p-1 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center hover:bg-white/10 rounded-sm transition-colors cursor-pointer md:opacity-0 md:group-hover:opacity-100 touch-manipulation"
+						className="p-2 md:p-1 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center hover:bg-white/10 rounded-sm transition-colors cursor-pointer md:opacity-0 md:group-hover:opacity-100 touch-manipulation focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
 						onClick={handleToggleFavorite}
 						onKeyDown={(e) => {
 							if (e.key === "Enter" || e.key === " ") {
@@ -188,7 +188,7 @@ export function ChannelItem({ channel, isActive }: ChannelItemProps) {
 						role="button"
 						tabIndex={0}
 						aria-label={`Settings for ${channel.name}`}
-						className="p-2 md:p-1 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center hover:bg-white/10 rounded-sm transition-colors cursor-pointer md:opacity-0 md:group-hover:opacity-100 touch-manipulation"
+						className="p-2 md:p-1 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center hover:bg-white/10 rounded-sm transition-colors cursor-pointer md:opacity-0 md:group-hover:opacity-100 touch-manipulation focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
 						onClick={(e) => {
 							e.stopPropagation();
 							openChannelSettings(channel.id);

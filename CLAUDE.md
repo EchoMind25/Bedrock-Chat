@@ -678,16 +678,26 @@ When uncertain about:
 
 ## Resources
 
-- **PRD:** `/workspaces/Bedrock-Chat/Bedrock_Chat_Frontend_PRD.md`
-- **Components Guide:** `/workspaces/Bedrock-Chat/COMPONENTS.md`
+- **Developer Reference:** `/workspaces/Bedrock-Chat/BEDROCK-REFERENCE.md`
+- **Roadmap:** `/workspaces/Bedrock-Chat/ROADMAP.md`
+- **Security & Compliance:** `/workspaces/Bedrock-Chat/SECURITY-AND-COMPLIANCE.md`
 - **Layout Summary:** `/workspaces/Bedrock-Chat/MAIN_LAYOUT_SUMMARY.md`
-- **Dev Mode Guide:** `/workspaces/Bedrock-Chat/AUTH_DEV_MODE.md`
 
 ---
 
-**Last Updated:** 2026-02-14
-**Phase:** 3.1 In Progress - Chat System with Critical Bug Fixes
+**Last Updated:** 2026-02-16
+**Phase:** Beta Ready - Security Sprint Complete
 **Next:** Complete Message List + Real-time Features
+
+**Performance Audit (2026-02-16):**
+- All 14 performance audit issues resolved (PA-001 through PA-014)
+- Added focus-visible keyboard styles to all navigation interactive elements
+- Semantic `<nav>` wrappers on server list and channel list
+- Zustand selector patterns enforced across all stores
+- Service worker listener leak fixed with proper cleanup
+- Typing timeout accumulation fixed with timeout tracking map
+- OAuth button accessibility improved with aria-disabled/aria-label
+- faker moved to devDependencies
 
 **Recent Changes (2026-02-14):**
 - Migrated from Tailwind CSS 3.4 to 4.x (CSS-first @theme config)

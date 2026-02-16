@@ -12,9 +12,9 @@ const footerLinks = {
   ],
   legal: [
     { label: "Privacy Policy", href: "/privacy-policy" },
-    { label: "Terms of Service", href: "#" },
-    { label: "Cookie Policy", href: "#" },
-    { label: "GDPR", href: "#" },
+    { label: "Terms of Service", href: "/terms-of-service" },
+    { label: "Cookie Policy", href: "/cookie-policy" },
+    { label: "GDPR", href: "/privacy-policy" },
     {
       label: "Do Not Sell or Share My Personal Information",
       href: "/privacy-settings?section=ccpa",

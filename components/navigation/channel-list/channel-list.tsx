@@ -208,7 +208,7 @@ export function ChannelList() {
 					<button
 						type="button"
 						onClick={() => setMobileChannelListOpen(false)}
-						className="p-2 -ml-2 text-white/60 hover:text-white/80 hover:bg-white/5 rounded-lg transition-colors touch-manipulation"
+						className="p-2 -ml-2 text-white/60 hover:text-white/80 hover:bg-white/5 rounded-lg transition-colors touch-manipulation focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
 						aria-label="Close channel list"
 					>
 						<X className="w-5 h-5" />
@@ -221,7 +221,7 @@ export function ChannelList() {
 					<button
 						type="button"
 						onClick={() => openServerSettings()}
-						className="p-2 rounded-sm hover:bg-white/10 transition-colors touch-manipulation"
+						className="p-2 rounded-sm hover:bg-white/10 transition-colors touch-manipulation focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
 						aria-label="Server Settings"
 					>
 						<Settings className="w-5 h-5 text-white/60 hover:text-white/80" />
@@ -238,7 +238,7 @@ export function ChannelList() {
 							<button
 								type="button"
 								onClick={() => setIsCreatingCategory(true)}
-								className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-white/60 hover:text-white/80 hover:bg-white/5 rounded-sm transition-colors group"
+								className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-white/60 hover:text-white/80 hover:bg-white/5 rounded-sm transition-colors group focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
 								aria-label="Create Category"
 							>
 								<Plus className="w-3.5 h-3.5" />

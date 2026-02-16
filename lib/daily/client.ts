@@ -21,15 +21,11 @@ export async function createDailyRoom(
   channelId: string,
   serverId: string
 ): Promise<DailyRoomResponse> {
-  console.log('🔵 Creating Daily.co room for channel:', channelId, 'in server:', serverId);
-
   const response = await fetch("/api/daily/rooms", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ channelId, serverId }),
   });
-
-  console.log('🔵 Daily.co API response status:', response.status, response.statusText);
 
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
@@ -44,22 +40,12 @@ export async function createDailyRoom(
   }
 
   const { url, token } = await response.json();
-  console.log('✅ Daily.co room created successfully:', {
-    url,
-    hasToken: !!token,
-    tokenPreview: token ? token.substring(0, 20) + '...' : 'none',
-  });
   return { url, token };
 }
 
 export async function createDailyCall(): Promise<DailyCall> {
   try {
-    console.log('🔵 [createDailyCall] Importing Daily.co SDK...');
     const DailyModule = await import("@daily-co/daily-js");
-    console.log('✅ [createDailyCall] Daily.co SDK imported:', {
-      hasDefault: !!DailyModule.default,
-      moduleKeys: Object.keys(DailyModule),
-    });
 
     const Daily = DailyModule.default;
 
@@ -71,14 +57,7 @@ export async function createDailyCall(): Promise<DailyCall> {
       throw new Error('Daily.createCallObject is not a function');
     }
 
-    console.log('🔵 [createDailyCall] Creating call object...');
     const callObject = Daily.createCallObject();
-    console.log('✅ [createDailyCall] Call object created:', {
-      hasJoin: typeof callObject.join === 'function',
-      hasLeave: typeof callObject.leave === 'function',
-      hasOn: typeof callObject.on === 'function',
-    });
-
     return callObject;
   } catch (error) {
     console.error('❌ [createDailyCall] Failed to create Daily.co call object:', {

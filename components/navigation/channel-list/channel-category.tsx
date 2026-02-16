@@ -74,7 +74,7 @@ export function ChannelCategory({
 				<motion.button
 					type="button"
 					onClick={onToggle}
-					className="flex items-center gap-1 flex-1 min-w-0"
+					className="flex items-center gap-1 flex-1 min-w-0 focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2 rounded-sm"
 					variants={{
 						hidden: { opacity: 0, x: -10 },
 						visible: {
@@ -117,7 +117,7 @@ export function ChannelCategory({
 						e.stopPropagation();
 						openCreateChannel(category.id);
 					}}
-					className="p-0.5 hover:bg-white/10 rounded-sm transition-colors"
+					className="p-0.5 hover:bg-white/10 rounded-sm transition-colors focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
 					aria-label="Create Channel"
 				>
 					<Plus className="w-3.5 h-3.5" />
@@ -130,7 +130,7 @@ export function ChannelCategory({
 						e.stopPropagation();
 						setIsEditing(true);
 					}}
-					className="p-0.5 hover:bg-white/10 rounded-sm transition-colors"
+					className="p-0.5 hover:bg-white/10 rounded-sm transition-colors focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
 					aria-label="Edit Category"
 				>
 					<Edit className="w-3.5 h-3.5" />
@@ -143,7 +143,7 @@ export function ChannelCategory({
 						e.stopPropagation();
 						handleDelete();
 					}}
-					className="p-0.5 hover:bg-red-500/20 text-red-400 rounded-sm transition-colors"
+					className="p-0.5 hover:bg-red-500/20 text-red-400 rounded-sm transition-colors focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
 					aria-label="Delete Category"
 				>
 					<Trash2 className="w-3.5 h-3.5" />

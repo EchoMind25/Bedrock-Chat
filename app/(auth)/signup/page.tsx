@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuthStore } from "@/store/auth.store";
@@ -8,6 +8,8 @@ import type { SignupData } from "@/store/auth.store";
 import { Glass } from "@/components/ui/glass/glass";
 import { Button } from "@/components/ui/button/button";
 import { Input } from "@/components/ui/input/input";
+import { PasswordStrength } from "@/components/ui/password-strength/password-strength";
+import { validatePassword } from "@/lib/utils/password-validation";
 import Link from "next/link";
 
 type Step = 1 | 2 | 3;
@@ -28,6 +30,11 @@ export default function SignupPage() {
 	const [resendCooldown, setResendCooldown] = useState(0);
 	const [emailSent, setEmailSent] = useState(false);
 
+	const passwordValidation = useMemo(
+		() => validatePassword(formData.password || ""),
+		[formData.password],
+	);
+
 	const handleAccountTypeSelect = (type: "standard" | "parent") => {
 		setFormData({ ...formData, accountType: type });
 		setStep(2);
@@ -45,7 +52,8 @@ export default function SignupPage() {
 			return;
 		}
 
-		if (formData.password.length < 6) {
+		const passwordValidation = validatePassword(formData.password);
+		if (!passwordValidation.isValid) {
 			return;
 		}
 
@@ -236,8 +244,11 @@ export default function SignupPage() {
 										required
 										autoComplete="new-password"
 										id="password"
-										helperText="At least 6 characters"
+										helperText="At least 8 characters with uppercase, lowercase, and a number"
 									/>
+									{formData.password && (
+										<PasswordStrength validation={passwordValidation} />
+									)}
 
 									<Input
 										type="password"

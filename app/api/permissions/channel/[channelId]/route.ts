@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { checkRateLimit } from "@/lib/utils/rate-limiter";
+
+function rateLimitResponse(retryAfterMs: number) {
+  return NextResponse.json(
+    { error: "Too many requests" },
+    { status: 429, headers: { "Retry-After": String(Math.ceil(retryAfterMs / 1000)) } }
+  );
+}
 
 // GET /api/permissions/channel/[channelId]
 // Fetch all permission overrides for a channel
@@ -7,6 +15,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ channelId: string }> }
 ) {
+  const ip = request.headers.get("x-forwarded-for") || "unknown";
+  const { allowed, retryAfterMs } = checkRateLimit(`channel-perms:${ip}`, 30, 60_000);
+  if (!allowed) return rateLimitResponse(retryAfterMs);
+
   try {
     const { channelId } = await params;
     const supabase = await createClient();
@@ -48,6 +60,10 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ channelId: string }> }
 ) {
+  const ip = request.headers.get("x-forwarded-for") || "unknown";
+  const { allowed, retryAfterMs } = checkRateLimit(`channel-perms:${ip}`, 30, 60_000);
+  if (!allowed) return rateLimitResponse(retryAfterMs);
+
   try {
     const { channelId } = await params;
     const supabase = await createClient();
@@ -140,6 +156,10 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ channelId: string }> }
 ) {
+  const ip = request.headers.get("x-forwarded-for") || "unknown";
+  const { allowed, retryAfterMs } = checkRateLimit(`channel-perms:${ip}`, 30, 60_000);
+  if (!allowed) return rateLimitResponse(retryAfterMs);
+
   try {
     const { channelId } = await params;
     const { searchParams } = new URL(request.url);

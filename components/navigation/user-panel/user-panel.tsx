@@ -7,22 +7,21 @@ import { useAuthStore } from "@/store/auth.store";
 import type { UserStatus } from "@/store/auth.store";
 import { usePresenceStore } from "@/store/presence.store";
 import { useFamilyStore } from "@/store/family.store";
+import { useUIStore } from "@/store/ui.store";
 import { performFullLogout } from "@/lib/utils/logout";
 import { Avatar } from "@/components/ui/avatar/avatar";
 import type { AvatarStatus } from "@/components/ui/avatar/avatar";
 import { Tooltip } from "@/components/ui/tooltip/tooltip";
-import { ProfileModal } from "@/components/profile/profile-modal";
-import { AppearanceModal } from "@/components/settings/appearance-modal";
+import { SettingsModal } from "@/components/settings/settings-modal";
 import { motion, AnimatePresence } from "motion/react";
 
 export function UserPanel() {
 	const router = useRouter();
 	const user = useAuthStore((s) => s.user);
-	const logout = useAuthStore((s) => s.logout);
 	const updateUser = useAuthStore((s) => s.updateUser);
+	const openSettings = useUIStore((s) => s.openSettings);
+	const setPresenceStatus = usePresenceStore((s) => s.setStatus);
 	const [showSettings, setShowSettings] = useState(false);
-	const [showProfile, setShowProfile] = useState(false);
-	const [showAppearance, setShowAppearance] = useState(false);
 	const [isMuted, setIsMuted] = useState(false);
 	const [isDeafened, setIsDeafened] = useState(false);
 	const settingsRef = useRef<HTMLDivElement>(null);
@@ -53,11 +52,10 @@ export function UserPanel() {
 	}
 
 	const handleMuteToggle = () => {
-		setIsMuted(!isMuted);
-		if (isDeafened && !isMuted) {
-			// Can't unmute while deafened
-			return;
+		if (isDeafened && isMuted) {
+			return; // Can't unmute while deafened
 		}
+		setIsMuted(!isMuted);
 	};
 
 	const handleDeafenToggle = () => {
@@ -95,7 +93,7 @@ export function UserPanel() {
 
 	const handleSetStatus = (status: UserStatus) => {
 		updateUser({ status });
-		usePresenceStore.getState().setStatus(status);
+		setPresenceStatus(status);
 		setShowSettings(false);
 	};
 
@@ -112,9 +110,11 @@ export function UserPanel() {
 
 	return (
 		<div ref={panelRef} className="relative min-h-[52px] md:h-[52px] h-auto px-2 py-1 bg-[oklch(0.12_0.02_250)] border-t border-white/10 flex items-center gap-2">
-			{/* User Info - opens settings menu */}
+			{/* User Info - opens status popover */}
 			<button
 				type="button"
+				aria-expanded={showSettings}
+				aria-haspopup="menu"
 				className="flex items-center gap-2 flex-1 px-2 py-1 min-h-[44px] rounded-sm hover:bg-white/5 transition-colors group touch-manipulation"
 				onClick={() => {
 					computePopoverPosition();
@@ -193,17 +193,14 @@ export function UserPanel() {
 					</motion.button>
 				</Tooltip>
 
-				{/* Settings */}
+				{/* Settings - opens full settings modal */}
 				<Tooltip content="User Settings" position="top">
 					<motion.button
 						type="button"
 						className="min-w-[44px] min-h-[44px] w-11 h-11 md:w-8 md:h-8 rounded-sm hover:bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition-colors touch-manipulation"
 						whileHover={{ scale: 1.05, rotate: 90 }}
 						whileTap={{ scale: 0.95 }}
-						onClick={() => {
-							computePopoverPosition();
-							setShowSettings(!showSettings);
-						}}
+						onClick={() => openSettings()}
 					>
 						<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<title>Settings</title>
@@ -214,13 +211,10 @@ export function UserPanel() {
 				</Tooltip>
 			</div>
 
-			{/* Profile Modal */}
-			<ProfileModal isOpen={showProfile} onClose={() => setShowProfile(false)} />
+			{/* Settings Modal */}
+			<SettingsModal />
 
-			{/* Appearance Modal */}
-			<AppearanceModal isOpen={showAppearance} onClose={() => setShowAppearance(false)} />
-
-			{/* Settings Panel - rendered via portal to escape overflow clipping */}
+			{/* Status Quick-Switcher Popover - rendered via portal to escape overflow clipping */}
 			{mounted && createPortal(
 				<AnimatePresence>
 					{showSettings && (
@@ -239,7 +233,7 @@ export function UserPanel() {
 									className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded-sm transition-colors flex items-center gap-2"
 									onClick={() => {
 										setShowSettings(false);
-										setShowProfile(true);
+										openSettings("profile");
 									}}
 								>
 									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -270,20 +264,6 @@ export function UserPanel() {
 										)}
 									</button>
 								))}
-								<button
-									type="button"
-									className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded-sm transition-colors flex items-center gap-2"
-									onClick={() => {
-										setShowSettings(false);
-										setShowAppearance(true);
-									}}
-								>
-									<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<title>Appearance</title>
-										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-									</svg>
-									Appearance
-								</button>
 								<div className="h-px bg-white/10 my-1" />
 								<button
 									type="button"
