@@ -625,7 +625,8 @@ export const useAuthStore = create<AuthState>()(
 					const {
 						data: { subscription },
 					} = supabase.auth.onAuthStateChange(async (event, session) => {
-						if (event === "SIGNED_OUT" || !session) {
+						try {
+							if (event === "SIGNED_OUT" || !session) {
 							set({
 								user: null,
 								isAuthenticated: false,
@@ -633,7 +634,6 @@ export const useAuthStore = create<AuthState>()(
 							});
 						} else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
 							if (session.user) {
-								try {
 									const { data: profile } = await supabase
 										.from("profiles")
 										.select("*")
@@ -647,10 +647,10 @@ export const useAuthStore = create<AuthState>()(
 											isInitializing: false,
 										});
 									}
-								} catch {
-									// Profile fetch failed, keep current state
 								}
 							}
+						} catch {
+							// Auth state change failed (AbortError, network, etc.) — keep current state
 						}
 					});
 
