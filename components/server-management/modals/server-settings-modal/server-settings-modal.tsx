@@ -15,7 +15,7 @@ import { useServerManagementStore } from "../../../../store/server-management.st
 import { useServerStore } from "../../../../store/server.store";
 import { toast } from "../../../../lib/stores/toast-store";
 import { createClient } from "../../../../lib/supabase/client";
-import type { Server } from "../../../../lib/types/server";
+import type { Server, Channel } from "../../../../lib/types/server";
 import type { Role } from "../../../../lib/types/permissions";
 import type { AutoModSettings } from "../../../../lib/types/moderation";
 
@@ -70,6 +70,51 @@ export function ServerSettingsModal() {
           .eq("id", currentServer.id);
 
         if (error) throw error;
+      }
+
+      // Persist role changes to Supabase
+      if (editedServer.roles) {
+        const originalRoleIds = new Set((currentServer.roles || []).map((r) => r.id));
+        const editedRoleIds = new Set(editedServer.roles.map((r) => r.id));
+
+        // Delete removed roles
+        for (const originalRole of (currentServer.roles || [])) {
+          if (!editedRoleIds.has(originalRole.id)) {
+            await supabase.from("server_roles").delete().eq("id", originalRole.id);
+          }
+        }
+
+        // Upsert all current roles
+        for (const role of editedServer.roles) {
+          const isNew = !originalRoleIds.has(role.id) || role.id.includes("-role-");
+          const roleData = {
+            server_id: currentServer.id,
+            name: role.name,
+            color: role.color,
+            position: role.position,
+            permissions: role.permissions,
+            is_default: role.isDefault,
+          };
+
+          if (isNew && role.id.includes("-role-")) {
+            // New role — insert and get real ID
+            const { data: inserted, error: insertErr } = await supabase
+              .from("server_roles")
+              .insert(roleData)
+              .select("id")
+              .single();
+            if (insertErr) throw insertErr;
+            // Update the role ID to the real DB ID
+            role.id = inserted.id;
+          } else {
+            // Existing role — update
+            const { error: updateErr } = await supabase
+              .from("server_roles")
+              .update(roleData)
+              .eq("id", role.id);
+            if (updateErr) throw updateErr;
+          }
+        }
       }
 
       // Update server in store
@@ -132,13 +177,8 @@ export function ServerSettingsModal() {
     setHasChanges(true);
   };
 
-  const handleChannelReorder = (channelIds: string[]) => {
-    const channelsMap = new Map(currentServer?.channels.map((ch) => [ch.id, ch]));
-    const updatedChannels = channelIds.map((id, index) => {
-      const channel = channelsMap.get(id)!;
-      return { ...channel, position: index };
-    });
-    setEditedServer((prev) => ({ ...prev, channels: updatedChannels }));
+  const handleChannelReorder = (channels: Channel[]) => {
+    setEditedServer((prev) => ({ ...prev, channels }));
     setHasChanges(true);
   };
 
@@ -244,6 +284,7 @@ export function ServerSettingsModal() {
           )}
           {serverSettingsTab === "roles" && (
             <RolesTab
+              serverId={currentServer.id}
               roles={displayServer.roles || []}
               onRoleCreate={handleRoleCreate}
               onRoleUpdate={handleRoleUpdate}

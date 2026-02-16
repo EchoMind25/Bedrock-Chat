@@ -4,6 +4,7 @@ import type { Channel, VoiceUser } from "@/lib/types/server";
 import { useServerStore } from "@/store/server.store";
 import { useServerManagementStore } from "@/store/server-management.store";
 import { useFavoritesStore } from "@/store/favorites.store";
+import { useUIStore } from "@/store/ui.store";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils/cn";
@@ -98,6 +99,9 @@ export function ChannelItem({ channel, isActive }: ChannelItemProps) {
 				router.push(`/servers/${currentServerId}/${channel.id}`);
 			}
 		}
+
+		// Close mobile sidebars after navigation
+		useUIStore.getState().closeMobileSidebars();
 	};
 
 	const handleToggleFavorite = (e: React.MouseEvent) => {

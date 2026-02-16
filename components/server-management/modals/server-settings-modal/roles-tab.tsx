@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Plus, Trash2, GripVertical, Users, Shield, X, UserPlus } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "../../../ui/button/button";
@@ -10,6 +10,8 @@ import { ColorPicker } from "../../role-editor/color-picker";
 import { PermissionGrid } from "../../permission-grid/permission-grid";
 import { Avatar } from "../../../ui/avatar/avatar";
 import { cn } from "../../../../lib/utils/cn";
+import { useMemberStore } from "../../../../store/member.store";
+import type { MemberWithProfile } from "../../../../store/member.store";
 import type { Role } from "../../../../lib/types/permissions";
 import { Permission } from "../../../../lib/types/permissions";
 import {
@@ -30,18 +32,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-const MOCK_MEMBERS = [
-  { id: "user-1", username: "alex_dev", displayName: "Alex" },
-  { id: "user-2", username: "jordan_mod", displayName: "Jordan" },
-  { id: "user-3", username: "sam_creator", displayName: "Sam" },
-  { id: "user-4", username: "taylor_gamer", displayName: "Taylor" },
-  { id: "user-5", username: "casey_artist", displayName: "Casey" },
-  { id: "user-6", username: "riley_tech", displayName: "Riley" },
-  { id: "user-7", username: "morgan_music", displayName: "Morgan" },
-  { id: "user-8", username: "dakota_writer", displayName: "Dakota" },
-];
-
 interface RolesTabProps {
+  serverId: string;
   roles: Role[];
   onRoleCreate: (role: Omit<Role, "id">) => void;
   onRoleUpdate: (roleId: string, updates: Partial<Role>) => void;
@@ -118,6 +110,7 @@ function SortableRoleItem({
 }
 
 export function RolesTab({
+  serverId,
   roles,
   onRoleCreate,
   onRoleUpdate,
@@ -126,6 +119,17 @@ export function RolesTab({
 }: RolesTabProps) {
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+
+  // Real members from store
+  const members = useMemberStore((s) => s.membersByServer[serverId] ?? []);
+  const loadingMembers = useMemberStore((s) => s.loadingServers[serverId] ?? false);
+
+  useEffect(() => {
+    if (serverId) {
+      useMemberStore.getState().loadMembers(serverId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverId]);
 
   // New role form state
   const [newRoleName, setNewRoleName] = useState("");
@@ -141,6 +145,20 @@ export function RolesTab({
   const selectedRole = selectedRoleId
     ? roles.find((r) => r.id === selectedRoleId)
     : null;
+
+  // Members assigned to the selected role
+  const assignedMembers = useMemo(() => {
+    if (!selectedRole?.memberIds?.length) return [];
+    const idSet = new Set(selectedRole.memberIds);
+    return members.filter((m) => idSet.has(m.userId));
+  }, [selectedRole?.memberIds, members]);
+
+  // Members NOT assigned to the selected role (available to add)
+  const availableMembers = useMemo(() => {
+    if (!selectedRole) return [];
+    const idSet = new Set(selectedRole.memberIds || []);
+    return members.filter((m) => !idSet.has(m.userId));
+  }, [selectedRole, members]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -167,7 +185,7 @@ export function RolesTab({
     const maxPosition = Math.max(...roles.map((r) => r.position), 0);
 
     onRoleCreate({
-      serverId: roles[0]?.serverId || "",
+      serverId: roles[0]?.serverId || serverId,
       name: newRoleName,
       color: newRoleColor,
       permissions: newRolePermissions,
@@ -193,6 +211,24 @@ export function RolesTab({
       onRoleDelete(selectedRole.id);
       setSelectedRoleId(null);
     }
+  };
+
+  const handleAddMemberToRole = (member: MemberWithProfile) => {
+    if (!selectedRole) return;
+    const newMemberIds = [...(selectedRole.memberIds || []), member.userId];
+    onRoleUpdate(selectedRole.id, {
+      memberIds: newMemberIds,
+      memberCount: newMemberIds.length,
+    });
+  };
+
+  const handleRemoveMemberFromRole = (memberUserId: string) => {
+    if (!selectedRole) return;
+    const newMemberIds = (selectedRole.memberIds || []).filter((id) => id !== memberUserId);
+    onRoleUpdate(selectedRole.id, {
+      memberIds: newMemberIds,
+      memberCount: Math.max(0, newMemberIds.length),
+    });
   };
 
   return (
@@ -325,7 +361,7 @@ export function RolesTab({
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-slate-100">{selectedRole.name}</h3>
-                      <p className="text-xs text-slate-400">{selectedRole.memberCount} {selectedRole.memberCount === 1 ? "member" : "members"}</p>
+                      <p className="text-xs text-slate-400">{assignedMembers.length} {assignedMembers.length === 1 ? "member" : "members"}</p>
                     </div>
                   </div>
                   {!selectedRole.isDefault && (
@@ -378,72 +414,58 @@ export function RolesTab({
                   />
                 </div>
 
-                {/* Role Members */}
+                {/* Role Members — using real server members */}
                 {!selectedRole.isDefault && (
                   <div>
                     <h4 className="text-sm font-semibold text-slate-200 mb-3">
-                      Members ({selectedRole.memberIds?.length || 0})
+                      Members ({assignedMembers.length})
                     </h4>
 
-                    {/* Current members */}
-                    {(selectedRole.memberIds?.length ?? 0) > 0 && (
+                    {/* Current members assigned to this role */}
+                    {assignedMembers.length > 0 && (
                       <div className="space-y-2 mb-3">
-                        {(selectedRole.memberIds || []).map((memberId) => {
-                          const member = MOCK_MEMBERS.find((m) => m.id === memberId);
-                          if (!member) return null;
-                          return (
-                            <div
-                              key={member.id}
-                              className="flex items-center gap-3 p-2 rounded-lg bg-slate-800/30 border border-slate-700/30"
-                            >
-                              <Avatar
-                                fallback={member.displayName.slice(0, 2).toUpperCase()}
-                                size="sm"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm text-slate-100 truncate">{member.displayName}</p>
-                                <p className="text-xs text-slate-400">@{member.username}</p>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  onRoleUpdate(selectedRole.id, {
-                                    memberIds: (selectedRole.memberIds || []).filter((id) => id !== member.id),
-                                    memberCount: Math.max(0, (selectedRole.memberCount || 1) - 1),
-                                  })
-                                }
-                                className="p-1 rounded-sm hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
+                        {assignedMembers.map((member) => (
+                          <div
+                            key={member.id}
+                            className="flex items-center gap-3 p-2 rounded-lg bg-slate-800/30 border border-slate-700/30"
+                          >
+                            <Avatar
+                              src={member.avatar || undefined}
+                              fallback={member.displayName.slice(0, 2).toUpperCase()}
+                              size="sm"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-slate-100 truncate">{member.displayName}</p>
+                              <p className="text-xs text-slate-400">@{member.username}</p>
                             </div>
-                          );
-                        })}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveMemberFromRole(member.userId)}
+                              className="p-1 rounded-sm hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     )}
 
-                    {/* Add members */}
-                    {MOCK_MEMBERS.filter(
-                      (m) => !(selectedRole.memberIds || []).includes(m.id)
-                    ).length > 0 && (
+                    {/* Available members to add */}
+                    {loadingMembers ? (
+                      <div className="text-xs text-slate-500 py-2">Loading members...</div>
+                    ) : availableMembers.length > 0 ? (
                       <div className="space-y-2">
                         <p className="text-xs text-slate-400">Add Members</p>
                         <div className="grid grid-cols-2 gap-2">
-                          {MOCK_MEMBERS.filter(
-                            (m) => !(selectedRole.memberIds || []).includes(m.id)
-                          ).map((member) => (
+                          {availableMembers.map((member) => (
                             <button
                               key={member.id}
                               type="button"
-                              onClick={() =>
-                                onRoleUpdate(selectedRole.id, {
-                                  memberIds: [...(selectedRole.memberIds || []), member.id],
-                                  memberCount: (selectedRole.memberCount || 0) + 1,
-                                })
-                              }
+                              onClick={() => handleAddMemberToRole(member)}
                               className="flex items-center gap-2 p-2 rounded-lg border border-slate-700/30 hover:border-slate-600/40 hover:bg-slate-800/30 transition-all text-left"
                             >
                               <Avatar
+                                src={member.avatar || undefined}
                                 fallback={member.displayName.slice(0, 2).toUpperCase()}
                                 size="sm"
                               />
@@ -455,7 +477,9 @@ export function RolesTab({
                           ))}
                         </div>
                       </div>
-                    )}
+                    ) : members.length === 0 ? (
+                      <p className="text-xs text-slate-500 py-2">No members loaded yet</p>
+                    ) : null}
                   </div>
                 )}
 

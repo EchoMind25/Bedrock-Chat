@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, lazy, Suspense } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { motion, AnimatePresence } from "motion/react";
 import { useAuthStore } from "@/store/auth.store";
 import { useServerStore } from "@/store/server.store";
 import { useFriendsStore } from "@/store/friends.store";
@@ -24,6 +25,12 @@ import { PerformanceOverlay } from "@/components/performance/PerformanceOverlay"
 import { PerformanceDashboard } from "@/components/performance/PerformanceDashboard";
 import { logError } from "@/lib/utils/error-logger";
 
+const MemberListPanel = lazy(() =>
+	import("@/components/navigation/member-list/member-list-panel").then((m) => ({
+		default: m.MemberListPanel,
+	}))
+);
+
 const MAX_INIT_ATTEMPTS = 3;
 const INIT_TIMEOUT_MS = 30000; // 30 seconds
 
@@ -33,8 +40,9 @@ export default function MainLayout({
 	children: React.ReactNode;
 }) {
 	const router = useRouter();
+	const pathname = usePathname();
 
-	// Only subscribe to state needed for rendering (3 selectors, not 9)
+	// Only subscribe to state needed for rendering
 	const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 	const user = useAuthStore((s) => s.user);
 	const isInitializing = useAuthStore((s) => s.isInitializing);
@@ -78,10 +86,20 @@ export default function MainLayout({
 		}
 	}, [isIdle]);
 
+	// Member list panel visibility
+	const isMemberListVisible = useUIStore((s) => s.isMemberListVisible);
+
 	// Sync mobile detection to UI store
 	useEffect(() => {
 		useUIStore.getState().setMobile(isMobile);
 	}, [isMobile]);
+
+	// Auto-close mobile sidebars on route change
+	useEffect(() => {
+		if (isMobile) {
+			useUIStore.getState().closeMobileSidebars();
+		}
+	}, [pathname, isMobile]);
 
 	// Coordinated initialization: auth first, then data stores
 	useEffect(() => {
@@ -315,6 +333,53 @@ export default function MainLayout({
 				</main>
 			</ErrorBoundary>
 
+			{/* Member List Panel - toggleable popout */}
+			<AnimatePresence>
+				{isMemberListVisible && currentServerId && currentServerId !== "home" && (
+					isMobile ? (
+						/* Mobile: slide-over from right */
+						<ErrorBoundary level="feature" name="MemberList">
+							<motion.div
+								key="member-backdrop"
+								className="fixed inset-0 z-40 bg-black/50"
+								initial={{ opacity: 0 }}
+								animate={{ opacity: 1 }}
+								exit={{ opacity: 0 }}
+								onClick={() => useUIStore.getState().setMemberListVisible(false)}
+							/>
+							<motion.div
+								key="member-panel-mobile"
+								className="fixed right-0 top-0 bottom-0 z-50 w-72 bg-[oklch(0.15_0.02_250)] border-l border-white/10"
+								initial={{ x: "100%" }}
+								animate={{ x: 0 }}
+								exit={{ x: "100%" }}
+								transition={{ type: "spring", stiffness: 300, damping: 30 }}
+							>
+								<Suspense fallback={<MemberListSkeleton />}>
+									<MemberListPanel serverId={currentServerId} />
+								</Suspense>
+							</motion.div>
+						</ErrorBoundary>
+					) : (
+						/* Desktop: inline panel */
+						<ErrorBoundary level="feature" name="MemberList">
+							<motion.div
+								key="member-panel-desktop"
+								className="relative z-10 w-60 bg-[oklch(0.15_0.02_250)] border-l border-white/10 overflow-hidden"
+								initial={{ width: 0, opacity: 0 }}
+								animate={{ width: 240, opacity: 1 }}
+								exit={{ width: 0, opacity: 0 }}
+								transition={{ type: "spring", stiffness: 300, damping: 30 }}
+							>
+								<Suspense fallback={<MemberListSkeleton />}>
+									<MemberListPanel serverId={currentServerId} />
+								</Suspense>
+							</motion.div>
+						</ErrorBoundary>
+					)
+				)}
+			</AnimatePresence>
+
 			{/* Mobile: Bottom Navigation */}
 			{isMobile && (
 				<ErrorBoundary level="feature" name="MobileNav">
@@ -328,6 +393,20 @@ export default function MainLayout({
 			{/* Performance monitoring overlays */}
 			<PerformanceOverlay />
 			<PerformanceDashboard />
+		</div>
+	);
+}
+
+function MemberListSkeleton() {
+	return (
+		<div className="w-60 p-4 space-y-3">
+			<div className="h-2.5 w-20 bg-white/10 rounded-sm animate-pulse" />
+			{Array.from({ length: 8 }).map((_, i) => (
+				<div key={i} className="flex items-center gap-2.5 animate-pulse">
+					<div className="w-8 h-8 rounded-full bg-white/10 shrink-0" />
+					<div className="h-3 w-24 bg-white/10 rounded-sm" />
+				</div>
+			))}
 		</div>
 	);
 }

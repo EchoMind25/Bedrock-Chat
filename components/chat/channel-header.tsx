@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { Channel } from '@/lib/types/server';
 import { useMessageStore } from '@/store/message.store';
+import { useUIStore } from '@/store/ui.store';
 import type { Message } from '@/lib/types/message';
 
 // Stable empty array reference - prevents re-renders from `|| []` creating new refs
@@ -18,6 +19,7 @@ export function ChannelHeader({ channel, memberCount = 42 }: ChannelHeaderProps)
 	const [showSearch, setShowSearch] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');
 	const channelMessages = useMessageStore((state) => state.messages[channel.id] ?? EMPTY_MESSAGES);
+	const isMemberListVisible = useUIStore((s) => s.isMemberListVisible);
 	const [searchResults, setSearchResults] = useState<number>(0);
 
 	const handleSearchToggle = () => {
@@ -87,13 +89,23 @@ export function ChannelHeader({ channel, memberCount = 42 }: ChannelHeaderProps)
 
 				{/* Right side - Actions */}
 				<div className="flex items-center gap-1">
-					{/* Member count */}
-					<div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-white/5 transition-colors cursor-default">
-						<svg className="w-4 h-4 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					{/* Member count - toggles member list */}
+					<motion.button
+						onClick={() => useUIStore.getState().toggleMemberList()}
+						className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
+							isMemberListVisible
+								? 'bg-white/10 text-white'
+								: 'hover:bg-white/5 text-white/60'
+						}`}
+						title="Toggle member list"
+						whileHover={{ scale: 1.02 }}
+						whileTap={{ scale: 0.98 }}
+					>
+						<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
 						</svg>
-						<span className="text-sm text-white/60 font-medium">{memberCount}</span>
-					</div>
+						<span className="text-sm font-medium">{memberCount}</span>
+					</motion.button>
 
 					{/* Pins button */}
 					<motion.button

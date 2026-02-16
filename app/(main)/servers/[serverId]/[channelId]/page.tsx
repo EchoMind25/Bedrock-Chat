@@ -3,6 +3,7 @@
 import { use, useEffect, useRef, useMemo, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useServerStore } from "@/store/server.store";
+import { useMemberStore } from "@/store/member.store";
 
 // Lazy load heavy chat components (includes @tanstack/react-virtual)
 const ChannelHeader = lazy(() =>
@@ -54,6 +55,10 @@ export default function ChannelPage({ params }: PageProps) {
 		[server, channelId]
 	);
 
+	// Live member count from member store, fallback to server.memberCount
+	const memberStoreCount = useMemberStore((s) => s.membersByServer[serverId]?.length ?? 0);
+	const liveMemberCount = memberStoreCount || server?.memberCount || 0;
+
 	// Update store when URL changes (with defensive checks to prevent loops)
 	useEffect(() => {
 		if (!serverId || !channelId || !mountedRef.current) return;
@@ -102,7 +107,7 @@ export default function ChannelPage({ params }: PageProps) {
 		<div className="flex-1 flex flex-col bg-[oklch(0.14_0.02_250)]">
 			<Suspense fallback={<ChannelLoadingSkeleton />}>
 				{/* Channel Header */}
-				<ChannelHeader channel={channel} memberCount={server.memberCount} />
+				<ChannelHeader channel={channel} memberCount={liveMemberCount} />
 
 				{/* Message List */}
 				<MessageList channelId={channelId} />

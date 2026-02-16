@@ -30,9 +30,10 @@ export function MobileNav() {
       label: "Home",
       icon: Home,
       onClick: () => {
-        router.push("/");
+        useUIStore.getState().closeMobileSidebars();
+        router.push("/friends");
       },
-      isActive: pathname === "/" || pathname === "/friends",
+      isActive: pathname === "/friends",
     },
     {
       id: "channels",

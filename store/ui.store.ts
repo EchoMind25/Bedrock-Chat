@@ -19,6 +19,9 @@ interface UIState {
 	// Idle detection (set by main layout, read by components)
 	isIdle: boolean;
 
+	// Member list panel
+	isMemberListVisible: boolean;
+
 	// Portal transition state
 	isPortalTransitioning: boolean;
 	portalTargetServerId: string | null;
@@ -28,6 +31,8 @@ interface UIState {
 	// Actions
 	toggleServerList: () => void;
 	toggleChannelList: () => void;
+	toggleMemberList: () => void;
+	setMemberListVisible: (visible: boolean) => void;
 	setMobile: (isMobile: boolean) => void;
 	toggleMobileMenu: () => void;
 	setMobileServerListOpen: (isOpen: boolean) => void;
@@ -56,6 +61,7 @@ export const useUIStore = create<UIState>()(
 				isMobileChannelListOpen: false,
 				theme: "dark",
 				isIdle: false,
+				isMemberListVisible: false,
 				isPortalTransitioning: false,
 				portalTargetServerId: null,
 				portalSourceColor: null,
@@ -72,6 +78,14 @@ export const useUIStore = create<UIState>()(
 						isChannelListCollapsed: !state.isChannelListCollapsed,
 					})),
 
+				toggleMemberList: () =>
+					set((state) => ({
+						isMemberListVisible: !state.isMemberListVisible,
+					})),
+
+				setMemberListVisible: (visible) =>
+					set({ isMemberListVisible: visible }),
+
 				setMobile: (isMobile) => set({ isMobile }),
 
 				toggleMobileMenu: () =>
@@ -87,6 +101,7 @@ export const useUIStore = create<UIState>()(
 					set({
 						isMobileServerListOpen: false,
 						isMobileChannelListOpen: false,
+						isMemberListVisible: false,
 					}),
 
 				setTheme: (theme) => set({ theme }),
@@ -115,6 +130,7 @@ export const useUIStore = create<UIState>()(
 					theme: state.theme,
 					isServerListCollapsed: state.isServerListCollapsed,
 					isChannelListCollapsed: state.isChannelListCollapsed,
+					isMemberListVisible: state.isMemberListVisible,
 				}),
 			}
 		),
