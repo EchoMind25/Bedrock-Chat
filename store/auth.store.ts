@@ -379,14 +379,15 @@ export const useAuthStore = create<AuthState>()(
 					try {
 						const supabase = createClient();
 
-						// Timeout prevents infinite loading if Supabase is unreachable
-						const timeout = new Promise<never>((_, reject) =>
-							setTimeout(() => reject(new Error("Auth check timed out")), 15000),
-						);
+						// Each race gets its own fresh timeout to prevent shared-promise expiry
+						const makeTimeout = (label: string) =>
+							new Promise<never>((_, reject) =>
+								setTimeout(() => reject(new Error(label + " timed out")), 15000),
+							);
 
 						const { data: { user } } = await Promise.race([
 							supabase.auth.getUser(),
-							timeout,
+							makeTimeout("Auth check"),
 						]);
 
 						if (user) {
@@ -396,7 +397,7 @@ export const useAuthStore = create<AuthState>()(
 									.select("*")
 									.eq("id", user.id)
 									.single(),
-								timeout,
+								makeTimeout("Profile fetch"),
 							]);
 
 							if (profile) {
@@ -410,8 +411,13 @@ export const useAuthStore = create<AuthState>()(
 							}
 						}
 				} catch (err) {
-					// Auth check failed or timed out
+					// Auth check failed or timed out — preserve persisted session if available
 					logError("AUTH", err);
+					const current = get();
+					if (current.isAuthenticated && current.user) {
+						set({ isInitializing: false });
+						return;
+					}
 				}
 
 				set({ user: null, isAuthenticated: false, isLoading: false, isInitializing: false });
