@@ -14,7 +14,6 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-const isDev = process.env.NODE_ENV === "development";
 
 /**
  * Security headers for privacy-first architecture
@@ -46,11 +45,13 @@ const securityHeaders = {
 	// at the CSP level — not just by ad blockers. This is a privacy requirement.
 	"Content-Security-Policy": [
 		"default-src 'self'",
-		// TECH DEBT: 'unsafe-inline' required for Daily.co call object bundle.
+		// TECH DEBT: Both 'unsafe-inline' and 'unsafe-eval' required for Daily.co.
+		// Daily.co's call object bundle loads itself via dynamic code evaluation
+		// (eval/new Function), which requires 'unsafe-eval' in all environments.
 		// Daily.co does not support nonce/hash-based CSP for its call object scripts.
 		// This is a known limitation of Daily.co (temporary vendor). Track for
 		// removal when self-hosted WebRTC infrastructure is deployed.
-		`script-src 'self' 'unsafe-inline' https://c.daily.co https://*.daily.co${isDev ? " 'unsafe-eval'" : ""}`,
+		"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://c.daily.co https://*.daily.co",
 		"style-src 'self' 'unsafe-inline'",
 		"img-src 'self' data: https:",
 		"font-src 'self' data:",
