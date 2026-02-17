@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useMemo, useEffect } from "react";
+import { useRef, useMemo, useEffect, useState, useCallback } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Float, Stars, MeshDistortMaterial } from "@react-three/drei";
 import type { Mesh, Group, PointLight as TPointLight } from "three";
@@ -252,18 +252,36 @@ function Lighting() {
 }
 
 /**
- * Complete 3D scene composition
+ * Complete 3D scene composition.
+ * Owns WebGL context lifecycle: sets up handlers on mount, disposes on unmount.
  */
-function Scene() {
+function Scene({
+  onContextLost,
+  onContextRestored,
+}: {
+  onContextLost: () => void;
+  onContextRestored: () => void;
+}) {
   const { gl } = useThree();
 
   useEffect(() => {
+    // Register context loss/restoration handlers on the canvas
+    const cleanup = setupWebGLContextHandlers(
+      gl.domElement,
+      onContextLost,
+      onContextRestored,
+    );
+
     return () => {
-      // Cleanup WebGL context handlers on unmount
-      const cleanup = (gl.domElement as any).__contextCleanup;
-      if (cleanup) cleanup();
+      // Remove event listeners first
+      cleanup();
+      // Force-release GPU context to prevent memory leaks on unmount
+      gl.forceContextLoss();
+      // Free all GPU resources (geometries, textures, programs)
+      gl.dispose();
     };
-  }, [gl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <>
@@ -277,12 +295,46 @@ function Scene() {
   );
 }
 
+export interface Hero3DSceneProps {
+  /** Called when WebGL context is lost 3+ times — triggers permanent CSS fallback */
+  onPermanentFallback?: () => void;
+}
+
 /**
  * Hero 3D Scene - React Three Fiber canvas
  * Renders the portal marketplace environment.
  * Must be loaded with next/dynamic ssr: false.
+ *
+ * Handles WebGL context loss gracefully:
+ * - Shows CSS fallback overlay on context loss
+ * - Restores 3D when context is recovered
+ * - Signals permanent fallback after 3+ losses
  */
-export default function Hero3DScene() {
+export default function Hero3DScene({ onPermanentFallback }: Hero3DSceneProps) {
+  const [contextLost, setContextLost] = useState(false);
+  const lossCountRef = useRef(0);
+  // Keep onPermanentFallback in a ref so the stable callbacks always call the latest version
+  const permanentFallbackRef = useRef(onPermanentFallback);
+  permanentFallbackRef.current = onPermanentFallback;
+
+  const handleContextLost = useCallback(() => {
+    lossCountRef.current += 1;
+    setContextLost(true);
+    console.warn(`[Hero3DScene] WebGL context lost (count: ${lossCountRef.current})`);
+    if (lossCountRef.current >= 3) {
+      console.warn("[Hero3DScene] 3+ context losses — triggering permanent CSS fallback");
+      permanentFallbackRef.current?.();
+    }
+  }, []);
+
+  const handleContextRestored = useCallback(() => {
+    // Only resume 3D if we haven't hit the permanent fallback threshold
+    if (lossCountRef.current < 3) {
+      setContextLost(false);
+    }
+    console.info("[Hero3DScene] WebGL context restored");
+  }, []);
+
   return (
     <div
       className="absolute inset-0 z-0"
@@ -293,29 +345,48 @@ export default function Hero3DScene() {
         gl={{
           antialias: true,
           alpha: true,
-          powerPreference: "high-performance",
+          // low-power saves battery and reduces GPU memory pressure
+          powerPreference: "low-power",
         }}
-        dpr={[1, 1.5]}
+        // Cap pixel ratio at 2 — higher ratios waste GPU memory with minimal visual gain
+        dpr={[1, 2]}
         style={{ background: "transparent" }}
-        onCreated={({ gl }) => {
-          // Setup WebGL context loss handlers to prevent crashes
-          const cleanup = setupWebGLContextHandlers(
-            gl.domElement,
-            () => {
-              console.warn("Hero 3D scene context lost");
-            },
-            () => {
-              console.info("Hero 3D scene context restored");
-              // THREE.js will automatically restore state
-            }
-          );
-
-          // Store cleanup function for Scene component unmount
-          (gl.domElement as any).__contextCleanup = cleanup;
-        }}
       >
-        <Scene />
+        <Scene
+          onContextLost={handleContextLost}
+          onContextRestored={handleContextRestored}
+        />
       </Canvas>
+
+      {/* CSS fallback overlay — shown when WebGL context is lost (1–2 losses) */}
+      {contextLost && (
+        <div className="absolute inset-0 z-1 pointer-events-none">
+          {/* Replicate the scene background so content remains visible */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(ellipse at 50% 40%, oklch(0.20 0.08 265 / 0.9) 0%, oklch(0.12 0.02 285) 60%, oklch(0.10 0.02 265) 100%)",
+            }}
+          />
+          {/* Subtle portal glow placeholder */}
+          <div
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ pointerEvents: "none" }}
+          >
+            <div
+              style={{
+                width: 320,
+                height: 320,
+                borderRadius: "50%",
+                background:
+                  "radial-gradient(circle, oklch(0.65 0.25 265 / 0.25) 0%, transparent 70%)",
+                filter: "blur(32px)",
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

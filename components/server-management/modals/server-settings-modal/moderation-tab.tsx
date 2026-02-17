@@ -47,7 +47,7 @@ export function ModerationTab({ server, onAutoModUpdate }: ModerationTabProps) {
   };
 
   const tabs = [
-    { id: "automod", label: "AutoMod" },
+    { id: "automod", label: "AutoMod \u2022 Soon" },
     { id: "bans", label: "Bans", count: bans.length },
     { id: "audit", label: "Audit Log" },
   ];

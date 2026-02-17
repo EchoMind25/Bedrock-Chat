@@ -19,6 +19,8 @@ export function HeroSection() {
   // TEMPORARY: Force high tier to always show 3D scene for testing
   const [tier, setTier] = useState<PerformanceTier>("high");
   const [mounted, setMounted] = useState(false);
+  // True after 3+ WebGL context losses — permanently skip the 3D scene
+  const [permanentFallback, setPermanentFallback] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -35,14 +37,14 @@ export function HeroSection() {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-background-dark">
       {/* Background layer - progressive enhancement */}
-      {mounted && tier === "high" ? (
+      {mounted && tier === "high" && !permanentFallback ? (
         <Suspense fallback={<HeroFallback />}>
-          <Hero3DScene />
+          <Hero3DScene onPermanentFallback={() => setPermanentFallback(true)} />
           {/* Gradient overlay for text readability on 3D */}
           <div className="absolute inset-0 z-1 bg-linear-to-b from-transparent via-transparent to-background-dark/80 pointer-events-none" />
         </Suspense>
       ) : (
-        <HeroFallback parallax={mounted && tier === "medium"} />
+        <HeroFallback parallax={mounted && tier === "medium" && !permanentFallback} />
       )}
 
       {/* Content overlay - always SSR rendered for fast LCP */}

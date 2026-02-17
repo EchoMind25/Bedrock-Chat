@@ -16,10 +16,9 @@ export function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       auth: {
-        // Use localStorage for persistent sessions, sessionStorage for temporary
-        storage: typeof window !== 'undefined'
-          ? (rememberMe ? window.localStorage : window.sessionStorage)
-          : undefined,
+        // Use default cookie-based storage (required for SSR auth in (main)/layout.tsx).
+        // persistSession controls whether cookies are persistent (survive browser close)
+        // or session-scoped (cleared on browser close), preserving "remember me" semantics.
         persistSession: rememberMe,
         autoRefreshToken: true,
         detectSessionInUrl: true,

@@ -40,16 +40,23 @@ const securityHeaders = {
 	"Permissions-Policy":
 		"microphone=(self), camera=(), geolocation=(), payment=()",
 
-	// Content Security Policy - allow Supabase + Daily.co + Sentry
+	// Content Security Policy — allow Supabase + Daily.co
+	// NOTE: Sentry is intentionally excluded from connect-src.
+	// Daily.co's built-in Sentry telemetry (o77906.ingest.sentry.io) is blocked
+	// at the CSP level — not just by ad blockers. This is a privacy requirement.
 	"Content-Security-Policy": [
 		"default-src 'self'",
+		// TECH DEBT: 'unsafe-inline' required for Daily.co call object bundle.
+		// Daily.co does not support nonce/hash-based CSP for its call object scripts.
+		// This is a known limitation of Daily.co (temporary vendor). Track for
+		// removal when self-hosted WebRTC infrastructure is deployed.
 		`script-src 'self' 'unsafe-inline' https://c.daily.co https://*.daily.co${isDev ? " 'unsafe-eval'" : ""}`,
 		"style-src 'self' 'unsafe-inline'",
 		"img-src 'self' data: https:",
 		"font-src 'self' data:",
-		"connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.daily.co wss://*.daily.co https://api.daily.co https://*.ingest.sentry.io",
+		"connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.daily.co wss://*.daily.co https://api.daily.co",
 		"frame-src 'self' https://*.daily.co",
-		"media-src 'self' https://*.daily.co blob:",
+		"media-src 'self' https://*.daily.co blob: mediastream:",
 		"worker-src 'self' blob:",
 		"frame-ancestors 'none'",
 		"base-uri 'self'",

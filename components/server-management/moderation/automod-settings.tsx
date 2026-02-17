@@ -9,69 +9,82 @@ interface AutoModSettingsFormProps {
   onChange: (settings: Partial<AutoModSettings>) => void;
 }
 
-export function AutoModSettingsForm({ settings, onChange }: AutoModSettingsFormProps) {
+export function AutoModSettingsForm({ settings }: AutoModSettingsFormProps) {
   return (
     <div className="space-y-4">
-      <Toggle
-        checked={settings.enabled}
-        onChange={(e) => onChange({ enabled: e.target.checked })}
-        label="Enable AutoMod"
-        size="md"
-      />
+      {/* Coming Soon banner */}
+      <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
+        <span className="text-amber-400 text-lg leading-none mt-0.5">&#9888;</span>
+        <div>
+          <p className="text-sm font-semibold text-amber-200 mb-1">AutoMod — Coming Soon</p>
+          <p className="text-xs text-amber-300/80 leading-relaxed">
+            AutoMod is under development. These settings are preview-only and are{" "}
+            <strong className="text-amber-200">not currently enforced</strong>. No content
+            filtering is active on your server. Configuration will be saved and activated
+            when AI-powered moderation launches.
+          </p>
+        </div>
+      </div>
 
-      {settings.enabled && (
+      {/* Settings preview — disabled */}
+      <div className="space-y-4 pointer-events-none opacity-50" aria-disabled="true">
+        <Toggle
+          checked={settings.enabled}
+          onChange={() => {}}
+          label="Enable AutoMod"
+          size="md"
+        />
+
         <div className="space-y-3 pl-8 border-l-2 border-blue-500/30">
           <Toggle
             checked={settings.filterProfanity}
-            onChange={(e) => onChange({ filterProfanity: e.target.checked })}
+            onChange={() => {}}
             label="Filter profanity and offensive language"
           />
 
           <Toggle
             checked={settings.filterSpam}
-            onChange={(e) => onChange({ filterSpam: e.target.checked })}
+            onChange={() => {}}
             label="Filter spam and repeated messages"
           />
 
           <Toggle
             checked={settings.filterLinks}
-            onChange={(e) => onChange({ filterLinks: e.target.checked })}
+            onChange={() => {}}
             label="Filter suspicious links"
           />
 
           <Toggle
             checked={settings.filterInvites}
-            onChange={(e) => onChange({ filterInvites: e.target.checked })}
+            onChange={() => {}}
             label="Filter server invite links"
           />
 
           <div className="space-y-2">
             <Toggle
               checked={settings.filterMentionSpam}
-              onChange={(e) => onChange({ filterMentionSpam: e.target.checked })}
+              onChange={() => {}}
               label="Filter mention spam"
             />
-            {settings.filterMentionSpam && (
-              <Input
-                type="number"
-                label="Max mentions per message"
-                value={settings.mentionLimit.toString()}
-                onChange={(e) =>
-                  onChange({ mentionLimit: Number.parseInt(e.target.value) || 5 })
-                }
-                min={1}
-                max={50}
-                helperText="Maximum number of @mentions allowed in a single message"
-              />
-            )}
+            <Input
+              type="number"
+              label="Max mentions per message"
+              value={settings.mentionLimit.toString()}
+              onChange={() => {}}
+              min={1}
+              max={50}
+              helperText="Maximum number of @mentions allowed in a single message"
+            />
           </div>
         </div>
-      )}
+      </div>
 
-      <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
-        <p className="text-xs text-blue-300">
-          <strong className="text-blue-200">Note:</strong> AutoMod automatically flags and removes content that violates these
-          rules. Moderators can review actions in the audit log.
+      {/* Future implementation note */}
+      <div className="p-3 rounded-lg bg-slate-700/30 border border-slate-600/30">
+        <p className="text-xs text-slate-400">
+          <strong className="text-slate-300">Planned:</strong> AutoMod will use AI-powered
+          moderation to automatically flag and remove rule-violating content. All actions will
+          be logged in the audit log with full transparency. Server owners control all rules.
         </p>
       </div>
     </div>

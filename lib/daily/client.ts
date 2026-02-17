@@ -57,7 +57,9 @@ export async function createDailyCall(): Promise<DailyCall> {
       throw new Error('Daily.createCallObject is not a function');
     }
 
-    const callObject = Daily.createCallObject();
+    const callObject = Daily.createCallObject({
+      startVideoOff: true, // Camera blocked by Permissions-Policy: camera=()
+    });
     return callObject;
   } catch (error) {
     console.error('❌ [createDailyCall] Failed to create Daily.co call object:', {

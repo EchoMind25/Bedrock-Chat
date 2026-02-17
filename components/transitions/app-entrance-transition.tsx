@@ -10,6 +10,7 @@ interface AppEntranceTransitionProps {
   isActive: boolean;
   onComplete: () => void;
   preloadData?: boolean; // Whether to preload server data during transition
+  timeoutMs?: number; // Safety timeout — force-complete if stuck (default 10s)
 }
 
 /**
@@ -26,6 +27,7 @@ export function AppEntranceTransition({
   isActive,
   onComplete,
   preloadData = true,
+  timeoutMs = 10000,
 }: AppEntranceTransitionProps) {
   const [mounted, setMounted] = useState(false);
   const [tier, setTier] = useState<"low" | "medium" | "high">("low");
@@ -47,6 +49,18 @@ export function AppEntranceTransition({
       setDataLoaded(false);
     }
   }, [isActive]);
+
+  // Safety timeout: force-complete if transition is stuck
+  useEffect(() => {
+    if (!isActive) return;
+
+    const timer = setTimeout(() => {
+      onComplete();
+    }, timeoutMs);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive, timeoutMs]);
 
   // Preload server data when transition becomes active
   useEffect(() => {
@@ -244,6 +258,20 @@ export function AppEntranceTransition({
 
           {/* Scatter particles */}
           {showParticles && <ScatterParticles />}
+
+          {/* Loading status text — shown when animation is done but data still loading */}
+          <AnimatePresence>
+            {animationComplete && !dataLoaded && (
+              <motion.p
+                className="absolute bottom-20 left-1/2 -translate-x-1/2 text-white/50 text-sm"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                Loading your servers...
+              </motion.p>
+            )}
+          </AnimatePresence>
 
           {/* Skip hint */}
           <motion.div

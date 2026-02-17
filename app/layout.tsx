@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { ConsentBanner } from "@/components/consent/consent-banner";
+import { GlobalEntranceTransition } from "@/components/transitions/global-entrance-transition";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -58,6 +59,7 @@ export default function RootLayout({
         <ServiceWorkerRegister />
         {children}
         <ConsentBanner />
+        <GlobalEntranceTransition />
       </body>
     </html>
   );

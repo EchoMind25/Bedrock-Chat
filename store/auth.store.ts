@@ -191,132 +191,105 @@ export const useAuthStore = create<AuthState>()(
 					}
 			},
 
-				// Step 1: Register with Supabase — sends a confirmation email with a magic link
-				signUpWithEmail: async (data) => {
-					set({ isLoading: true, error: null });
+			// Step 1: Register via server-side route handler.
+			// The server generates the PKCE code_verifier, stores it encrypted in an
+			// httpOnly cookie (__bedrock_pkce), and calls Supabase REST directly.
+			// This fixes email confirmation in Tor/private browsing where
+			// localStorage/sessionStorage is unavailable between page loads.
+			signUpWithEmail: async (data) => {
+				set({ isLoading: true, error: null });
 
-					try {
-						const supabase = createClient();
-
-						if (data.username.length < 3) {
-							set({
-								isLoading: false,
-								error: "Username must be at least 3 characters",
-							});
-							return false;
-						}
-
-						if (data.accountType === "teen" && !data.parentEmail) {
-							set({
-								isLoading: false,
-								error: "Parent email required for teen accounts",
-							});
-							return false;
-						}
-
-						// Check if username is already taken
-						const { data: existingUser } = await supabase
-							.from("profiles")
-							.select("id")
-							.ilike("username", data.username)
-							.maybeSingle();
-
-						if (existingUser) {
-							set({ isLoading: false, error: "Username is already taken" });
-							return false;
-						}
-
-						// Call signUp — sends confirmation email with a magic link.
-						// The emailRedirectTo tells Supabase where to redirect after
-						// the user clicks the confirmation link.
-						const redirectTo = `${window.location.origin}/auth/callback`;
-
-						if (process.env.NODE_ENV === "development") {
-							console.log("[AUTH DEBUG] signUp called", { email: data.email, redirectTo });
-						}
-
-						const { data: authData, error } = await supabase.auth.signUp({
+				try {
+					const response = await fetch("/api/auth/signup", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
 							email: data.email,
 							password: data.password,
-							options: {
-								emailRedirectTo: redirectTo,
-								data: {
-									username: data.username,
-									account_type: data.accountType,
-								},
-							},
-						});
+							username: data.username,
+							accountType: data.accountType,
+							parentEmail: data.parentEmail,
+						}),
+					});
 
-						if (process.env.NODE_ENV === "development") {
-							console.log("[AUTH DEBUG] signUp response", {
-								userId: authData.user?.id ?? null,
-								hasSession: !!authData.session,
-								identities: authData.user?.identities?.length ?? 0,
-								error: error?.message ?? null,
-							});
-						}
+					const result = await response.json().catch(() => ({}));
 
-						if (error) {
-							set({ isLoading: false, error: error.message });
-							return false;
-						}
-
-						// If identities is empty, the email is already registered.
-						if (authData.user && authData.user.identities?.length === 0) {
-							set({
-								isLoading: false,
-								error: "An account with this email already exists",
-							});
-							return false;
-						}
-
-						// Store pending signup data for the confirmation screen
-						set({ pendingSignup: data, isLoading: false });
-						return true;
-					} catch (err) {
-						logError("AUTH", err);
-						set({ isLoading: false, error: err instanceof Error ? err.message : "Signup failed" });
+					if (!response.ok) {
+						const message =
+							response.status === 429
+								? "Too many signup attempts. Please wait before trying again."
+								: response.status === 409
+									? "Username is already taken"
+									: (result.error as string | undefined) || "Signup failed";
+						set({ isLoading: false, error: message });
 						return false;
 					}
-			},
 
-				// Resend the confirmation email
-				resendConfirmationEmail: async (email) => {
-					set({ isLoading: true, error: null });
+					// Store pending signup data for the "check your email" screen.
+					// Also needed for resend (provides credentials to re-call the signup route).
+					set({ pendingSignup: data, isLoading: false });
+					return true;
+				} catch (err) {
+					set({
+						isLoading: false,
+						error: err instanceof Error ? err.message : "Signup failed",
+					});
+					return false;
+				}
+		},
 
-					try {
-						const supabase = createClient();
-						const redirectTo = `${window.location.origin}/auth/callback`;
+			// Resend the confirmation email.
+			// Re-POSTs to /api/auth/signup using stored credentials.
+			// Supabase treats a repeat signup for an unconfirmed email as a resend,
+			// generating a new code linked to our new PKCE verifier (fresh cookie set).
+			// The old email link is automatically invalidated.
+			resendConfirmationEmail: async (_email) => {
+				set({ isLoading: true, error: null });
 
-						if (process.env.NODE_ENV === "development") {
-							console.log("[AUTH DEBUG] resend called", { email, type: "signup", redirectTo });
-						}
-
-						const { error } = await supabase.auth.resend({
-							type: "signup",
-							email,
-							options: {
-								emailRedirectTo: redirectTo,
-							},
+				try {
+					// pendingSignup survives page refresh via Zustand persist (partialize includes it).
+					const pendingSignup = get().pendingSignup;
+					if (!pendingSignup) {
+						set({
+							isLoading: false,
+							error: "Please restart the signup process",
 						});
-
-						if (process.env.NODE_ENV === "development") {
-							console.log("[AUTH DEBUG] resend response", { error: error?.message ?? null });
-						}
-
-						if (error) {
-							set({ isLoading: false, error: error.message });
-							return false;
-						}
-
-						set({ isLoading: false });
-						return true;
-					} catch (err) {
-						logError("AUTH", err);
-						set({ isLoading: false, error: err instanceof Error ? err.message : "Resend failed" });
 						return false;
 					}
-			},
+
+					const response = await fetch("/api/auth/signup", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							email: pendingSignup.email,
+							password: pendingSignup.password,
+							username: pendingSignup.username,
+							accountType: pendingSignup.accountType,
+							parentEmail: pendingSignup.parentEmail,
+						}),
+					});
+
+					const result = await response.json().catch(() => ({}));
+
+					if (!response.ok) {
+						const message =
+							response.status === 429
+								? "Too many requests. Please wait before resending."
+								: (result.error as string | undefined) || "Resend failed";
+						set({ isLoading: false, error: message });
+						return false;
+					}
+
+					set({ isLoading: false });
+					return true;
+				} catch (err) {
+					set({
+						isLoading: false,
+						error: err instanceof Error ? err.message : "Resend failed",
+					});
+					return false;
+				}
+		},
 
 				// Called after the user clicks the confirmation link and lands on /auth/callback.
 				// The callback route exchanges the code for a session and creates the profile.
@@ -646,6 +619,17 @@ export const useAuthStore = create<AuthState>()(
 							});
 						} else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
 							if (session.user) {
+									// Skip redundant profile fetch if login() already set
+									// the user with the same ID. Prevents extra re-renders
+									// during the login→transition→navigate flow.
+									const current = get();
+									if (current.isAuthenticated && current.user?.id === session.user.id) {
+										if (current.isInitializing) {
+											set({ isInitializing: false });
+										}
+										return;
+									}
+
 									const { data: profile } = await supabase
 										.from("profiles")
 										.select("*")

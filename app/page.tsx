@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth.store";
 import { useOnboardingStore } from "@/store/onboarding.store";
@@ -11,7 +11,6 @@ import { Footer } from "@/components/landing/footer";
 import { HeroSection } from "@/components/landing/hero-section";
 import { SocialProofSection } from "@/components/landing/social-proof-section";
 import { TrustSection } from "@/components/landing/trust-section";
-import { AppEntranceTransition } from "@/components/transitions/app-entrance-transition";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -20,33 +19,27 @@ export default function LandingPage() {
   const isInitializing = useAuthStore((s) => s.isInitializing);
   const showEntranceTransition = useOnboardingStore((s) => s.showEntranceTransition);
   const triggerEntranceTransition = useOnboardingStore((s) => s.triggerEntranceTransition);
-  const completeEntranceTransition = useOnboardingStore((s) => s.completeEntranceTransition);
 
-  // Check auth and trigger entrance transition if logged in
+  // Check auth and redirect authenticated users
   useEffect(() => {
     async function checkAndRedirect() {
-      // Wait for auth to initialize from persisted state
       await useAuthStore.getState().checkAuth();
       setIsChecking(false);
 
-      // If user is authenticated (returning user or PWA launch)
       const { isAuthenticated } = useAuthStore.getState();
       if (isAuthenticated) {
-        // Trigger entrance transition
+        // Activate the root-layout portal, then navigate immediately.
+        // The portal survives the route change because it lives in the
+        // root layout — no flash of the landing page during transition.
         triggerEntranceTransition();
+        router.push("/channels");
       }
     }
 
     checkAndRedirect();
   }, [router, triggerEntranceTransition]);
 
-  // Handle entrance transition completion
-  const handleEntranceComplete = useCallback(() => {
-    completeEntranceTransition();
-    router.push("/channels");
-  }, [router, completeEntranceTransition]);
-
-  // Show loading while checking auth (prevent flash of landing page)
+  // Prevent flash of landing page content during auth check
   if (isChecking || isInitializing) {
     return (
       <div className="min-h-screen bg-background-dark flex items-center justify-center">
@@ -58,22 +51,10 @@ export default function LandingPage() {
     );
   }
 
-  // Show entrance transition for authenticated users (PWA launch)
-  if (showEntranceTransition) {
-    return (
-      <>
-        <div className="min-h-screen bg-black" />
-        <AppEntranceTransition
-          isActive={showEntranceTransition}
-          onComplete={handleEntranceComplete}
-        />
-      </>
-    );
-  }
-
-  // Only show landing page if NOT authenticated
-  if (isAuthenticated) {
-    return null; // Will show transition
+  // Black screen while the entrance transition portal is active
+  // (authenticated user being redirected — portal covers this)
+  if (showEntranceTransition || isAuthenticated) {
+    return <div className="min-h-screen bg-black" />;
   }
 
   return (

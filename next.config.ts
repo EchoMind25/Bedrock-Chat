@@ -11,6 +11,14 @@ const nextConfig: NextConfig = {
   },
   // Security headers are now in proxy.ts
 
+  experimental: {
+    // Disable strict CSS chunking to merge CSS into fewer files.
+    // This eliminates "preloaded but not used" warnings caused by per-route
+    // CSS chunks being preloaded for dynamically-imported components
+    // (e.g. Hero3DScene via next/dynamic) that load after the preload timeout.
+    cssChunking: false,
+  },
+
   // Performance: Disable source maps in development for faster builds
   productionBrowserSourceMaps: false,
   webpack: (config, { dev, isServer }) => {

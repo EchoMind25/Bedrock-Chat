@@ -89,6 +89,8 @@ export async function POST(request: NextRequest) {
     properties: {
       enable_screenshare: true,
       enable_chat: false,
+      // enable_recording intentionally omitted — Daily.co default is no recording.
+      // Privacy requirement: no audio/video recording under any circumstances.
       // max_participants removed - let Daily.co use plan default
     },
   };

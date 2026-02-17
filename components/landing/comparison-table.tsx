@@ -47,7 +47,7 @@ const comparisonData: ComparisonRow[] = [
 function CheckIcon() {
   return (
     <motion.svg
-      className="w-6 h-6 text-green-500"
+      className="w-5 h-5 text-green-500 shrink-0"
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -77,7 +77,7 @@ function CheckIcon() {
 function XIcon() {
   return (
     <motion.svg
-      className="w-6 h-6 text-red-500"
+      className="w-5 h-5 text-red-500 shrink-0"
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -104,6 +104,7 @@ function XIcon() {
   );
 }
 
+/* ── Desktop table row ── */
 function ComparisonRowComponent({
   row,
   index,
@@ -142,6 +143,66 @@ function ComparisonRowComponent({
   );
 }
 
+/* ── Mobile card row ── */
+function ComparisonCardComponent({
+  row,
+  index,
+}: {
+  row: ComparisonRow;
+  index: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: "-50px" });
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 20 }}
+      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+      transition={{
+        duration: 0.5,
+        delay: index * 0.1,
+      }}
+    >
+      <Glass variant="medium" border="light" className="p-4">
+        <h3 className="text-white font-semibold text-base mb-3">
+          {row.feature}
+        </h3>
+        <div className="grid grid-cols-2 gap-3">
+          {/* Discord column */}
+          <div className="min-h-[44px] flex flex-col justify-center">
+            <span className="text-gray-500 text-xs font-medium uppercase tracking-wide mb-1">
+              Discord
+            </span>
+            <div className="flex items-start gap-2">
+              <span className="mt-0.5 shrink-0">
+                {row.discord.isPositive ? <CheckIcon /> : <XIcon />}
+              </span>
+              <span className="text-gray-300 text-sm min-w-0">
+                {row.discord.value}
+              </span>
+            </div>
+          </div>
+          {/* Bedrock column */}
+          <div className="min-h-[44px] flex flex-col justify-center border-l border-border-dark/20 pl-3">
+            <span className="text-primary text-xs font-medium uppercase tracking-wide mb-1">
+              Bedrock Chat
+            </span>
+            <div className="flex items-start gap-2">
+              <span className="mt-0.5 shrink-0">
+                {row.bedrock.isPositive ? <CheckIcon /> : <XIcon />}
+              </span>
+              <span className="text-white font-medium text-sm min-w-0">
+                {row.bedrock.value}
+              </span>
+            </div>
+          </div>
+        </div>
+      </Glass>
+    </motion.div>
+  );
+}
+
 export function ComparisonTable() {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
@@ -166,7 +227,9 @@ export function ComparisonTable() {
           </p>
         </motion.div>
 
+        {/* Desktop: table layout (md and up) */}
         <motion.div
+          className="hidden md:block"
           initial={{ opacity: 0, y: 30 }}
           animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
           transition={{ duration: 0.6, delay: 0.2 }}
@@ -198,6 +261,17 @@ export function ComparisonTable() {
             </table>
           </Glass>
         </motion.div>
+
+        {/* Mobile: card layout (below md) */}
+        <div className="md:hidden flex flex-col gap-3">
+          {comparisonData.map((row, index) => (
+            <ComparisonCardComponent
+              key={row.feature}
+              row={row}
+              index={index}
+            />
+          ))}
+        </div>
       </div>
     </section>
   );

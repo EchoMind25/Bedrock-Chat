@@ -22,9 +22,16 @@ interface MessageListProps {
 export function MessageList({ channelId }: MessageListProps) {
 	const parentRef = useRef<HTMLDivElement>(null);
 	const initializedRef = useRef<Set<string>>(new Set());
-	// Subscribe ONLY to this channel's messages with stable fallback references
-	const channelMessages = useMessageStore((s) => s.messages[channelId] ?? EMPTY_MESSAGES);
+
+	// Read raw messages entry (may be undefined before first load).
+	// Do NOT use `?? EMPTY_MESSAGES` here — undefined means "not yet loaded",
+	// [] means "loaded with no messages". These are distinct states.
+	const messagesRaw = useMessageStore((s) => s.messages[channelId]);
+	const channelMessages = messagesRaw ?? EMPTY_MESSAGES;
+	const hasLoaded = messagesRaw !== undefined; // a completed load attempt exists
+
 	const isLoading = useMessageStore((s) => s.loadingChannels[channelId] ?? false);
+	const hasError = useMessageStore((s) => s.loadErrors[channelId] ?? false);
 	const typing = usePresenceStore((s) => s.typingUsers[channelId] ?? EMPTY_STRINGS);
 
 	// Load messages and subscribe to real-time updates
@@ -72,8 +79,16 @@ export function MessageList({ channelId }: MessageListProps) {
 	// eslint-disable-next-line react-hooks/exhaustive-deps -- virtualizer is intentionally excluded (unstable reference)
 	}, [lastMessageId, channelMessages.length]);
 
-	if (isLoading) {
+	// Show skeleton while loading OR before the first load attempt resolves.
+	// Without `!hasLoaded`, the component briefly flashes <EmptyMessages /> on
+	// first render because messages[channelId] is undefined → length 0, before
+	// the useEffect fires and loadingChannels[channelId] becomes true.
+	if (isLoading || !hasLoaded) {
 		return <MessageListSkeleton />;
+	}
+
+	if (hasError) {
+		return <ChannelError channelId={channelId} />;
 	}
 
 	if (channelMessages.length === 0) {
@@ -165,6 +180,23 @@ function EmptyMessages() {
 				<div className="text-6xl mb-4">💬</div>
 				<h3 className="text-xl font-semibold text-white">No messages yet</h3>
 				<p className="text-white/60 mt-2">Start the conversation!</p>
+			</div>
+		</div>
+	);
+}
+
+function ChannelError({ channelId }: { channelId: string }) {
+	return (
+		<div className="flex-1 flex items-center justify-center">
+			<div className="text-center space-y-2">
+				<h3 className="text-lg font-semibold text-white">Unable to load messages</h3>
+				<p className="text-white/60 text-sm">Something went wrong. Check your connection and try again.</p>
+				<button
+					className="mt-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-white/10 hover:bg-white/20 transition-colors"
+					onClick={() => useMessageStore.getState().loadMessages(channelId)}
+				>
+					Try again
+				</button>
 			</div>
 		</div>
 	);

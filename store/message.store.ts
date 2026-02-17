@@ -186,9 +186,11 @@ export const useMessageStore = create<MessageState>()(
           return;
         }
 
-        // Mark this channel as loading (per-channel, not global)
+        // Mark this channel as loading and clear any previous error so the UI
+        // shows the skeleton immediately when the user clicks "Try again".
         set((prev) => ({
           loadingChannels: { ...prev.loadingChannels, [channelId]: true },
+          loadErrors: { ...prev.loadErrors, [channelId]: false },
         }));
 
         const controller = new AbortController();
