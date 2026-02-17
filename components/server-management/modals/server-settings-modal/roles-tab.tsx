@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Plus, Trash2, GripVertical, Users, Shield, X, UserPlus } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+
 import { Button } from "../../../ui/button/button";
 import { Input } from "../../../ui/input/input";
 import { Toggle } from "../../../ui/toggle/toggle";
@@ -31,6 +32,9 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+
+// Stable empty array to prevent Zustand selector from creating new [] on every call
+const EMPTY_MEMBERS: MemberWithProfile[] = [];
 
 interface RolesTabProps {
   serverId: string;
@@ -65,19 +69,18 @@ function SortableRoleItem({
   };
 
   return (
-    <motion.div
+    <div
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center gap-3 p-3 rounded-lg transition-all cursor-pointer",
+        "flex items-center gap-3 p-3 rounded-lg transition-all duration-150 cursor-pointer",
+        "hover:scale-[1.01] active:scale-[0.99]",
         isSelected
           ? "border border-blue-500/40 bg-blue-600/15 ring-1 ring-blue-500/20"
           : "border border-slate-700/30 hover:border-slate-600/40 hover:bg-slate-800/30",
         isDragging && "opacity-50",
       )}
       onClick={onClick}
-      whileHover={{ scale: 1.01 }}
-      whileTap={{ scale: 0.99 }}
     >
       <div
         {...attributes}
@@ -105,7 +108,7 @@ function SortableRoleItem({
           DEFAULT
         </span>
       )}
-    </motion.div>
+    </div>
   );
 }
 
@@ -120,8 +123,8 @@ export function RolesTab({
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
-  // Real members from store
-  const members = useMemberStore((s) => s.membersByServer[serverId] ?? []);
+  // Real members from store — use stable EMPTY_MEMBERS to prevent new [] reference each render
+  const members = useMemberStore((s) => s.membersByServer[serverId] ?? EMPTY_MEMBERS);
   const loadingMembers = useMemberStore((s) => s.loadingServers[serverId] ?? false);
 
   useEffect(() => {
@@ -139,8 +142,15 @@ export function RolesTab({
   );
   const [newRoleMentionable, setNewRoleMentionable] = useState(false);
 
-  // Sort roles by position (highest first)
-  const sortedRoles = [...roles].sort((a, b) => b.position - a.position);
+  // Sort roles by position (highest first) — memoize to prevent SortableContext re-init
+  const sortedRoles = useMemo(
+    () => [...roles].sort((a, b) => b.position - a.position),
+    [roles],
+  );
+  const sortedRoleIds = useMemo(
+    () => sortedRoles.map((r) => r.id),
+    [sortedRoles],
+  );
 
   const selectedRole = selectedRoleId
     ? roles.find((r) => r.id === selectedRoleId)
@@ -264,7 +274,7 @@ export function RolesTab({
             onDragEnd={handleDragEnd}
           >
             <SortableContext
-              items={sortedRoles.map((r) => r.id)}
+              items={sortedRoleIds}
               strategy={verticalListSortingStrategy}
             >
               <div className="space-y-2">

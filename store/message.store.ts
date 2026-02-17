@@ -186,32 +186,31 @@ export const useMessageStore = create<MessageState>()(
           return;
         }
 
-
         // Mark this channel as loading (per-channel, not global)
         set((prev) => ({
           loadingChannels: { ...prev.loadingChannels, [channelId]: true },
         }));
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+
         try {
           const supabase = createClient();
-          const timeout = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('Message load timed out')), 10000)
-          );
-          const { data, error } = await Promise.race([
-            supabase
-              .from('messages')
-              .select(`
-                *,
-                user:profiles(id, username, display_name, avatar_url),
-                attachments:message_attachments(*),
-                reactions:message_reactions(*)
-              `)
-              .eq('channel_id', channelId)
-              .eq('is_deleted', false)
-              .order('created_at', { ascending: false })
-              .limit(50),
-            timeout,
-          ]);
+          const { data, error } = await supabase
+            .from('messages')
+            .select(`
+              *,
+              user:profiles(id, username, display_name, avatar_url),
+              attachments:message_attachments(*),
+              reactions:message_reactions(*)
+            `)
+            .eq('channel_id', channelId)
+            .eq('is_deleted', false)
+            .order('created_at', { ascending: false })
+            .limit(50)
+            .abortSignal(controller.signal);
+
+          clearTimeout(timeoutId);
 
           if (error) throw error;
 
@@ -240,7 +239,12 @@ export const useMessageStore = create<MessageState>()(
             loadErrors: { ...prev.loadErrors, [channelId]: false },
           }));
         } catch (err) {
-          console.error('Error loading messages:', err);
+          clearTimeout(timeoutId);
+          if (err instanceof DOMException && err.name === 'AbortError') {
+            console.warn('[Messages] Load timed out for channel:', channelId);
+          } else {
+            console.error('[Messages] Load failed:', err);
+          }
           set((prev) => ({
             messages: { ...prev.messages, [channelId]: prev.messages[channelId] ?? [] },
             loadingChannels: { ...prev.loadingChannels, [channelId]: false },

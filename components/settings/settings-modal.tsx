@@ -73,9 +73,12 @@ export function SettingsModal() {
 
 	if (!mounted) return null;
 
-	// Filter admin tab for non-parent accounts
+	// Filter restricted tabs
+	const isDeveloper = process.env.NODE_ENV === "development" ||
+		(user?.id && process.env.NEXT_PUBLIC_DEVELOPER_IDS?.split(",").includes(user.id));
 	const visibleItems = NAV_ITEMS.filter((item) => {
 		if (item.id === "admin" && user?.accountType !== "parent") return false;
+		if (item.id === "developer" && !isDeveloper) return false;
 		return true;
 	});
 

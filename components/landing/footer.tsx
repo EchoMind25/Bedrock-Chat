@@ -6,9 +6,7 @@ import Link from "next/link";
 const footerLinks = {
   product: [
     { label: "Features", href: "#features" },
-    { label: "Pricing", href: "#" },
-    { label: "Roadmap", href: "#" },
-    { label: "Changelog", href: "#" },
+    // TODO: Add Pricing, Roadmap, Changelog links when pages are built
   ],
   legal: [
     { label: "Privacy Policy", href: "/privacy-policy" },
@@ -25,17 +23,15 @@ const footerLinks = {
     },
   ],
   community: [
-    { label: "Open Source", href: "https://github.com" },
-    { label: "Documentation", href: "#" },
-    { label: "Blog", href: "#" },
-    { label: "Contact", href: "#" },
+    { label: "Open Source", href: "https://github.com/EchoMind25/Bedrock-Chat", external: true },
+    // TODO: Add Documentation, Blog, Contact links when pages are built
   ],
 };
 
 const socialLinks = [
   {
     name: "GitHub",
-    href: "https://github.com",
+    href: "https://github.com/EchoMind25/Bedrock-Chat",
     icon: (
       <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" role="img" aria-label="GitHub">
         <path
@@ -137,12 +133,23 @@ export function Footer() {
             <ul className="space-y-2">
               {footerLinks.community.map((link) => (
                 <li key={link.label}>
-                  <Link
-                    href={link.href}
-                    className="text-gray-400 hover:text-white transition-colors text-sm"
-                  >
-                    {link.label}
-                  </Link>
+                  {link.external ? (
+                    <a
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-gray-400 hover:text-white transition-colors text-sm"
+                    >
+                      {link.label}
+                    </a>
+                  ) : (
+                    <Link
+                      href={link.href}
+                      className="text-gray-400 hover:text-white transition-colors text-sm"
+                    >
+                      {link.label}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>

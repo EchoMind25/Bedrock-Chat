@@ -43,7 +43,7 @@ const securityHeaders = {
 	// Content Security Policy - allow Supabase + Daily.co + Sentry
 	"Content-Security-Policy": [
 		"default-src 'self'",
-		`script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+		`script-src 'self' 'unsafe-inline' https://c.daily.co https://*.daily.co${isDev ? " 'unsafe-eval'" : ""}`,
 		"style-src 'self' 'unsafe-inline'",
 		"img-src 'self' data: https:",
 		"font-src 'self' data:",

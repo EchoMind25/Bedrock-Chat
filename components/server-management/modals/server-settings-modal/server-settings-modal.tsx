@@ -148,32 +148,42 @@ export function ServerSettingsModal() {
       id: `${currentServer?.id}-role-${Date.now()}`,
     };
 
-    const updatedRoles = [...(currentServer?.roles || []), newRole];
-    setEditedServer((prev) => ({ ...prev, roles: updatedRoles }));
+    setEditedServer((prev) => {
+      const currentRoles = prev.roles || currentServer?.roles || [];
+      return { ...prev, roles: [...currentRoles, newRole] };
+    });
     setHasChanges(true);
   };
 
   const handleRoleUpdate = (roleId: string, updates: Partial<Role>) => {
-    const updatedRoles = (currentServer?.roles || []).map((role) =>
-      role.id === roleId ? { ...role, ...updates } : role
-    );
-    setEditedServer((prev) => ({ ...prev, roles: updatedRoles }));
+    setEditedServer((prev) => {
+      const currentRoles = prev.roles || currentServer?.roles || [];
+      const updatedRoles = currentRoles.map((role) =>
+        role.id === roleId ? { ...role, ...updates } : role
+      );
+      return { ...prev, roles: updatedRoles };
+    });
     setHasChanges(true);
   };
 
   const handleRoleDelete = (roleId: string) => {
-    const updatedRoles = (currentServer?.roles || []).filter((role) => role.id !== roleId);
-    setEditedServer((prev) => ({ ...prev, roles: updatedRoles }));
+    setEditedServer((prev) => {
+      const currentRoles = prev.roles || currentServer?.roles || [];
+      return { ...prev, roles: currentRoles.filter((role) => role.id !== roleId) };
+    });
     setHasChanges(true);
   };
 
   const handleRoleReorder = (roleIds: string[]) => {
-    const rolesMap = new Map((currentServer?.roles || []).map((r) => [r.id, r]));
-    const updatedRoles = roleIds.map((id, index) => {
-      const role = rolesMap.get(id)!;
-      return { ...role, position: roleIds.length - 1 - index };
+    setEditedServer((prev) => {
+      const currentRoles = prev.roles || currentServer?.roles || [];
+      const rolesMap = new Map(currentRoles.map((r) => [r.id, r]));
+      const updatedRoles = roleIds.map((id, index) => {
+        const role = rolesMap.get(id)!;
+        return { ...role, position: roleIds.length - 1 - index };
+      });
+      return { ...prev, roles: updatedRoles };
     });
-    setEditedServer((prev) => ({ ...prev, roles: updatedRoles }));
     setHasChanges(true);
   };
 

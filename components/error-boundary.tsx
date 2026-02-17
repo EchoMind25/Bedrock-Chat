@@ -102,26 +102,51 @@ export class ErrorBoundary extends Component<
 		window.location.reload();
 	};
 
-	private handleClearCacheAndReload = () => {
+	private handleClearCacheAndReload = async () => {
+		// Sign out from Supabase to clear server session cookie —
+		// prevents ghost sessions that survive localStorage clears
+		try {
+			const { createClient } = await import("@/lib/supabase/client");
+			const supabase = createClient();
+			await supabase.auth.signOut({ scope: "local" });
+		} catch {
+			// Continue even if signOut fails
+		}
+
+		// Clear Supabase auth tokens from both storages
+		for (const storage of [localStorage, sessionStorage]) {
+			const toRemove: string[] = [];
+			for (let i = 0; i < storage.length; i++) {
+				const key = storage.key(i);
+				if (key && (key.startsWith("sb-") || key.startsWith("supabase"))) {
+					toRemove.push(key);
+				}
+			}
+			toRemove.forEach((k) => storage.removeItem(k));
+		}
+
 		// Clear Bedrock-related localStorage keys
 		const keysToRemove = [
 			"bedrock-auth",
 			"bedrock-server",
+			"bedrock-server-management",
 			"bedrock-ui",
 			"bedrock-favorites",
 			"bedrock-init-attempts",
 			"bedrock-last-render",
+			"bedrock-remember-me",
 		];
 
 		keysToRemove.forEach((key) => {
 			try {
 				localStorage.removeItem(key);
-			} catch (err) {
-				console.error(`Failed to remove ${key}:`, err);
+			} catch {
+				// Storage may be unavailable
 			}
 		});
 
-		window.location.reload();
+		// Force navigation to login (not SPA, clears all client state)
+		window.location.href = "/login";
 	};
 
 	render() {

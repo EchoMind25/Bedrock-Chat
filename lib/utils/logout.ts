@@ -40,6 +40,13 @@ export async function performFullLogout(): Promise<void> {
 	useFavoritesStore.getState().clearFavorites();
 	useFamilyStore.getState().reset();
 
-	// 4. Auth logout (Supabase signOut + force-clear tokens + reset state)
+	// 4. Clear init circuit breaker
+	try {
+		localStorage.removeItem("bedrock-init-attempts");
+	} catch {
+		// Storage may be unavailable
+	}
+
+	// 5. Auth logout (Supabase signOut + force-clear tokens + reset state)
 	await useAuthStore.getState().logout();
 }

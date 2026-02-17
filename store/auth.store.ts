@@ -125,10 +125,16 @@ export const useAuthStore = create<AuthState>()(
 						}
 
 						const supabase = createClient();
-						const { data, error } = await supabase.auth.signInWithPassword({
-							email,
-							password,
-						});
+						// Race login against 15s timeout to prevent infinite loading
+						const { data, error } = await Promise.race([
+							supabase.auth.signInWithPassword({ email, password }),
+							new Promise<{ data: { user: null; session: null }; error: { message: string } }>((resolve) =>
+								setTimeout(() => resolve({
+									data: { user: null, session: null },
+									error: { message: "Login timed out. Please check your connection and try again." },
+								}), 15000),
+							),
+						]);
 
 						if (error) {
 							const newAttempts = failedLoginAttempts + 1;
@@ -143,11 +149,16 @@ export const useAuthStore = create<AuthState>()(
 						}
 
 						if (data.user) {
-							const { data: profile } = await supabase
-								.from("profiles")
-								.select("*")
-								.eq("id", data.user.id)
-								.single();
+							const { data: profile } = await Promise.race([
+								supabase
+									.from("profiles")
+									.select("*")
+									.eq("id", data.user.id)
+									.single(),
+								new Promise<{ data: null }>((resolve) =>
+									setTimeout(() => resolve({ data: null }), 5000),
+								),
+							]);
 
 							if (profile) {
 
@@ -422,6 +433,7 @@ export const useAuthStore = create<AuthState>()(
 					}
 
 					localStorage.removeItem("bedrock-remember-me");
+					localStorage.removeItem("bedrock-init-attempts");
 					set({
 						user: null,
 						isAuthenticated: false,
@@ -563,18 +575,18 @@ export const useAuthStore = create<AuthState>()(
 				// proxy.ts refreshes the session cookie on every request, so if
 				// getUser() returns a user the session is valid.
 				checkAuth: async () => {
+					const AUTH_TIMEOUT = 5000;
 					try {
 						const supabase = createClient();
 
-						// Each race gets its own fresh timeout to prevent shared-promise expiry
-						const makeTimeout = (label: string) =>
-							new Promise<never>((_, reject) =>
-								setTimeout(() => reject(new Error(label + " timed out")), 15000),
-							);
-
+						// Race getUser against a short timeout. Timeouts RESOLVE with
+						// null instead of rejecting — a timeout means "unknown auth
+						// state" which we treat as "not authenticated", not a crash.
 						const { data: { user } } = await Promise.race([
 							supabase.auth.getUser(),
-							makeTimeout("Auth check"),
+							new Promise<{ data: { user: null } }>((resolve) =>
+								setTimeout(() => resolve({ data: { user: null } }), AUTH_TIMEOUT),
+							),
 						]);
 
 						if (user) {
@@ -584,7 +596,9 @@ export const useAuthStore = create<AuthState>()(
 									.select("*")
 									.eq("id", user.id)
 									.single(),
-								makeTimeout("Profile fetch"),
+								new Promise<{ data: null }>((resolve) =>
+									setTimeout(() => resolve({ data: null }), AUTH_TIMEOUT),
+								),
 							]);
 
 							if (profile) {
@@ -598,7 +612,7 @@ export const useAuthStore = create<AuthState>()(
 							}
 						}
 				} catch (err) {
-					// Auth check failed or timed out — preserve persisted session if available
+					// Auth check failed — preserve persisted session if available
 					if (!isAbortError(err)) {
 						logError("AUTH", err);
 					}
@@ -608,8 +622,6 @@ export const useAuthStore = create<AuthState>()(
 						return;
 					}
 					if (isAbortError(err)) {
-						// AbortError with no persisted session: don't treat as auth failure.
-						// The auth listener (initAuthListener) will handle real state changes.
 						set({ isInitializing: false });
 						return;
 					}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "motion/react";
 import { Mic, Headphones, ChevronDown, Sparkles } from "lucide-react";
 import { useVoiceStore } from "@/store/voice.store";
@@ -39,12 +39,20 @@ export function VoiceTab() {
 	const [outputVolume, setOutputVolume] = useState(70);
 	const [inputMeterLevel, setInputMeterLevel] = useState(0);
 	const [outputMeterLevel, setOutputMeterLevel] = useState(0);
-	const [isTesting, setIsTesting] = useState(false);
-	const [permissionGranted, setPermissionGranted] = useState(false);
+	const [isMicTesting, setIsMicTesting] = useState(false);
+	const [isOutputTesting, setIsOutputTesting] = useState(false);
+	const [micError, setMicError] = useState<string | null>(null);
+	const [showPermissionModal, setShowPermissionModal] = useState(false);
 
 	const noiseCancellationEnabled = useVoiceStore((s) => s.noiseCancellationEnabled);
 	const setNoiseCancellation = useVoiceStore((s) => s.setNoiseCancellation);
-	const testIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+	// Refs for mic test cleanup
+	const streamRef = useRef<MediaStream | null>(null);
+	const audioContextRef = useRef<AudioContext | null>(null);
+	const animationFrameRef = useRef<number | null>(null);
+	const isMicTestingRef = useRef(false);
+	const outputIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
 	// Enumerate audio devices with caching
 	useEffect(() => {
@@ -58,7 +66,6 @@ export function VoiceTab() {
 				) {
 					setInputDevices(cachedInputDevices);
 					setOutputDevices(cachedOutputDevices);
-					setPermissionGranted(true);
 					return;
 				}
 
@@ -70,7 +77,6 @@ export function VoiceTab() {
 					});
 					if (permStatus.state === "granted") {
 						hasPermission = true;
-						setPermissionGranted(true);
 					} else if (permStatus.state === "denied") {
 						return;
 					}
@@ -81,7 +87,6 @@ export function VoiceTab() {
 				if (!hasPermission) {
 					const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 					stream.getTracks().forEach((t) => t.stop());
-					setPermissionGranted(true);
 				}
 
 				const devices = await navigator.mediaDevices.enumerateDevices();
@@ -109,40 +114,143 @@ export function VoiceTab() {
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
-	// Simulate microphone input level
-	useEffect(() => {
-		const interval = setInterval(() => {
-			setInputMeterLevel(Math.random() * inputVolume);
-		}, 100);
-		return () => clearInterval(interval);
-	}, [inputVolume]);
-
-	// Cleanup test interval on unmount
-	useEffect(() => {
-		return () => {
-			if (testIntervalRef.current) {
-				clearInterval(testIntervalRef.current);
-			}
-		};
+	// Stop mic test — cleanup all audio resources
+	const stopMicTest = useCallback(() => {
+		isMicTestingRef.current = false;
+		if (animationFrameRef.current) {
+			cancelAnimationFrame(animationFrameRef.current);
+			animationFrameRef.current = null;
+		}
+		if (streamRef.current) {
+			streamRef.current.getTracks().forEach((track) => track.stop());
+			streamRef.current = null;
+		}
+		if (audioContextRef.current) {
+			audioContextRef.current.close().catch(() => {});
+			audioContextRef.current = null;
+		}
+		setIsMicTesting(false);
+		setInputMeterLevel(0);
 	}, []);
 
-	const handleTest = () => {
-		setIsTesting(true);
+	// Start real mic analysis pipeline
+	const startMicAnalysis = useCallback(async () => {
+		setShowPermissionModal(false);
+		setMicError(null);
+
+		try {
+			const stream = await navigator.mediaDevices.getUserMedia({
+				audio: {
+					echoCancellation: true,
+					noiseSuppression: true,
+					autoGainControl: true,
+				},
+			});
+
+			const audioContext = new AudioContext();
+			const source = audioContext.createMediaStreamSource(stream);
+			const analyser = audioContext.createAnalyser();
+			analyser.fftSize = 256;
+			analyser.smoothingTimeConstant = 0.5;
+			source.connect(analyser);
+
+			streamRef.current = stream;
+			audioContextRef.current = audioContext;
+			isMicTestingRef.current = true;
+			setIsMicTesting(true);
+
+			const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+			const updateLevel = () => {
+				if (!isMicTestingRef.current) return;
+
+				analyser.getByteFrequencyData(dataArray);
+
+				// RMS calculation for perceptually accurate volume
+				let sum = 0;
+				for (let i = 0; i < dataArray.length; i++) {
+					sum += dataArray[i] * dataArray[i];
+				}
+				const rms = Math.sqrt(sum / dataArray.length);
+				const normalizedLevel = Math.min(100, Math.round((rms / 128) * 100));
+
+				setInputMeterLevel(normalizedLevel);
+				animationFrameRef.current = requestAnimationFrame(updateLevel);
+			};
+
+			animationFrameRef.current = requestAnimationFrame(updateLevel);
+		} catch (err) {
+			if (err instanceof DOMException && err.name === "NotAllowedError") {
+				setMicError("Microphone access denied. Enable it in your browser settings (click the lock icon in the address bar).");
+			} else {
+				setMicError("Failed to access microphone. Check your device connections.");
+			}
+			setIsMicTesting(false);
+		}
+	}, []);
+
+	// Test microphone with permission-first flow
+	const handleTestMicrophone = useCallback(async () => {
+		if (isMicTesting) {
+			stopMicTest();
+			return;
+		}
+
+		setMicError(null);
+
+		// Check current permission state
+		let permissionState: PermissionState = "prompt";
+		try {
+			const status = await navigator.permissions.query({ name: "microphone" as PermissionName });
+			permissionState = status.state;
+		} catch {
+			// Firefox doesn't support permissions.query for microphone
+			permissionState = "prompt";
+		}
+
+		if (permissionState === "denied") {
+			setMicError("Microphone access is blocked. Enable it in your browser settings (click the lock icon in the address bar).");
+			return;
+		}
+
+		if (permissionState === "prompt") {
+			setShowPermissionModal(true);
+			return;
+		}
+
+		// Permission already granted
+		await startMicAnalysis();
+	}, [isMicTesting, stopMicTest, startMicAnalysis]);
+
+	// Output test
+	const handleTestOutput = () => {
+		setIsOutputTesting(true);
 		let level = 0;
 		const interval = setInterval(() => {
 			level += 5;
 			setOutputMeterLevel(Math.min(level, outputVolume));
 			if (level >= 100) {
 				clearInterval(interval);
-				testIntervalRef.current = null;
+				outputIntervalRef.current = null;
 				setTimeout(() => {
 					setOutputMeterLevel(0);
-					setIsTesting(false);
+					setIsOutputTesting(false);
 				}, 500);
 			}
 		}, 50);
-		testIntervalRef.current = interval;
+		outputIntervalRef.current = interval;
 	};
+
+	// Cleanup on unmount
+	useEffect(() => {
+		return () => {
+			stopMicTest();
+			if (outputIntervalRef.current) {
+				clearInterval(outputIntervalRef.current);
+			}
+		};
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
 
 	return (
 		<div className="space-y-8">
@@ -163,8 +271,25 @@ export function VoiceTab() {
 							<span className="text-sm text-slate-300">Input Volume</span>
 							<span className="text-sm text-slate-400">{inputVolume}%</span>
 						</div>
-						<VolumeSlider value={inputVolume} onChange={setInputVolume} meterLevel={inputMeterLevel} />
+						<VolumeSlider value={inputVolume} onChange={setInputVolume} meterLevel={isMicTesting ? inputMeterLevel : 0} />
 					</div>
+					{/* Mic test button and status */}
+					<Button
+						variant="secondary"
+						size="sm"
+						onClick={handleTestMicrophone}
+						className="w-full"
+					>
+						{isMicTesting ? "Stop Test" : "Test Microphone"}
+					</Button>
+					{isMicTesting && (
+						<p className="text-xs text-slate-400">
+							{inputMeterLevel > 5 ? "Microphone is working" : "Speak to test your microphone..."}
+						</p>
+					)}
+					{micError && (
+						<p className="text-xs text-red-400">{micError}</p>
+					)}
 				</div>
 			</SettingsSection>
 
@@ -182,8 +307,8 @@ export function VoiceTab() {
 						</div>
 						<VolumeSlider value={outputVolume} onChange={setOutputVolume} meterLevel={outputMeterLevel} />
 					</div>
-					<Button variant="secondary" size="sm" onClick={handleTest} disabled={isTesting} className="w-full">
-						{isTesting ? "Testing..." : "Test Output"}
+					<Button variant="secondary" size="sm" onClick={handleTestOutput} disabled={isOutputTesting} className="w-full">
+						{isOutputTesting ? "Testing..." : "Test Output"}
 					</Button>
 				</div>
 			</SettingsSection>
@@ -231,11 +356,53 @@ export function VoiceTab() {
 					</div>
 				</div>
 			</SettingsSection>
+
+			{/* Microphone Permission Modal */}
+			{showPermissionModal && (
+				<MicPermissionModal
+					onAllow={startMicAnalysis}
+					onDeny={() => setShowPermissionModal(false)}
+				/>
+			)}
 		</div>
 	);
 }
 
 // --- Internal sub-components ---
+
+function MicPermissionModal({ onAllow, onDeny }: { onAllow: () => void; onDeny: () => void }) {
+	return (
+		<div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xs">
+			<motion.div
+				className="bg-[oklch(0.14_0.02_250)] border border-white/10 rounded-2xl p-6 max-w-sm mx-4 shadow-2xl"
+				initial={{ opacity: 0, scale: 0.95 }}
+				animate={{ opacity: 1, scale: 1 }}
+				transition={{ type: "spring", stiffness: 260, damping: 20 }}
+			>
+				<div className="flex items-center gap-3 mb-4">
+					<div className="p-2 rounded-lg bg-primary/10">
+						<Mic className="w-5 h-5 text-primary" />
+					</div>
+					<h3 className="text-lg font-semibold text-white">Microphone Access</h3>
+				</div>
+				<p className="text-sm text-slate-300 mb-2">
+					Bedrock Chat needs access to your microphone to test audio input.
+				</p>
+				<p className="text-xs text-slate-400 mb-6">
+					Audio is analyzed locally on your device and is never recorded or sent anywhere.
+				</p>
+				<div className="flex gap-3">
+					<Button variant="primary" size="sm" onClick={onAllow} className="flex-1">
+						Allow Access
+					</Button>
+					<Button variant="ghost" size="sm" onClick={onDeny} className="flex-1">
+						Not Now
+					</Button>
+				</div>
+			</motion.div>
+		</div>
+	);
+}
 
 function DeviceDropdown({ devices, value, onChange }: { devices: AudioDevice[]; value: string; onChange: (v: string) => void }) {
 	const [isOpen, setIsOpen] = useState(false);
@@ -293,11 +460,17 @@ function VolumeSlider({ value, onChange, meterLevel }: { value: number; onChange
 					background: `linear-gradient(to right, oklch(0.7 0.2 250) 0%, oklch(0.7 0.2 250) ${value}%, oklch(0.2 0.02 250 / 0.5) ${value}%, oklch(0.2 0.02 250 / 0.5) 100%)`,
 				}}
 			/>
-			<div className="h-2 bg-white/10 rounded-full overflow-hidden">
-				<motion.div
-					className="h-full bg-gradient-to-r from-green-400 via-yellow-400 to-red-400"
-					style={{ width: `${meterLevel}%` }}
-					transition={{ type: "spring", stiffness: 300, damping: 30 }}
+			<div className="relative h-3 w-full rounded-full bg-white/10 overflow-hidden">
+				<div
+					className="h-full rounded-full transition-all duration-100 ease-out"
+					style={{
+						width: `${meterLevel}%`,
+						background: meterLevel < 40
+							? "linear-gradient(90deg, #22c55e, #4ade80)"
+							: meterLevel < 75
+								? "linear-gradient(90deg, #22c55e, #eab308)"
+								: "linear-gradient(90deg, #22c55e, #eab308, #ef4444)",
+					}}
 				/>
 			</div>
 		</div>

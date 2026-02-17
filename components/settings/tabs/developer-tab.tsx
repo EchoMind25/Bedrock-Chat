@@ -8,30 +8,37 @@ import { toast } from "@/lib/stores/toast-store";
 
 export function DeveloperTab() {
 	const [mounted, setMounted] = useState(false);
-	const [storageKeys, setStorageKeys] = useState<string[]>([]);
+	const [storageKeyCount, setStorageKeyCount] = useState(0);
+	const [confirmReset, setConfirmReset] = useState(false);
 
 	useEffect(() => {
 		setMounted(true);
-		updateStorageInfo();
+		updateStorageCount();
 	}, []);
 
-	function updateStorageInfo() {
+	function updateStorageCount() {
 		try {
-			const keys = Object.keys(localStorage).filter((k) => k.startsWith("bedrock-"));
-			setStorageKeys(keys);
+			const count = Object.keys(localStorage).filter((k) => k.startsWith("bedrock-")).length;
+			setStorageKeyCount(count);
 		} catch {
 			// localStorage not available
 		}
 	}
 
-	const handleClearCache = () => {
+	const handleResetAppData = () => {
+		if (!confirmReset) {
+			setConfirmReset(true);
+			return;
+		}
+
 		try {
 			const bedrockKeys = Object.keys(localStorage).filter((k) => k.startsWith("bedrock-"));
 			bedrockKeys.forEach((key) => localStorage.removeItem(key));
-			updateStorageInfo();
-			toast.success("Cache cleared", `Removed ${bedrockKeys.length} cached entries.`);
+			updateStorageCount();
+			setConfirmReset(false);
+			toast.success("App data reset", `Removed ${bedrockKeys.length} stored entries.`);
 		} catch {
-			toast.error("Failed", "Could not clear local storage.");
+			toast.error("Failed", "Could not reset app data.");
 		}
 	};
 
@@ -50,34 +57,33 @@ export function DeveloperTab() {
 						{process.env.NODE_ENV}
 					</span>
 				</SettingsRow>
-				<SettingsRow label="User Agent">
-					<span className="text-xs text-slate-400 max-w-[300px] truncate block">
-						{typeof navigator !== "undefined" ? navigator.userAgent.split(" ").slice(-2).join(" ") : "N/A"}
-					</span>
+			</SettingsSection>
+
+			<SettingsSection title="App Data">
+				<SettingsRow label="Stored Keys" description="Number of Bedrock-related entries in local storage">
+					<span className="text-sm text-slate-300">{storageKeyCount}</span>
 				</SettingsRow>
 			</SettingsSection>
 
-			<SettingsSection title="Local Storage">
-				<SettingsRow label="Bedrock Keys" description="Number of Bedrock-related localStorage entries">
-					<span className="text-sm text-slate-300">{storageKeys.length}</span>
-				</SettingsRow>
-				{storageKeys.length > 0 && (
-					<div className="rounded-lg bg-white/5 border border-white/10 p-3 space-y-1">
-						{storageKeys.map((key) => (
-							<p key={key} className="text-xs font-mono text-slate-400">{key}</p>
-						))}
-					</div>
-				)}
-			</SettingsSection>
-
-			<SettingsSection title="Cache Management">
+			<SettingsSection title="Data Management">
 				<div className="flex gap-3">
-					<Button variant="danger" size="sm" onClick={handleClearCache}>
-						Clear Local Storage
+					<Button
+						variant="danger"
+						size="sm"
+						onClick={handleResetAppData}
+					>
+						{confirmReset ? "Confirm Reset" : "Reset App Data"}
 					</Button>
+					{confirmReset && (
+						<Button variant="ghost" size="sm" onClick={() => setConfirmReset(false)}>
+							Cancel
+						</Button>
+					)}
 				</div>
 				<p className="text-xs text-slate-500 mt-2">
-					This clears all Bedrock Chat data from your browser. You will need to log in again.
+					{confirmReset
+						? "Are you sure? This will remove all local data and require you to log in again."
+						: "Clears all Bedrock Chat data from your browser. You will need to log in again."}
 				</p>
 			</SettingsSection>
 		</div>

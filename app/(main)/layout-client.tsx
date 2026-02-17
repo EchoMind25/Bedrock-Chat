@@ -32,7 +32,7 @@ const MemberListPanel = lazy(() =>
 );
 
 const MAX_INIT_ATTEMPTS = 3;
-const INIT_TIMEOUT_MS = 30000; // 30 seconds
+const INIT_TIMEOUT_MS = 10000; // 10 seconds
 
 export function MainLayoutClient({
 	children,
@@ -104,6 +104,7 @@ export function MainLayoutClient({
 	// Coordinated initialization: auth first, then data stores
 	useEffect(() => {
 		let cancelled = false;
+		let initTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
 		async function initialize() {
 			// Check circuit breaker
@@ -115,16 +116,14 @@ export function MainLayoutClient({
 			}
 
 			try {
-				// Increment attempt counter
-				localStorage.setItem("bedrock-init-attempts", String(storedAttempts + 1));
-
-				// Create timeout promise
-				const timeoutPromise = new Promise<never>((_, reject) =>
-					setTimeout(() => reject(new Error("Initialization timeout after 30s")), INIT_TIMEOUT_MS)
-				);
+				// Create timeout that RESOLVES instead of rejecting — a timeout
+				// is a graceful degradation to "not authenticated", not a crash.
+				const timeoutPromise = new Promise<"timeout">((resolve) => {
+					initTimeoutId = setTimeout(() => resolve("timeout"), INIT_TIMEOUT_MS);
+				});
 
 				// Create initialization promise
-				const initPromise = async () => {
+				const initPromise = async (): Promise<"done"> => {
 					setLoadingStage("auth");
 					const authState = useAuthStore.getState();
 					const hasPersistedAuth = authState.isAuthenticated && authState.user;
@@ -139,12 +138,12 @@ export function MainLayoutClient({
 					} else {
 						// No persisted auth — must wait for verification
 						await useAuthStore.getState().checkAuth();
-						if (cancelled) return;
+						if (cancelled) return "done";
 					}
 
 					// Step 2: Only init data stores if authenticated
 					const { isAuthenticated: authed } = useAuthStore.getState();
-					if (!authed) return;
+					if (!authed) return "done";
 
 					// Step 2.5: DEV MODE - Ensure user is member of all servers (fire-and-forget to not block init)
 					if (process.env.NODE_ENV !== "production") {
@@ -171,15 +170,29 @@ export function MainLayoutClient({
 					if (promises.length > 0) await Promise.all(promises);
 
 					setLoadingStage("ready");
+					return "done";
 				};
 
 				// Race between initialization and timeout
-				await Promise.race([initPromise(), timeoutPromise]);
+				const result = await Promise.race([initPromise(), timeoutPromise]);
+				clearTimeout(initTimeoutId);
 
-				// Success - reset circuit breaker
+				if (result === "timeout") {
+					// Timeout is NOT fatal — ensure the app isn't stuck in loading
+					// state, then let the redirect-to-login effect handle it.
+					logError("STORE_INIT", new Error("Initialization timed out — falling back to login"));
+					useAuthStore.setState({ isInitializing: false });
+					// Don't set initError — the redirect effect will handle it
+				}
+
+				// Success or graceful timeout — reset circuit breaker
 				localStorage.removeItem("bedrock-init-attempts");
 			} catch (err) {
+				clearTimeout(initTimeoutId);
 				if (!cancelled) {
+					// Only increment circuit breaker for actual JS errors, not timeouts
+					const attempts = parseInt(localStorage.getItem("bedrock-init-attempts") || "0", 10);
+					localStorage.setItem("bedrock-init-attempts", String(attempts + 1));
 					logError("STORE_INIT", err);
 					setInitError(err instanceof Error ? err.message : "Initialization failed");
 				}
@@ -189,6 +202,7 @@ export function MainLayoutClient({
 		initialize();
 		return () => {
 			cancelled = true;
+			clearTimeout(initTimeoutId);
 		};
 	}, []);
 
