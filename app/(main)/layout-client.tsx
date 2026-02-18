@@ -10,6 +10,7 @@ import { useDMStore } from "@/store/dm.store";
 import { useUIStore } from "@/store/ui.store";
 import { useFavoritesStore } from "@/store/favorites.store";
 import { usePresenceStore } from "@/store/presence.store";
+import { useVoicePresenceStore } from "@/store/voice-presence.store";
 import { useIsMobile } from "@/lib/hooks/use-media-query";
 import { ServerList } from "@/components/navigation/server-list/server-list";
 import { ChannelList } from "@/components/navigation/channel-list/channel-list";
@@ -165,6 +166,8 @@ export function MainLayoutClient({
 					// They set isInitialized = true internally after loading completes
 					if (!friendsState.isInitialized) friendsState.init();
 					if (!dmState.isInitialized) dmState.init();
+					dmState.subscribeToDms();
+					friendsState.subscribeToFriendRequests();
 
 					// Await server loading so child pages can rely on server data
 					if (promises.length > 0) await Promise.all(promises);
@@ -229,16 +232,21 @@ export function MainLayoutClient({
 		}
 
 		usePresenceStore.getState().joinServer(currentServerId);
+		useVoicePresenceStore.getState().joinServer(currentServerId);
 		return () => {
 			usePresenceStore.getState().leaveServer();
+			useVoicePresenceStore.getState().leaveServer();
 		};
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [currentServerId, isAuthenticated]); // Exclude store actions — stable Zustand actions
 
-	// Destroy presence on full unmount
+	// Destroy presence, DM, and friend request subscriptions on full unmount
 	useEffect(() => {
 		return () => {
 			usePresenceStore.getState().destroy();
+			useVoicePresenceStore.getState().destroy();
+			useDMStore.getState().unsubscribeFromDms();
+			useFriendsStore.getState().unsubscribeFromFriendRequests();
 		};
 	}, []);
 

@@ -10,6 +10,7 @@ interface ServerButtonProps {
 	isActive: boolean;
 	onClick: () => void;
 	isHome?: boolean;
+	badgeCount?: number;
 }
 
 export function ServerButton({
@@ -17,8 +18,10 @@ export function ServerButton({
 	isActive,
 	onClick,
 	isHome = false,
+	badgeCount = 0,
 }: ServerButtonProps) {
-	const hasUnread = !isHome && server.unreadCount > 0;
+	const hasUnread = (!isHome && server.unreadCount > 0) || badgeCount > 0;
+	const displayBadge = isHome ? badgeCount : server.unreadCount;
 
 	return (
 		<div className="relative">
@@ -92,7 +95,7 @@ export function ServerButton({
 					}}
 				>
 					<span className="text-white text-[10px] font-bold">
-						{server.unreadCount > 99 ? "99+" : server.unreadCount}
+						{displayBadge > 99 ? "99+" : displayBadge}
 					</span>
 				</motion.div>
 			)}

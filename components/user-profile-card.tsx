@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { UserPlus, Check, Clock, ChevronDown, Shield, Crown, X } from "lucide-react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { Avatar, type AvatarStatus } from "@/components/ui/avatar/avatar";
 import { Button } from "@/components/ui/button/button";
 import { useFriendsStore } from "@/store/friends.store";
@@ -140,18 +140,26 @@ export function UserProfileCard({ member, serverId, onClose }: UserProfileCardPr
 				className="h-16 relative"
 				style={{ backgroundColor: ROLE_COLORS[member.role] ? undefined : "oklch(0.25 0.05 265)" }}
 			>
-				<div
-					className="absolute inset-0 opacity-40"
-					style={{
-						background: member.role === "owner"
-							? "linear-gradient(135deg, oklch(0.7 0.2 90), oklch(0.6 0.2 50))"
-							: member.role === "admin"
-								? "linear-gradient(135deg, oklch(0.6 0.2 25), oklch(0.5 0.2 350))"
-								: member.role === "moderator"
-									? "linear-gradient(135deg, oklch(0.6 0.2 265), oklch(0.5 0.2 240))"
-									: "linear-gradient(135deg, oklch(0.3 0.02 265), oklch(0.2 0.02 250))",
-					}}
-				/>
+				{member.banner ? (
+					<img
+						src={member.banner}
+						alt=""
+						className="absolute inset-0 w-full h-full object-cover"
+					/>
+				) : (
+					<div
+						className="absolute inset-0 opacity-40"
+						style={{
+							background: member.role === "owner"
+								? "linear-gradient(135deg, oklch(0.7 0.2 90), oklch(0.6 0.2 50))"
+								: member.role === "admin"
+									? "linear-gradient(135deg, oklch(0.6 0.2 25), oklch(0.5 0.2 350))"
+									: member.role === "moderator"
+										? "linear-gradient(135deg, oklch(0.6 0.2 265), oklch(0.5 0.2 240))"
+										: "linear-gradient(135deg, oklch(0.3 0.02 265), oklch(0.2 0.02 250))",
+						}}
+					/>
+				)}
 				<button
 					type="button"
 					onClick={onClose}
@@ -227,7 +235,7 @@ export function UserProfileCard({ member, serverId, onClose }: UserProfileCardPr
 
 					{/* Role Assignment (admins/owners only) */}
 					{canAssignRole && (
-						<div className="relative">
+						<div>
 							<button
 								type="button"
 								onClick={() => setShowRoleDropdown(!showRoleDropdown)}
@@ -238,25 +246,35 @@ export function UserProfileCard({ member, serverId, onClose }: UserProfileCardPr
 								<ChevronDown className={`w-3.5 h-3.5 transition-transform ${showRoleDropdown ? "rotate-180" : ""}`} />
 							</button>
 
-							{showRoleDropdown && (
-								<div className="absolute top-full left-0 right-0 mt-1 bg-[oklch(0.18_0.02_250)] border border-white/10 rounded-lg shadow-xl z-10 py-1">
-									{ASSIGNABLE_ROLES.map((role) => (
-										<button
-											key={role.value}
-											type="button"
-											onClick={() => handleRoleChange(role.value)}
-											className={`w-full text-left px-3 py-1.5 text-xs hover:bg-white/5 transition-colors ${
-												member.role === role.value
-													? "text-blue-400 font-medium"
-													: "text-white/70"
-											}`}
-										>
-											{role.label}
-											{member.role === role.value && " (current)"}
-										</button>
-									))}
-								</div>
-							)}
+							<AnimatePresence initial={false}>
+								{showRoleDropdown && (
+									<motion.div
+										initial={{ height: 0, opacity: 0 }}
+										animate={{ height: "auto", opacity: 1 }}
+										exit={{ height: 0, opacity: 0 }}
+										transition={{ duration: 0.15 }}
+										className="overflow-hidden"
+									>
+										<div className="mt-1 bg-[oklch(0.14_0.02_250)] border border-white/10 rounded-lg py-1">
+											{ASSIGNABLE_ROLES.map((role) => (
+												<button
+													key={role.value}
+													type="button"
+													onClick={() => handleRoleChange(role.value)}
+													className={`w-full text-left px-3 py-1.5 text-xs hover:bg-white/5 transition-colors ${
+														member.role === role.value
+															? "text-blue-400 font-medium"
+															: "text-white/70"
+													}`}
+												>
+													{role.label}
+													{member.role === role.value && " (current)"}
+												</button>
+											))}
+										</div>
+									</motion.div>
+								)}
+							</AnimatePresence>
 						</div>
 					)}
 				</div>

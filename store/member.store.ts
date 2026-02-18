@@ -15,6 +15,7 @@ export interface MemberWithProfile {
 	username: string;
 	displayName: string;
 	avatar: string;
+	banner: string;
 	status: string;
 }
 
@@ -77,6 +78,7 @@ export const useMemberStore = create<MemberState>()(
 									username,
 									display_name,
 									avatar_url,
+									banner_url,
 									status
 								)
 							`)
@@ -98,6 +100,7 @@ export const useMemberStore = create<MemberState>()(
 									username: (p.username as string) || "unknown",
 									displayName: (p.display_name as string) || (p.username as string) || "Unknown",
 									avatar: (p.avatar_url as string) || "",
+									banner: (p.banner_url as string) || "",
 									status: (p.status as string) || "offline",
 								};
 							})

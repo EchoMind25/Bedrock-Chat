@@ -5,6 +5,7 @@ import { useServerStore } from "@/store/server.store";
 import { useServerManagementStore } from "@/store/server-management.store";
 import { useFavoritesStore } from "@/store/favorites.store";
 import { useUIStore } from "@/store/ui.store";
+import { useVoicePresenceStore } from "@/store/voice-presence.store";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils/cn";
@@ -82,10 +83,13 @@ export function ChannelItem({ channel, isActive }: ChannelItemProps) {
 		}
 	};
 
+	// Real-time voice presence from Supabase (overrides static mock data)
+	const voicePresenceUsers = useVoicePresenceStore((s) => s.voiceUsers[channel.id]);
+
 	const hasUnread = channel.unreadCount > 0;
 	const isVoice = channel.type === "voice";
-	const hasConnectedUsers =
-		isVoice && channel.connectedUsers && channel.connectedUsers.length > 0;
+	const connectedUsers = isVoice ? (voicePresenceUsers ?? channel.connectedUsers) : undefined;
+	const hasConnectedUsers = isVoice && connectedUsers && connectedUsers.length > 0;
 
 	const handleChannelClick = () => {
 		setCurrentChannel(channel.id);
@@ -243,7 +247,7 @@ export function ChannelItem({ channel, isActive }: ChannelItemProps) {
 					exit={{ opacity: 0, height: 0 }}
 					transition={{ duration: 0.2 }}
 				>
-					{channel.connectedUsers?.map((user) => (
+					{connectedUsers?.map((user) => (
 						<VoiceUserItem key={user.id} user={user} />
 					))}
 				</motion.div>

@@ -14,6 +14,7 @@ export interface User {
 	username: string;
 	displayName: string;
 	avatar: string;
+	banner: string;
 	bio?: string;
 	status: UserStatus;
 	accountType: "standard" | "parent" | "teen";
@@ -70,6 +71,7 @@ function profileToUser(profile: Record<string, unknown>, email: string): User {
 		username: profile.username as string,
 		displayName: (profile.display_name as string) || (profile.username as string),
 		avatar: (profile.avatar_url as string) || "",
+		banner: (profile.banner_url as string) || "",
 		bio: (profile.bio as string) || "",
 		status: (profile.status as UserStatus) || "online",
 		accountType: (profile.account_type as User["accountType"]) || "standard",
@@ -412,6 +414,7 @@ export const useAuthStore = create<AuthState>()(
 								username,
 								displayName: username,
 								avatar: "",
+								banner: "",
 								status: "online",
 								accountType: accountType as User["accountType"],
 								createdAt: new Date(),
@@ -529,6 +532,7 @@ export const useAuthStore = create<AuthState>()(
 						if (updates.username !== undefined) profileUpdates.username = updates.username;
 						if (updates.displayName !== undefined) profileUpdates.display_name = updates.displayName;
 						if (updates.avatar !== undefined) profileUpdates.avatar_url = updates.avatar;
+						if (updates.banner !== undefined) profileUpdates.banner_url = updates.banner;
 						if (updates.status !== undefined) profileUpdates.status = updates.status;
 						if (updates.bio !== undefined) profileUpdates.bio = updates.bio;
 

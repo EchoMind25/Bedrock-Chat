@@ -5,6 +5,8 @@ import type { Friend, FriendRequest } from "@/lib/types/friend";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/store/auth.store";
 import { isAbortError } from "@/lib/utils/is-abort-error";
+import { toast } from "@/lib/stores/toast-store";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 export type FriendTab = "all" | "online" | "pending" | "blocked";
 
@@ -25,17 +27,21 @@ interface FriendsState {
   setCurrentTab: (tab: FriendTab) => void;
   setSearchQuery: (query: string) => void;
   sendFriendRequest: (username: string, message?: string) => Promise<boolean>;
-  acceptFriendRequest: (requestId: string) => void;
-  declineFriendRequest: (requestId: string) => void;
-  cancelFriendRequest: (requestId: string) => void;
-  removeFriend: (friendId: string) => void;
-  blockUser: (userId: string) => void;
-  unblockUser: (userId: string) => void;
+  acceptFriendRequest: (requestId: string) => Promise<void>;
+  declineFriendRequest: (requestId: string) => Promise<void>;
+  cancelFriendRequest: (requestId: string) => Promise<void>;
+  removeFriend: (friendId: string) => Promise<void>;
+  blockUser: (userId: string) => Promise<void>;
+  unblockUser: (userId: string) => Promise<void>;
   openAddFriendModal: () => void;
   closeAddFriendModal: () => void;
   getOnlineFriends: () => Friend[];
   getPendingCount: () => number;
+  subscribeToFriendRequests: () => void;
+  unsubscribeFromFriendRequests: () => void;
 }
+
+let realtimeChannel: RealtimeChannel | null = null;
 
 export const useFriendsStore = create<FriendsState>()(
   conditionalDevtools(
@@ -151,7 +157,6 @@ export const useFriendsStore = create<FriendsState>()(
         setSearchQuery: (query) => set({ searchQuery: query }),
 
         sendFriendRequest: async (username, message) => {
-          // Use fresh timeout per race to prevent shared-promise expiry
           const makeTimeout = () => new Promise<never>((_, reject) =>
             setTimeout(() => reject(new Error("Request timed out")), 10000)
           );
@@ -161,47 +166,83 @@ export const useFriendsStore = create<FriendsState>()(
             const { data: { user } } = await Promise.race([supabase.auth.getUser(), makeTimeout()]);
             if (!user) return false;
 
+            // Look up target user by username (case-insensitive)
             const { data: targetUser } = await Promise.race([
-              supabase.from("profiles").select("id").eq("username", username.toLowerCase()).single(),
+              supabase.from("profiles").select("id, username, display_name, avatar_url").ilike("username", username).single(),
               makeTimeout(),
             ]);
 
             if (!targetUser) return false;
 
-            const { error } = await Promise.race([
+            // Prevent self-request
+            if (targetUser.id === user.id) return false;
+
+            // Check if blocked
+            const blockedUserIds = get().blockedUsers.map((b) => b.userId);
+            if (blockedUserIds.includes(targetUser.id)) return false;
+
+            // Check if already friends
+            if (get().friends.some((f) => f.userId === targetUser.id)) return false;
+
+            // Check if request already pending (either direction)
+            const { outgoing, incoming } = get().friendRequests;
+            if (outgoing.some((r) => r.toUserId === targetUser.id)) return false;
+            if (incoming.some((r) => r.fromUserId === targetUser.id)) return false;
+
+            const { data: inserted, error } = await Promise.race([
               supabase.from("friend_requests").insert({
                 sender_id: user.id, receiver_id: targetUser.id, message: message || null,
-              }),
+              }).select("id").single(),
               makeTimeout(),
             ]);
 
-            if (error) return false;
+            if (error) {
+              console.error("Friend request insert failed:", error);
+              return false;
+            }
+
+            // Update local state with the new outgoing request
+            set((state) => ({
+              friendRequests: {
+                ...state.friendRequests,
+                outgoing: [...state.friendRequests.outgoing, {
+                  id: inserted.id,
+                  fromUserId: user.id,
+                  fromUsername: "You",
+                  fromDisplayName: "You",
+                  fromAvatar: "",
+                  toUserId: targetUser.id,
+                  message: message || undefined,
+                  createdAt: new Date(),
+                  direction: "outgoing" as const,
+                }],
+              },
+            }));
+
             return true;
-          } catch {
+          } catch (err) {
+            console.error("sendFriendRequest error:", err);
             return false;
           }
         },
 
         acceptFriendRequest: async (requestId) => {
+          const request = get().friendRequests.incoming.find((r) => r.id === requestId);
+          if (!request) return;
+
           try {
             const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
 
-            const request = get().friendRequests.incoming.find((r) => r.id === requestId);
-            if (!request) return;
+            // Use atomic RPC function (SECURITY DEFINER bypasses RLS for friendship insert)
+            const { error } = await supabase.rpc("accept_friend_request", {
+              request_id: requestId,
+            });
 
-            // Update request status
-            await supabase.from("friend_requests")
-              .update({ status: "accepted", resolved_at: new Date().toISOString() })
-              .eq("id", requestId);
-
-            // Create the friendship (user1_id must be < user2_id per constraint)
-            const [user1, user2] = user.id < request.fromUserId
-              ? [user.id, request.fromUserId]
-              : [request.fromUserId, user.id];
-
-            await supabase.from("friendships").insert({ user1_id: user1, user2_id: user2 });
+            if (error) {
+              console.error("Error accepting friend request:", error);
+              toast.error("Failed", "Could not accept friend request");
+              return;
+            }
 
             // Move from requests to friends list
             set((state) => ({
@@ -220,17 +261,28 @@ export const useFriendsStore = create<FriendsState>()(
                 incoming: state.friendRequests.incoming.filter((r) => r.id !== requestId),
               },
             }));
+
+            toast.success("Friend Added", `You are now friends with ${request.fromDisplayName}`);
           } catch (err) {
             console.error("Error accepting friend request:", err);
+            toast.error("Failed", "Could not accept friend request");
           }
         },
 
         declineFriendRequest: async (requestId) => {
           try {
             const supabase = createClient();
-            await supabase.from("friend_requests")
-              .update({ status: "declined", resolved_at: new Date().toISOString() })
+
+            // DELETE the record (GDPR minimization — no permanent rejection history)
+            const { error } = await supabase.from("friend_requests")
+              .delete()
               .eq("id", requestId);
+
+            if (error) {
+              console.error("Error declining friend request:", error);
+              toast.error("Failed", "Could not decline friend request");
+              return;
+            }
 
             set((state) => ({
               friendRequests: {
@@ -238,15 +290,23 @@ export const useFriendsStore = create<FriendsState>()(
                 incoming: state.friendRequests.incoming.filter((r) => r.id !== requestId),
               },
             }));
+
+            toast.success("Declined", "Friend request declined");
           } catch (err) {
             console.error("Error declining friend request:", err);
+            toast.error("Failed", "Could not decline friend request");
           }
         },
 
         cancelFriendRequest: async (requestId) => {
           try {
             const supabase = createClient();
-            await supabase.from("friend_requests").delete().eq("id", requestId);
+            const { error } = await supabase.from("friend_requests").delete().eq("id", requestId);
+
+            if (error) {
+              console.error("Error cancelling friend request:", error);
+              return;
+            }
 
             set((state) => ({
               friendRequests: {
@@ -262,14 +322,24 @@ export const useFriendsStore = create<FriendsState>()(
         removeFriend: async (friendId) => {
           try {
             const supabase = createClient();
-            await supabase.from("friendships").delete().eq("id", friendId);
+            const { error } = await supabase.from("friendships").delete().eq("id", friendId);
+
+            if (error) {
+              console.error("Error removing friend:", error);
+              toast.error("Failed", "Could not remove friend");
+              return;
+            }
           } catch (err) {
             console.error("Error removing friend:", err);
+            toast.error("Failed", "Could not remove friend");
+            return;
           }
 
           set((state) => ({
             friends: state.friends.filter((f) => f.id !== friendId),
           }));
+
+          toast.success("Removed", "Friend removed");
         },
 
         blockUser: async (userId) => {
@@ -323,8 +393,99 @@ export const useFriendsStore = create<FriendsState>()(
 
         getOnlineFriends: () => get().friends.filter((f) => f.status === "online"),
         getPendingCount: () => {
-          const { incoming, outgoing } = get().friendRequests;
-          return incoming.length + outgoing.length;
+          const { incoming } = get().friendRequests;
+          return incoming.length;
+        },
+
+        subscribeToFriendRequests: () => {
+          // Avoid duplicate subscriptions
+          if (realtimeChannel) return;
+
+          const userId = useAuthStore.getState().user?.id;
+          if (!userId) return;
+
+          const supabase = createClient();
+
+          realtimeChannel = supabase
+            .channel("friend_requests_realtime")
+            .on("postgres_changes", {
+              event: "INSERT",
+              schema: "public",
+              table: "friend_requests",
+              filter: `receiver_id=eq.${userId}`,
+            }, async (payload) => {
+              const row = payload.new as Record<string, unknown>;
+
+              // Already have this request?
+              if (get().friendRequests.incoming.some((r) => r.id === row.id)) return;
+
+              // Fetch sender profile
+              const { data: sender } = await supabase
+                .from("profiles")
+                .select("id, username, display_name, avatar_url")
+                .eq("id", row.sender_id as string)
+                .single();
+
+              if (!sender) return;
+
+              const newRequest: FriendRequest = {
+                id: row.id as string,
+                fromUserId: sender.id,
+                fromUsername: sender.username,
+                fromDisplayName: sender.display_name || sender.username,
+                fromAvatar: sender.avatar_url || "",
+                toUserId: userId,
+                message: (row.message as string) || undefined,
+                createdAt: new Date(row.created_at as string),
+                direction: "incoming",
+              };
+
+              set((state) => ({
+                friendRequests: {
+                  ...state.friendRequests,
+                  incoming: [...state.friendRequests.incoming, newRequest],
+                },
+              }));
+
+              toast.info("Friend Request", `${sender.display_name || sender.username} sent you a friend request`);
+            })
+            .on("postgres_changes", {
+              event: "DELETE",
+              schema: "public",
+              table: "friend_requests",
+              filter: `receiver_id=eq.${userId}`,
+            }, (payload) => {
+              const oldRow = payload.old as Record<string, unknown>;
+              set((state) => ({
+                friendRequests: {
+                  ...state.friendRequests,
+                  incoming: state.friendRequests.incoming.filter((r) => r.id !== oldRow.id),
+                },
+              }));
+            })
+            .on("postgres_changes", {
+              event: "DELETE",
+              schema: "public",
+              table: "friend_requests",
+              filter: `sender_id=eq.${userId}`,
+            }, (payload) => {
+              const oldRow = payload.old as Record<string, unknown>;
+              set((state) => ({
+                friendRequests: {
+                  ...state.friendRequests,
+                  outgoing: state.friendRequests.outgoing.filter((r) => r.id !== oldRow.id),
+                },
+              }));
+            })
+            .subscribe();
+        },
+
+        unsubscribeFromFriendRequests: () => {
+          if (realtimeChannel) {
+            const supabase = createClient();
+            supabase.removeChannel(realtimeChannel);
+            realtimeChannel = null;
+          }
         },
       }),
       {

@@ -67,46 +67,55 @@ export const useMessageStore = create<MessageState>()(
               filter: `channel_id=eq.${channelId}`,
             },
             async (payload) => {
-              // Fetch full message data with user profile and attachments
-              const { data: messageData } = await supabase
-                .from('messages')
-                .select(`
-                  *,
-                  user:profiles(id, username, display_name, avatar_url),
-                  attachments:message_attachments(*)
-                `)
-                .eq('id', payload.new.id)
-                .single();
+              try {
+                // Fetch full message data with user profile and attachments
+                const { data: messageData, error } = await supabase
+                  .from('messages')
+                  .select(`
+                    *,
+                    user:profiles(id, username, display_name, avatar_url),
+                    attachments:message_attachments(*)
+                  `)
+                  .eq('id', payload.new.id)
+                  .single();
 
-              if (!messageData) return;
+                if (error) {
+                  console.error(`[Realtime] Failed to fetch message ${payload.new.id}:`, error.message);
+                  return;
+                }
 
-              const newMessage: Message = {
-                id: messageData.id as string,
-                content: messageData.content as string,
-                author: {
-                  id: (messageData.user as Record<string, unknown>)?.id as string || messageData.user_id as string,
-                  username: (messageData.user as Record<string, unknown>)?.username as string || 'Unknown',
-                  displayName: (messageData.user as Record<string, unknown>)?.display_name as string || 'Unknown',
-                  avatar: (messageData.user as Record<string, unknown>)?.avatar_url as string || '',
-                  isBot: false,
-                },
-                timestamp: new Date(messageData.created_at as string),
-                reactions: [],
-                attachments: mapAttachments(messageData.attachments as Record<string, unknown>[]),
-                embeds: [],
-                isPinned: messageData.is_pinned as boolean,
-                type: (messageData.type as Message['type']) || 'default',
-              };
+                if (!messageData) return;
 
-              // Only add if it's not from current user (optimistic update already added it)
-              const currentUserId = useAuthStore.getState().user?.id;
-              if (messageData.user_id !== currentUserId) {
-                set((state) => ({
-                  messages: {
-                    ...state.messages,
-                    [channelId]: [...(state.messages[channelId] || []), newMessage],
+                const newMessage: Message = {
+                  id: messageData.id as string,
+                  content: messageData.content as string,
+                  author: {
+                    id: (messageData.user as Record<string, unknown>)?.id as string || messageData.user_id as string,
+                    username: (messageData.user as Record<string, unknown>)?.username as string || 'Unknown',
+                    displayName: (messageData.user as Record<string, unknown>)?.display_name as string || 'Unknown',
+                    avatar: (messageData.user as Record<string, unknown>)?.avatar_url as string || '',
+                    isBot: false,
                   },
-                }));
+                  timestamp: new Date(messageData.created_at as string),
+                  reactions: [],
+                  attachments: mapAttachments(messageData.attachments as Record<string, unknown>[]),
+                  embeds: [],
+                  isPinned: messageData.is_pinned as boolean,
+                  type: (messageData.type as Message['type']) || 'default',
+                };
+
+                // Only add if it's not from current user (optimistic update already added it)
+                const currentUserId = useAuthStore.getState().user?.id;
+                if (messageData.user_id !== currentUserId) {
+                  set((state) => ({
+                    messages: {
+                      ...state.messages,
+                      [channelId]: [...(state.messages[channelId] || []), newMessage],
+                    },
+                  }));
+                }
+              } catch (err) {
+                console.error('[Realtime] INSERT handler error:', err);
               }
             }
           )
@@ -152,14 +161,24 @@ export const useMessageStore = create<MessageState>()(
               }));
             }
           )
-          .subscribe();
+          .subscribe((status, err) => {
+            if (status === 'SUBSCRIBED') {
+              if (process.env.NODE_ENV === 'development') {
+                console.log(`[Realtime] SUBSCRIBED to channel ${channelId}`);
+              }
+            } else if (status === 'CHANNEL_ERROR') {
+              console.error(`[Realtime] CHANNEL_ERROR for ${channelId}:`, err);
+            } else if (status === 'TIMED_OUT') {
+              console.warn(`[Realtime] TIMED_OUT for channel ${channelId}`);
+            }
+          });
 
-        // Store cleanup function
+        // Store cleanup function — removeChannel fully tears down the websocket channel
         set((state) => ({
           subscriptions: {
             ...state.subscriptions,
             [channelId]: () => {
-              channel.unsubscribe();
+              supabase.removeChannel(channel);
             },
           },
         }));

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { AnimatePresence } from "motion/react";
+import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
 import { useMemberStore } from "@/store/member.store";
 import { usePresenceStore } from "@/store/presence.store";
@@ -114,18 +115,36 @@ export function MemberListPanel({ serverId }: MemberListPanelProps) {
 				)}
 			</div>
 
-			{/* User Profile Card Overlay */}
-			<AnimatePresence>
-				{selectedMember && (
-					<div className="absolute inset-0 z-50 flex items-start justify-center pt-14">
-						<UserProfileCard
-							member={selectedMember}
-							serverId={serverId}
-							onClose={() => setSelectedMember(null)}
-						/>
-					</div>
-				)}
-			</AnimatePresence>
+			{/* User Profile Card — portaled to body to escape overflow clipping */}
+			{typeof document !== "undefined" && createPortal(
+				<AnimatePresence>
+					{selectedMember && (
+						<motion.div
+							key="profile-overlay"
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							exit={{ opacity: 0 }}
+							transition={{ duration: 0.15 }}
+							className="fixed inset-0 z-[9998]"
+						>
+							<div
+								className="absolute inset-0 bg-black/40"
+								onClick={() => setSelectedMember(null)}
+							/>
+							<div className="absolute inset-0 z-[1] flex items-center justify-center pointer-events-none">
+								<div className="pointer-events-auto">
+									<UserProfileCard
+										member={selectedMember}
+										serverId={serverId}
+										onClose={() => setSelectedMember(null)}
+									/>
+								</div>
+							</div>
+						</motion.div>
+					)}
+				</AnimatePresence>,
+				document.body,
+			)}
 		</div>
 	);
 }

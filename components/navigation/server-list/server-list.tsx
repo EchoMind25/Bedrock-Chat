@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useServerStore } from "@/store/server.store";
 import { useUIStore } from "@/store/ui.store";
 import { useServerManagementStore } from "@/store/server-management.store";
+import { useFriendsStore } from "@/store/friends.store";
 import { useIsMobile } from "@/lib/hooks/use-media-query";
 import { ServerButton } from "./server-button";
 import { Tooltip } from "@/components/ui/tooltip/tooltip";
@@ -17,6 +18,7 @@ export function ServerList() {
 	const currentServerId = useServerStore((state) => state.currentServerId);
 	const setCurrentServer = useServerStore((state) => state.setCurrentServer);
 	const openAddServer = useServerManagementStore((state) => state.openAddServer);
+	const pendingFriendRequests = useFriendsStore((state) => state.friendRequests.incoming.length);
 
 	const isMobile = useIsMobile();
 	const isMobileServerListOpen = useUIStore(
@@ -92,6 +94,7 @@ export function ServerList() {
 										setMobileServerListOpen(false);
 									}}
 									isHome
+									badgeCount={pendingFriendRequests}
 								/>
 							</Tooltip>
 
@@ -180,6 +183,7 @@ export function ServerList() {
 						router.push("/friends");
 					}}
 					isHome
+					badgeCount={pendingFriendRequests}
 				/>
 			</Tooltip>
 

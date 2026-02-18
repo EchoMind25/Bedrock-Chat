@@ -11,6 +11,7 @@ import { PermissionModal } from "./permission-modal";
 import { Button } from "../ui/button";
 import { useDailyCall } from "@/lib/hooks/use-daily-call";
 import { useVoiceStore } from "@/store/voice.store";
+import { useVoicePresenceStore } from "@/store/voice-presence.store";
 import {
   getOrbitalPosition,
   getOrbitRadius,
@@ -84,9 +85,20 @@ export function VoiceChannel({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId]);
 
+  // Track voice presence in Supabase when connected (for sidebar display)
+  useEffect(() => {
+    if (connectionStatus === "connected") {
+      useVoicePresenceStore.getState().trackVoice(channelId);
+    } else if (connectionStatus === "idle" || connectionStatus === "left" || connectionStatus === "error") {
+      useVoicePresenceStore.getState().untrackVoice();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connectionStatus, channelId]); // Exclude store actions — stable
+
   // Cleanup on unmount only
   useEffect(() => {
     return () => {
+      useVoicePresenceStore.getState().untrackVoice();
       leave();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
