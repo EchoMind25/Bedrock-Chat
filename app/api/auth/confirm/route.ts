@@ -162,17 +162,26 @@ export async function GET(request: NextRequest) {
 
 		if (!existingProfile) {
 			const metadata = user.user_metadata;
-			const username =
+			const rawUsername =
 				metadata?.username ||
 				user.email?.split("@")[0] ||
 				`user_${user.id.slice(0, 8)}`;
+			// Sanitize to satisfy CHECK (username ~ '^[a-zA-Z0-9_]+$')
+			const username = rawUsername.replace(/[^a-zA-Z0-9_]/g, "_");
 
-			await supabase.from("profiles").insert({
+			const { error: insertError } = await supabase.from("profiles").insert({
 				id: user.id,
 				username,
-				display_name: username,
+				display_name: rawUsername,
 				account_type: metadata?.account_type || "standard",
 			});
+
+			if (insertError && !insertError.message.includes("duplicate")) {
+				console.error(
+					"[CONFIRM] Profile insert failed:",
+					insertError.message,
+				);
+			}
 
 			isNewUser = true;
 		}

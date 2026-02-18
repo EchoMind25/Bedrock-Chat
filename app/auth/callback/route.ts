@@ -32,17 +32,23 @@ async function ensureProfile(
 	if (existingProfile) return false;
 
 	const metadata = user.user_metadata;
-	const username =
+	const rawUsername =
 		metadata?.username ||
 		user.email?.split("@")[0] ||
 		`user_${user.id.slice(0, 8)}`;
+	// Sanitize to satisfy CHECK (username ~ '^[a-zA-Z0-9_]+$')
+	const username = rawUsername.replace(/[^a-zA-Z0-9_]/g, "_");
 
-	await supabase.from("profiles").insert({
+	const { error } = await supabase.from("profiles").insert({
 		id: user.id,
 		username,
-		display_name: username,
+		display_name: rawUsername,
 		account_type: metadata?.account_type || "standard",
 	});
+
+	if (error && !error.message.includes("duplicate")) {
+		console.error("[AUTH CALLBACK] Profile insert failed:", error.message);
+	}
 
 	return true;
 }

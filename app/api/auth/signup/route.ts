@@ -1,17 +1,22 @@
 /**
  * POST /api/auth/signup
  *
- * Server-side signup handler that generates the PKCE code_verifier,
- * stores it encrypted in an httpOnly cookie, and calls Supabase's REST
- * API directly (bypassing the browser SDK which would store the verifier
- * in localStorage/sessionStorage — breaking Tor/private browsing).
+ * Server-side signup handler with two modes:
  *
- * The encrypted verifier is stored in the __bedrock_pkce cookie and
- * consumed by /api/auth/confirm when the user clicks the email link.
+ * 1. **PKCE mode** (PKCE_ENCRYPTION_KEY set): Generates a PKCE code_verifier,
+ *    stores it encrypted in an httpOnly cookie, and calls Supabase's REST API
+ *    directly. Designed for Tor/private browsing where localStorage is unavailable.
+ *    Confirmation links redirect to /api/auth/confirm.
+ *
+ * 2. **Standard mode** (PKCE_ENCRYPTION_KEY absent): Uses the Supabase SSR
+ *    client which handles PKCE automatically via cookie-based storage managed
+ *    by @supabase/ssr. Confirmation links redirect to /auth/callback where
+ *    exchangeCodeForSession() reads the verifier from the SSR cookies.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/utils/rate-limiter";
 import {
 	generateCodeVerifier,
@@ -154,16 +159,7 @@ export async function POST(request: NextRequest) {
 		);
 	}
 
-	// ── 5. PKCE Generation (conditional) ────────────────────────────────────
-	let verifier: string | null = null;
-	let challenge: string | null = null;
-
-	if (usePkce) {
-		verifier = generateCodeVerifier(); // 43-char base64url random
-		challenge = generateCodeChallenge(verifier); // SHA-256 base64url of verifier
-	}
-
-	// ── 6. Determine Redirect URL ────────────────────────────────────────────
+	// ── 5. Determine Redirect URL ────────────────────────────────────────────
 	// This is where Supabase will redirect after the user clicks the email link.
 	// We prefer the explicit NEXT_PUBLIC_APP_URL env var over inferring from headers
 	// since load balancers and proxies can strip or modify the Origin header.
@@ -172,17 +168,26 @@ export async function POST(request: NextRequest) {
 		request.headers.get("origin") ||
 		"http://localhost:3000";
 
-	// PKCE mode → our custom /api/auth/confirm (reads verifier from cookie)
-	// Standard mode → /auth/callback (handles token_hash confirmation)
-	const redirectTo = usePkce
-		? `${appUrl}/api/auth/confirm`
-		: `${appUrl}/auth/callback`;
+	// ── 6. Branch: PKCE mode vs Standard mode ───────────────────────────────
+	if (usePkce) {
+		return signupWithPkce(body, supabaseUrl, anonKey, encryptionKey, appUrl);
+	}
+	return signupStandard(body, appUrl);
+}
 
-	// ── 7. Supabase REST Signup ──────────────────────────────────────────────
-	// Call Supabase's signup REST endpoint directly (NOT the SDK).
-	// When PKCE is enabled, we include the code_challenge so the verifier
-	// can be exchanged server-side. Without PKCE, Supabase sends a standard
-	// token_hash confirmation link handled by /auth/callback.
+// ── PKCE Mode: REST API + encrypted httpOnly cookie ─────────────────────────
+// For Tor/private browsing: we control the verifier storage ourselves.
+async function signupWithPkce(
+	body: SignupBody,
+	supabaseUrl: string,
+	anonKey: string,
+	encryptionKey: string,
+	appUrl: string,
+) {
+	const verifier = generateCodeVerifier();
+	const challenge = generateCodeChallenge(verifier);
+	const redirectTo = `${appUrl}/api/auth/confirm`;
+
 	const supabaseResponse = await fetch(
 		`${supabaseUrl}/auth/v1/signup?redirect_to=${encodeURIComponent(redirectTo)}`,
 		{
@@ -201,29 +206,30 @@ export async function POST(request: NextRequest) {
 						? { parent_email: body.parentEmail }
 						: {}),
 				},
-				...(usePkce && challenge
-					? { code_challenge: challenge, code_challenge_method: "S256" }
-					: {}),
+				code_challenge: challenge,
+				code_challenge_method: "S256",
 			}),
 		},
 	);
 
 	const signupData = await supabaseResponse.json().catch(() => null);
 
-	// ── 8. Handle Supabase Response ──────────────────────────────────────────
 	if (!supabaseResponse.ok) {
 		const errorMessage: string =
-			signupData?.msg ?? signupData?.message ?? signupData?.error_description ?? "";
+			signupData?.msg ??
+			signupData?.message ??
+			signupData?.error_description ??
+			"";
 
-		// When an email is already registered AND confirmed, Supabase returns 400
-		// with "User already registered". We return 200 { success: true } to prevent
-		// email enumeration — attacker gets no signal about whether the email exists.
 		if (
 			errorMessage.toLowerCase().includes("user already registered") ||
 			errorMessage.toLowerCase().includes("already registered")
 		) {
 			return NextResponse.json(
-				{ success: true, message: "Check your email to confirm your account" },
+				{
+					success: true,
+					message: "Check your email to confirm your account",
+				},
 				{ status: 200 },
 			);
 		}
@@ -232,31 +238,81 @@ export async function POST(request: NextRequest) {
 		return NextResponse.json({ error: "Signup failed" }, { status: 500 });
 	}
 
-	// HTTP 200 from Supabase: new registration OR resend for an unconfirmed email.
-	// In both cases Supabase sends a confirmation email with a new PKCE code.
-	// We encrypt a fresh verifier and overwrite any existing __bedrock_pkce cookie.
+	const encryptedVerifier = encryptVerifier(verifier, encryptionKey);
+	const isProduction = process.env.NODE_ENV === "production";
 
-	// ── 9. Encrypt Verifier + Set Cookie (PKCE only) ────────────────────────
 	const response = NextResponse.json(
 		{ success: true, message: "Check your email to confirm your account" },
 		{ status: 200 },
 	);
 
-	if (usePkce && verifier && encryptionKey) {
-		const encryptedVerifier = encryptVerifier(verifier, encryptionKey);
-		const isProduction = process.env.NODE_ENV === "production";
-
-		// SameSite: 'lax' is critical — allows the cookie to be sent on top-level GET
-		// navigations from external origins (e.g., the user clicking the email link
-		// in their email client). 'strict' would block this cross-origin redirect.
-		response.cookies.set(PKCE_COOKIE_NAME, encryptedVerifier, {
-			httpOnly: true,
-			secure: isProduction,
-			sameSite: "lax",
-			maxAge: PKCE_COOKIE_MAX_AGE,
-			path: "/",
-		});
-	}
+	response.cookies.set(PKCE_COOKIE_NAME, encryptedVerifier, {
+		httpOnly: true,
+		secure: isProduction,
+		sameSite: "lax",
+		maxAge: PKCE_COOKIE_MAX_AGE,
+		path: "/",
+	});
 
 	return response;
+}
+
+// ── Standard Mode: Supabase SSR client (auto PKCE via @supabase/ssr) ────────
+// The SSR client stores the PKCE verifier in its own cookie-managed storage.
+// When the user clicks the email confirmation link, /auth/callback creates
+// the same SSR client which reads the verifier back and exchanges the code.
+async function signupStandard(body: SignupBody, appUrl: string) {
+	const redirectTo = `${appUrl}/auth/callback`;
+	const supabase = await createClient();
+
+	const { data: signupData, error: signupError } =
+		await supabase.auth.signUp({
+			email: body.email,
+			password: body.password,
+			options: {
+				emailRedirectTo: redirectTo,
+				data: {
+					username: body.username,
+					account_type: body.accountType,
+					...(body.parentEmail
+						? { parent_email: body.parentEmail }
+						: {}),
+				},
+			},
+		});
+
+	if (signupError) {
+		if (
+			signupError.message.toLowerCase().includes("user already registered") ||
+			signupError.message.toLowerCase().includes("already registered")
+		) {
+			return NextResponse.json(
+				{
+					success: true,
+					message: "Check your email to confirm your account",
+				},
+				{ status: 200 },
+			);
+		}
+
+		console.error("[SIGNUP] Supabase signup error:", signupError.message);
+		return NextResponse.json({ error: "Signup failed" }, { status: 500 });
+	}
+
+	// Supabase returns user with identities: [] when email is already registered
+	// but unconfirmed. Treat as success to prevent email enumeration.
+	if (signupData?.user?.identities?.length === 0) {
+		return NextResponse.json(
+			{
+				success: true,
+				message: "Check your email to confirm your account",
+			},
+			{ status: 200 },
+		);
+	}
+
+	return NextResponse.json(
+		{ success: true, message: "Check your email to confirm your account" },
+		{ status: 200 },
+	);
 }

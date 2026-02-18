@@ -162,7 +162,6 @@ export const useAuthStore = create<AuthState>()(
 							]);
 
 							if (profile) {
-
 								set({
 									user: profileToUser(profile, email),
 									isAuthenticated: true,
@@ -170,6 +169,59 @@ export const useAuthStore = create<AuthState>()(
 									isInitializing: false,
 									failedLoginAttempts: 0,
 									lockoutUntil: null,
+								});
+								return true;
+							}
+
+							// Profile missing — create it as a fallback.
+							// This handles cases where the email verification callback
+							// failed to create the profile (e.g. link opened in a
+							// different browser, silent insert failure, etc.)
+							const metadata = data.user.user_metadata;
+							const pendingSignup = get().pendingSignup;
+							const rawUsername =
+								pendingSignup?.username ||
+								metadata?.username ||
+								data.user.email?.split("@")[0] ||
+								`user_${data.user.id.slice(0, 8)}`;
+							// Sanitize to satisfy CHECK (username ~ '^[a-zA-Z0-9_]+$')
+							const username = rawUsername.replace(/[^a-zA-Z0-9_]/g, "_");
+							const accountType =
+								pendingSignup?.accountType ||
+								metadata?.account_type ||
+								"standard";
+
+							const { error: insertError } = await supabase
+								.from("profiles")
+								.insert({
+									id: data.user.id,
+									username,
+									display_name: username,
+									account_type: accountType,
+								});
+
+							if (insertError && !insertError.message.includes("duplicate")) {
+								logError("AUTH", insertError);
+								set({ isLoading: false, error: "Failed to create profile. Please try again." });
+								return false;
+							}
+
+							// Re-fetch to get the full profile (including trigger-created settings)
+							const { data: newProfile } = await supabase
+								.from("profiles")
+								.select("*")
+								.eq("id", data.user.id)
+								.single();
+
+							if (newProfile) {
+								set({
+									user: profileToUser(newProfile, email),
+									isAuthenticated: true,
+									isLoading: false,
+									isInitializing: false,
+									failedLoginAttempts: 0,
+									lockoutUntil: null,
+									pendingSignup: null,
 								});
 								return true;
 							}
@@ -584,6 +636,42 @@ export const useAuthStore = create<AuthState>()(
 									isInitializing: false,
 								});
 								return;
+							}
+
+							// Session valid but profile missing — create it as a fallback
+							const metadata = user.user_metadata;
+							const rawUsername =
+								metadata?.username ||
+								user.email?.split("@")[0] ||
+								`user_${user.id.slice(0, 8)}`;
+							const username = rawUsername.replace(/[^a-zA-Z0-9_]/g, "_");
+
+							const { error: insertError } = await supabase
+								.from("profiles")
+								.insert({
+									id: user.id,
+									username,
+									display_name: username,
+									account_type: metadata?.account_type || "standard",
+								});
+
+							if (!insertError || insertError.message.includes("duplicate")) {
+								const { data: createdProfile } = await supabase
+									.from("profiles")
+									.select("*")
+									.eq("id", user.id)
+									.single();
+
+								if (createdProfile) {
+									set({
+										user: profileToUser(createdProfile, user.email || ""),
+										isAuthenticated: true,
+										isLoading: false,
+										isInitializing: false,
+										pendingSignup: null,
+									});
+									return;
+								}
 							}
 						}
 				} catch (err) {
