@@ -62,11 +62,19 @@ export function ServerButton({
 					},
 				}}
 			>
-				{/* Server Icon */}
+				{/* Server Icon: home icon, image URL, or emoji/initial fallback */}
 				{isHome ? (
 					<MessageCircle className="relative z-10 w-6 h-6" />
+				) : server.icon?.startsWith("http") ? (
+					<img
+						src={server.icon}
+						alt={server.name}
+						width={48}
+						height={48}
+						className="absolute inset-0 w-full h-full object-cover"
+					/>
 				) : (
-					<span className="relative z-10">{server.icon}</span>
+					<span className="relative z-10">{server.icon ?? server.name[0]?.toUpperCase()}</span>
 				)}
 			</motion.button>
 

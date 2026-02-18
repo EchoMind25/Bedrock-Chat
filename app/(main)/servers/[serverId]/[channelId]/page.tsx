@@ -1,9 +1,11 @@
 "use client";
 
-import { use, useEffect, useRef, useMemo, lazy, Suspense } from "react";
+import { use, useEffect, useRef, useMemo, useState, useCallback, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useServerStore } from "@/store/server.store";
+import { useAuthStore } from "@/store/auth.store";
 import { useMemberStore } from "@/store/member.store";
+import { hasAcceptedNsfw } from "@/lib/utils/nsfw-gate";
 
 // Lazy load heavy chat components (includes @tanstack/react-virtual)
 const ChannelHeader = lazy(() =>
@@ -14,6 +16,9 @@ const MessageList = lazy(() =>
 );
 const MessageInput = lazy(() =>
 	import("@/components/chat/message-input").then(m => ({ default: m.MessageInput }))
+);
+const NsfwAgeGate = lazy(() =>
+	import("@/components/nsfw/nsfw-age-gate").then(m => ({ default: m.NsfwAgeGate }))
 );
 
 interface PageProps {
@@ -43,6 +48,14 @@ export default function ChannelPage({ params }: PageProps) {
 	const setCurrentChannel = useServerStore((s) => s.setCurrentChannel);
 	const servers = useServerStore((s) => s.servers);
 	const isInitialized = useServerStore((s) => s.isInitialized);
+	const accountType = useAuthStore((s) => s.user?.accountType);
+
+	// NSFW acceptance state - initialized from sessionStorage (function initializer, no useEffect needed)
+	const [nsfwAccepted, setNsfwAccepted] = useState(() => hasAcceptedNsfw());
+
+	const handleNsfwAccept = useCallback(() => {
+		setNsfwAccepted(true);
+	}, []);
 
 	// Derive server and channel from URL params directly (not store currentIds)
 	// This prevents race conditions where the store hasn't updated yet
@@ -99,6 +112,40 @@ export default function ChannelPage({ params }: PageProps) {
 		return (
 			<div className="flex-1 flex flex-col bg-[oklch(0.14_0.02_250)]">
 				<ChannelLoadingSkeleton />
+			</div>
+		);
+	}
+
+	// NSFW enforcement: teens should never reach here (RLS + client filtering),
+	// but as a safety net, redirect them away from NSFW channels
+	if (channel.isNsfw && accountType === "teen") {
+		if (mountedRef.current && !hasRedirectedRef.current) {
+			hasRedirectedRef.current = true;
+			const safeChannel = server.channels.find((c) => !c.isNsfw && c.type === "text");
+			if (safeChannel) {
+				router.replace(`/servers/${server.id}/${safeChannel.id}`);
+			} else {
+				router.replace("/friends");
+			}
+		}
+		return (
+			<div className="flex-1 flex flex-col bg-[oklch(0.14_0.02_250)]">
+				<ChannelLoadingSkeleton />
+			</div>
+		);
+	}
+
+	// NSFW age gate for standard/parent accounts
+	if (channel.isNsfw && !nsfwAccepted) {
+		return (
+			<div className="flex-1 flex flex-col bg-[oklch(0.14_0.02_250)]">
+				<Suspense fallback={<ChannelLoadingSkeleton />}>
+					<NsfwAgeGate
+						isOpen={true}
+						onAccept={handleNsfwAccept}
+						channelName={channel.name}
+					/>
+				</Suspense>
 			</div>
 		);
 	}

@@ -69,6 +69,8 @@ export function OverviewTab({ server, onChange }: OverviewTabProps) {
             label="Server Icon"
             value={icon}
             onChange={setIcon}
+            serverId={server.id}
+            imageType="logo"
             aspectRatio="square"
             placeholder="Upload server icon"
           />
@@ -77,6 +79,8 @@ export function OverviewTab({ server, onChange }: OverviewTabProps) {
             label="Server Banner"
             value={banner}
             onChange={setBanner}
+            serverId={server.id}
+            imageType="banner"
             aspectRatio="banner"
             placeholder="Upload server banner"
           />

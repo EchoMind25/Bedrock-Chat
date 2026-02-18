@@ -1,6 +1,26 @@
 import type { NextConfig } from "next";
 
+// Extract hostname from NEXT_PUBLIC_SUPABASE_URL for Next.js Image optimization.
+// Falls back to a wildcard pattern covering all Supabase projects.
+const supabaseHostname = (() => {
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    return url ? new URL(url).hostname : "*.supabase.co";
+  } catch {
+    return "*.supabase.co";
+  }
+})();
+
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: supabaseHostname,
+        pathname: "/storage/v1/object/public/**",
+      },
+    ],
+  },
   // Enable React Compiler
   reactCompiler: true,
   // Turbopack is default in Next.js 16

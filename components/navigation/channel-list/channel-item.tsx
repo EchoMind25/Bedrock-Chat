@@ -147,6 +147,15 @@ export function ChannelItem({ channel, isActive }: ChannelItemProps) {
 					{channel.name}
 				</span>
 
+				{channel.isNsfw && (
+					<span
+						className="shrink-0 px-1 py-0.5 rounded-sm text-[10px] font-semibold bg-red-500/20 text-red-400 uppercase leading-none"
+						aria-label="Age-restricted channel"
+					>
+						18+
+					</span>
+				)}
+
 				{/* Unread Badge or Channel Actions */}
 				<div className="ml-auto flex items-center gap-1">
 					{/* Unread Badge */}

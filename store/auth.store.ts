@@ -4,6 +4,7 @@ import { conditionalDevtools } from "@/lib/utils/devtools-config";
 import { createClient } from "@/lib/supabase/client";
 import { logError } from "@/lib/utils/error-logger";
 import { isAbortError } from "@/lib/utils/is-abort-error";
+import { clearNsfwAcceptance } from "@/lib/utils/nsfw-gate";
 
 export type UserStatus = "online" | "idle" | "dnd" | "offline" | "invisible";
 
@@ -407,6 +408,7 @@ export const useAuthStore = create<AuthState>()(
 
 					localStorage.removeItem("bedrock-remember-me");
 					localStorage.removeItem("bedrock-init-attempts");
+					clearNsfwAcceptance();
 					set({
 						user: null,
 						isAuthenticated: false,

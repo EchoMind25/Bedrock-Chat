@@ -45,6 +45,17 @@ export async function GET(request: NextRequest) {
 	}
 
 	// ── 3. Read + Decrypt PKCE Cookie ─────────────────────────────────────────
+	const encryptionKey = process.env.PKCE_ENCRYPTION_KEY;
+
+	// If PKCE is not configured, forward to the standard /auth/callback handler
+	// which uses Supabase SDK's exchangeCodeForSession() (reads verifier from
+	// client storage) or token_hash OTP verification.
+	if (!encryptionKey) {
+		const callbackUrl = new URL(`${origin}/auth/callback`);
+		callbackUrl.searchParams.set("code", code);
+		return NextResponse.redirect(callbackUrl.toString());
+	}
+
 	const cookieStore = await cookies();
 	const encryptedVerifier = cookieStore.get(PKCE_COOKIE_NAME)?.value;
 
@@ -54,12 +65,6 @@ export async function GET(request: NextRequest) {
 		//   (b) Cookie expired (>24 hours since signup)
 		//   (c) User already clicked this link (cookie deleted on first use)
 		return NextResponse.redirect(`${origin}/login?error=link_expired`);
-	}
-
-	const encryptionKey = process.env.PKCE_ENCRYPTION_KEY;
-	if (!encryptionKey) {
-		console.error("[CONFIRM] PKCE_ENCRYPTION_KEY not configured");
-		return NextResponse.redirect(`${origin}/login?error=confirmation_failed`);
 	}
 
 	let verifier: string;

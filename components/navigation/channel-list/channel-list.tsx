@@ -3,6 +3,7 @@
 import React, { useMemo, lazy, Suspense, useState } from "react";
 import { Settings, X, Plus, Folder } from "lucide-react";
 import { useServerStore } from "@/store/server.store";
+import { useAuthStore } from "@/store/auth.store";
 import { useUIStore } from "@/store/ui.store";
 import { useServerManagementStore } from "@/store/server-management.store";
 import { useFavoritesStore } from "@/store/favorites.store";
@@ -55,10 +56,17 @@ export function ChannelList() {
 
 	// All hooks must be called before any early returns (Rules of Hooks)
 	const favoriteChannelIds = useFavoritesStore((s) => s.favoriteChannelIds);
+	const accountType = useAuthStore((s) => s.user?.accountType);
 
 	const channelsByCategory = useMemo(() => {
 		if (!currentServer) return {};
-		const grouped = currentServer.channels.reduce(
+
+		// Filter out NSFW channels for teen accounts (silent, no indicators)
+		const visibleChannels = accountType === "teen"
+			? currentServer.channels.filter((ch) => !ch.isNsfw)
+			: currentServer.channels;
+
+		const grouped = visibleChannels.reduce(
 			(acc, channel) => {
 				const categoryId = channel.categoryId || "uncategorized";
 				if (!acc[categoryId]) {
@@ -73,12 +81,14 @@ export function ChannelList() {
 			grouped[categoryId].sort((a, b) => a.position - b.position);
 		}
 		return grouped;
-	}, [currentServer]);
+	}, [currentServer, accountType]);
 
 	const favoriteChannels = useMemo(() => {
 		if (!currentServer) return [];
-		return currentServer.channels.filter((ch) => favoriteChannelIds.has(ch.id));
-	}, [currentServer, favoriteChannelIds]);
+		return currentServer.channels.filter(
+			(ch) => favoriteChannelIds.has(ch.id) && !(accountType === "teen" && ch.isNsfw)
+		);
+	}, [currentServer, favoriteChannelIds, accountType]);
 
 	// Show loading state while initializing
 	if (!isInitialized || !currentServer) {
@@ -202,8 +212,18 @@ export function ChannelList() {
 
 	const channelListContent = (
 		<nav aria-label="Channels" className="w-60 h-screen bg-[oklch(0.15_0.02_250)] flex flex-col">
-			{/* Server Header */}
-			<div className="h-12 px-4 flex items-center justify-between border-b border-white/10 hover:bg-white/5 transition-colors group">
+			{/* Server Header — includes optional banner image above the title bar */}
+			{currentServer.banner?.startsWith("http") && (
+				<div className="relative shrink-0 h-20 overflow-hidden">
+					<img
+						src={currentServer.banner}
+						alt={`${currentServer.name} banner`}
+						className="w-full h-full object-cover"
+					/>
+					<div className="absolute inset-0 bg-black/30" />
+				</div>
+			)}
+			<div className="shrink-0 h-12 px-4 flex items-center justify-between border-b border-white/10 hover:bg-white/5 transition-colors group">
 				{isMobile && (
 					<button
 						type="button"
@@ -334,7 +354,9 @@ export function ChannelList() {
 						</div>
 					)}
 
-					{currentServer.categories.map((category) => {
+					{currentServer.categories
+						.filter((cat) => (channelsByCategory[cat.id] || []).length > 0)
+						.map((category) => {
 						const channels = channelsByCategory[category.id] || [];
 						const isCollapsed = category.collapsed ?? false;
 

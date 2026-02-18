@@ -60,7 +60,8 @@ export function ServerSettingsModal() {
       const supabase = createClient();
       const dbUpdates: Record<string, unknown> = {};
       if (editedServer.name !== undefined) dbUpdates.name = editedServer.name;
-      if (editedServer.icon !== undefined) dbUpdates.icon = editedServer.icon;
+      if (editedServer.icon !== undefined) dbUpdates.icon_url = editedServer.icon;
+      if (editedServer.banner !== undefined) dbUpdates.banner_url = editedServer.banner;
       if (editedServer.description !== undefined) dbUpdates.description = editedServer.description;
 
       if (Object.keys(dbUpdates).length > 0) {

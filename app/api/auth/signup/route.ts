@@ -124,13 +124,18 @@ export async function POST(request: NextRequest) {
 	const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 	const encryptionKey = process.env.PKCE_ENCRYPTION_KEY;
 
-	if (!supabaseUrl || !anonKey || !serviceRoleKey || !encryptionKey) {
+	// PKCE_ENCRYPTION_KEY is optional — when set, we store the PKCE verifier
+	// in an encrypted httpOnly cookie (supports Tor/private browsing).
+	// When absent, we use the standard Supabase confirmation flow via /auth/callback.
+	if (!supabaseUrl || !anonKey || !serviceRoleKey) {
 		console.error("[SIGNUP] Missing required environment variables");
 		return NextResponse.json(
 			{ error: "Server configuration error" },
 			{ status: 500 },
 		);
 	}
+
+	const usePkce = !!encryptionKey;
 
 	// ── 4. Username Uniqueness Check ─────────────────────────────────────────
 	// Admin client bypasses RLS so we can query profiles without authentication.
@@ -149,9 +154,14 @@ export async function POST(request: NextRequest) {
 		);
 	}
 
-	// ── 5. PKCE Generation ───────────────────────────────────────────────────
-	const verifier = generateCodeVerifier(); // 43-char base64url random
-	const challenge = generateCodeChallenge(verifier); // SHA-256 base64url of verifier
+	// ── 5. PKCE Generation (conditional) ────────────────────────────────────
+	let verifier: string | null = null;
+	let challenge: string | null = null;
+
+	if (usePkce) {
+		verifier = generateCodeVerifier(); // 43-char base64url random
+		challenge = generateCodeChallenge(verifier); // SHA-256 base64url of verifier
+	}
 
 	// ── 6. Determine Redirect URL ────────────────────────────────────────────
 	// This is where Supabase will redirect after the user clicks the email link.
@@ -161,12 +171,18 @@ export async function POST(request: NextRequest) {
 		process.env.NEXT_PUBLIC_APP_URL ||
 		request.headers.get("origin") ||
 		"http://localhost:3000";
-	const redirectTo = `${appUrl}/api/auth/confirm`;
+
+	// PKCE mode → our custom /api/auth/confirm (reads verifier from cookie)
+	// Standard mode → /auth/callback (handles token_hash confirmation)
+	const redirectTo = usePkce
+		? `${appUrl}/api/auth/confirm`
+		: `${appUrl}/auth/callback`;
 
 	// ── 7. Supabase REST Signup ──────────────────────────────────────────────
 	// Call Supabase's signup REST endpoint directly (NOT the SDK).
-	// The SDK would store the verifier in browser localStorage — broken in Tor.
-	// By calling REST directly, WE control where the verifier lives (our cookie).
+	// When PKCE is enabled, we include the code_challenge so the verifier
+	// can be exchanged server-side. Without PKCE, Supabase sends a standard
+	// token_hash confirmation link handled by /auth/callback.
 	const supabaseResponse = await fetch(
 		`${supabaseUrl}/auth/v1/signup?redirect_to=${encodeURIComponent(redirectTo)}`,
 		{
@@ -185,8 +201,9 @@ export async function POST(request: NextRequest) {
 						? { parent_email: body.parentEmail }
 						: {}),
 				},
-				code_challenge: challenge,
-				code_challenge_method: "S256",
+				...(usePkce && challenge
+					? { code_challenge: challenge, code_challenge_method: "S256" }
+					: {}),
 			}),
 		},
 	);
@@ -219,26 +236,27 @@ export async function POST(request: NextRequest) {
 	// In both cases Supabase sends a confirmation email with a new PKCE code.
 	// We encrypt a fresh verifier and overwrite any existing __bedrock_pkce cookie.
 
-	// ── 9. Encrypt Verifier + Set Cookie ────────────────────────────────────
-	const encryptedVerifier = encryptVerifier(verifier, encryptionKey);
-
-	const isProduction = process.env.NODE_ENV === "production";
-
+	// ── 9. Encrypt Verifier + Set Cookie (PKCE only) ────────────────────────
 	const response = NextResponse.json(
 		{ success: true, message: "Check your email to confirm your account" },
 		{ status: 200 },
 	);
 
-	// SameSite: 'lax' is critical — allows the cookie to be sent on top-level GET
-	// navigations from external origins (e.g., the user clicking the email link
-	// in their email client). 'strict' would block this cross-origin redirect.
-	response.cookies.set(PKCE_COOKIE_NAME, encryptedVerifier, {
-		httpOnly: true,
-		secure: isProduction,
-		sameSite: "lax",
-		maxAge: PKCE_COOKIE_MAX_AGE,
-		path: "/",
-	});
+	if (usePkce && verifier && encryptionKey) {
+		const encryptedVerifier = encryptVerifier(verifier, encryptionKey);
+		const isProduction = process.env.NODE_ENV === "production";
+
+		// SameSite: 'lax' is critical — allows the cookie to be sent on top-level GET
+		// navigations from external origins (e.g., the user clicking the email link
+		// in their email client). 'strict' would block this cross-origin redirect.
+		response.cookies.set(PKCE_COOKIE_NAME, encryptedVerifier, {
+			httpOnly: true,
+			secure: isProduction,
+			sameSite: "lax",
+			maxAge: PKCE_COOKIE_MAX_AGE,
+			path: "/",
+		});
+	}
 
 	return response;
 }
