@@ -8,9 +8,11 @@ import type { Server } from "../../../../lib/types/server";
 interface OverviewTabProps {
   server: Server;
   onChange: (updates: Partial<Server>) => void;
+  /** Called when the user selects or clears a pending image file. */
+  onPendingFile?: (type: "logo" | "banner", file: File | null) => void;
 }
 
-export function OverviewTab({ server, onChange }: OverviewTabProps) {
+export function OverviewTab({ server, onChange, onPendingFile }: OverviewTabProps) {
   const [name, setName] = useState(server.name);
   const [description, setDescription] = useState(server.description || "");
   const [icon, setIcon] = useState<string | null>(server.icon);
@@ -69,8 +71,7 @@ export function OverviewTab({ server, onChange }: OverviewTabProps) {
             label="Server Icon"
             value={icon}
             onChange={setIcon}
-            serverId={server.id}
-            imageType="logo"
+            onFileSelect={(file) => onPendingFile?.("logo", file)}
             aspectRatio="square"
             placeholder="Upload server icon"
           />
@@ -79,8 +80,7 @@ export function OverviewTab({ server, onChange }: OverviewTabProps) {
             label="Server Banner"
             value={banner}
             onChange={setBanner}
-            serverId={server.id}
-            imageType="banner"
+            onFileSelect={(file) => onPendingFile?.("banner", file)}
             aspectRatio="banner"
             placeholder="Upload server banner"
           />

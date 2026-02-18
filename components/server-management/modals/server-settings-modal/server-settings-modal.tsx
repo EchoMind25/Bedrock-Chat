@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { Settings, Shield, Hash, Ban, Link as LinkIcon, Folder } from "lucide-react";
 import { Modal } from "../../../ui/modal/modal";
-import { Tabs } from "../../../ui/tabs/tabs";
 import { Button } from "../../../ui/button/button";
 import { OverviewTab } from "./overview-tab";
 import { RolesTab } from "./roles-tab";
@@ -15,6 +14,7 @@ import { useServerManagementStore } from "../../../../store/server-management.st
 import { useServerStore } from "../../../../store/server.store";
 import { toast } from "../../../../lib/stores/toast-store";
 import { createClient } from "../../../../lib/supabase/client";
+import { uploadServerImage } from "../../../../lib/supabase/upload-server-image";
 import type { Server, Channel } from "../../../../lib/types/server";
 import type { Role } from "../../../../lib/types/permissions";
 import type { AutoModSettings } from "../../../../lib/types/moderation";
@@ -34,11 +34,15 @@ export function ServerSettingsModal() {
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Pending image files (uploaded on save, not on select)
+  const [pendingFiles, setPendingFiles] = useState<{ logo?: File; banner?: File }>({});
+
   // Reset edited state when modal opens/closes or server changes
   useEffect(() => {
     if (isServerSettingsOpen && currentServer) {
       setEditedServer({});
       setHasChanges(false);
+      setPendingFiles({});
     }
   }, [isServerSettingsOpen, currentServer?.id]);
 
@@ -59,10 +63,40 @@ export function ServerSettingsModal() {
     try {
       const supabase = createClient();
       const dbUpdates: Record<string, unknown> = {};
+
+      // --- Upload pending image files first ---
+      let uploadedIconUrl: string | undefined;
+      let uploadedBannerUrl: string | undefined;
+
+      if (pendingFiles.logo) {
+        uploadedIconUrl = await uploadServerImage(
+          currentServer.id,
+          pendingFiles.logo,
+          "logo",
+        );
+        dbUpdates.icon_url = uploadedIconUrl;
+      }
+
+      if (pendingFiles.banner) {
+        uploadedBannerUrl = await uploadServerImage(
+          currentServer.id,
+          pendingFiles.banner,
+          "banner",
+        );
+        dbUpdates.banner_url = uploadedBannerUrl;
+      }
+
+      // --- Non-file field changes ---
       if (editedServer.name !== undefined) dbUpdates.name = editedServer.name;
-      if (editedServer.icon !== undefined) dbUpdates.icon_url = editedServer.icon;
-      if (editedServer.banner !== undefined) dbUpdates.banner_url = editedServer.banner;
       if (editedServer.description !== undefined) dbUpdates.description = editedServer.description;
+
+      // Icon/banner cleared (set to null) without a new file
+      if (!pendingFiles.logo && editedServer.icon !== undefined) {
+        dbUpdates.icon_url = editedServer.icon;
+      }
+      if (!pendingFiles.banner && editedServer.banner !== undefined) {
+        dbUpdates.banner_url = editedServer.banner;
+      }
 
       if (Object.keys(dbUpdates).length > 0) {
         const { error } = await supabase
@@ -118,11 +152,30 @@ export function ServerSettingsModal() {
         }
       }
 
+      // --- Build store updates, replacing blob: URLs with real URLs ---
+      const storeUpdates: Partial<Server> = { ...editedServer };
+
+      if (uploadedIconUrl) {
+        storeUpdates.icon = uploadedIconUrl;
+      }
+      if (uploadedBannerUrl) {
+        storeUpdates.banner = uploadedBannerUrl;
+      }
+
+      // Keep settings.icon / settings.banner in sync with top-level fields
+      if (storeUpdates.icon !== undefined || storeUpdates.banner !== undefined) {
+        storeUpdates.settings = {
+          ...(currentServer.settings || {}),
+          ...(storeUpdates.icon !== undefined && { icon: storeUpdates.icon }),
+          ...(storeUpdates.banner !== undefined && { banner: storeUpdates.banner }),
+        } as Server["settings"];
+      }
+
       // Update server in store
       useServerStore.setState((state) => ({
         servers: state.servers.map((server) =>
           server.id === currentServer.id
-            ? { ...server, ...editedServer }
+            ? { ...server, ...storeUpdates }
             : server
         ),
       }));
@@ -130,9 +183,11 @@ export function ServerSettingsModal() {
       toast.success("Settings Saved", "Your server settings have been updated");
       setHasChanges(false);
       setEditedServer({});
+      setPendingFiles({});
     } catch (err) {
       console.error("Error saving server settings:", err);
-      toast.error("Save Failed", "Could not save settings. Please try again.");
+      const message = err instanceof Error ? err.message : "Could not save settings. Please try again.";
+      toast.error("Save Failed", message);
     } finally {
       setIsSaving(false);
     }
@@ -140,6 +195,19 @@ export function ServerSettingsModal() {
 
   const handleOverviewChange = (updates: Partial<Server>) => {
     setEditedServer((prev) => ({ ...prev, ...updates }));
+    setHasChanges(true);
+  };
+
+  const handlePendingFile = (type: "logo" | "banner", file: File | null) => {
+    setPendingFiles((prev) => {
+      const updated = { ...prev };
+      if (file) {
+        updated[type] = file;
+      } else {
+        delete updated[type];
+      }
+      return updated;
+    });
     setHasChanges(true);
   };
 
@@ -291,7 +359,11 @@ export function ServerSettingsModal() {
         {/* Tab Content */}
         <div className="flex-1 overflow-y-auto settings-scrollbar pl-6 pr-2">
           {serverSettingsTab === "overview" && (
-            <OverviewTab server={displayServer} onChange={handleOverviewChange} />
+            <OverviewTab
+              server={displayServer}
+              onChange={handleOverviewChange}
+              onPendingFile={handlePendingFile}
+            />
           )}
           {serverSettingsTab === "roles" && (
             <RolesTab
