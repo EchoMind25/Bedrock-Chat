@@ -167,7 +167,7 @@ export function ImageUpload({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="relative w-full h-full"
+              className="absolute inset-0"
             >
               <img
                 src={value}
