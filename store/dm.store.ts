@@ -6,6 +6,7 @@ import type { Message } from "@/lib/types/message";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/store/auth.store";
 import { isAbortError } from "@/lib/utils/is-abort-error";
+import { toast } from "@/lib/stores/toast-store";
 
 interface DMState {
 	dms: DirectMessage[];
@@ -175,9 +176,14 @@ export const useDMStore = create<DMState>()(
 				},
 
 				markDmRead: (dmId) => {
+					// Always clear local unread badge
 					set((state) => ({
 						dms: state.dms.map((dm) => dm.id === dmId ? { ...dm, unreadCount: 0 } : dm),
 					}));
+
+					// TODO: Move to server-side enforcement via RLS policy or database trigger before public launch
+					// Only write read_at to DB if user has read_receipts enabled
+					// (When read receipt DB writes are implemented, guard them here)
 				},
 
 				closeDm: (dmId) => {
@@ -282,6 +288,24 @@ export const useDMStore = create<DMState>()(
 				sendDmMessage: async (receiverId, content) => {
 					const user = useAuthStore.getState().user;
 					if (!user || !content.trim()) return;
+
+					// TODO: Move to server-side enforcement via RLS policy or database trigger before public launch
+					// Check if receiver has DMs enabled
+					try {
+						const supabase = createClient();
+						const { data: receiverSettings } = await supabase
+							.from("user_settings")
+							.select("allow_dms")
+							.eq("user_id", receiverId)
+							.single();
+
+						if (receiverSettings && !receiverSettings.allow_dms) {
+							toast.error("Cannot send message", "This user has disabled direct messages.");
+							return;
+						}
+					} catch {
+						// If we can't check settings, allow the message (fail open)
+					}
 
 					try {
 						const supabase = createClient();

@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { conditionalDevtools } from "@/lib/utils/devtools-config";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "./auth.store";
+import { useSettingsStore } from "./settings.store";
 import { toast } from "@/lib/stores/toast-store";
 import type { UserStatus } from "./auth.store";
 
@@ -185,8 +186,10 @@ export const usePresenceStore = create<PresenceState>()(
 
 				channel.subscribe(async (status) => {
 					if (status === "SUBSCRIBED") {
-						// Only track if not invisible
-						if (currentStatus !== "invisible") {
+						// Only track if not invisible AND user has show_online_status enabled
+						// TODO: Move to server-side enforcement via RLS policy or database trigger before public launch
+						const showOnline = useSettingsStore.getState().settings?.show_online_status ?? true;
+						if (currentStatus !== "invisible" && showOnline) {
 							await channel.track({
 								userId: user.userId,
 								username: user.username,
@@ -275,7 +278,10 @@ export const usePresenceStore = create<PresenceState>()(
 
 				if (!_channel || !user) return;
 
-				if (status === "invisible") {
+				// TODO: Move to server-side enforcement via RLS policy or database trigger before public launch
+				const showOnline = useSettingsStore.getState().settings?.show_online_status ?? true;
+
+				if (status === "invisible" || !showOnline) {
 					// CRITICAL: Remove from presence channel entirely — zero packets
 					_channel.untrack();
 					set({ isConnected: false });
@@ -297,6 +303,10 @@ export const usePresenceStore = create<PresenceState>()(
 			broadcastTyping: (channelId) => {
 				const { _channel, _typingDebounceTimers } = get();
 				if (!_channel) return;
+
+				// TODO: Move to server-side enforcement via RLS policy or database trigger before public launch
+				const typingEnabled = useSettingsStore.getState().settings?.typing_indicators ?? true;
+				if (!typingEnabled) return;
 
 				const user = getCurrentUser();
 				if (!user) return;

@@ -36,6 +36,7 @@ export function ImageUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const objectUrlRef = useRef<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   // Revoke any outstanding ObjectURL on unmount
   useEffect(() => {
@@ -129,7 +130,20 @@ export function ImageUpload({
     }
   };
 
+  // Reset error state when value changes (new image selected)
+  useEffect(() => {
+    setImageError(false);
+  }, [value]);
+
   const aspectRatioClass = aspectRatio === "square" ? "aspect-square" : "aspect-video";
+
+  // Only treat value as valid if it's a non-empty string that looks like a URL/data/blob
+  const hasValidImage = !!(
+    value &&
+    typeof value === "string" &&
+    value.trim() !== "" &&
+    !imageError
+  );
 
   return (
     <div className={cn("space-y-2", className)} {...props}>
@@ -141,7 +155,7 @@ export function ImageUpload({
           aspectRatioClass,
           isDragOver
             ? "border-blue-500 bg-blue-500/10 cursor-copy"
-            : value
+            : hasValidImage
               ? "border-transparent cursor-pointer"
               : "border-white/20 hover:border-white/30 cursor-pointer",
         )}
@@ -149,7 +163,7 @@ export function ImageUpload({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        whileHover={{ scale: value ? 1 : 1.02 }}
+        whileHover={{ scale: hasValidImage ? 1 : 1.02 }}
         whileTap={{ scale: 0.98 }}
       >
         <input
@@ -161,7 +175,7 @@ export function ImageUpload({
         />
 
         <AnimatePresence mode="wait">
-          {value ? (
+          {hasValidImage ? (
             <motion.div
               key="preview"
               initial={{ opacity: 0 }}
@@ -170,9 +184,10 @@ export function ImageUpload({
               className="absolute inset-0"
             >
               <img
-                src={value}
+                src={value!}
                 alt="Upload preview"
                 className="w-full h-full object-cover"
+                onError={() => setImageError(true)}
               />
 
               {/* Overlay with clear button on hover */}

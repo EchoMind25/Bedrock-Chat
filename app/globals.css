@@ -561,6 +561,54 @@
   }
 }
 
+/* ── Settings-driven CSS classes ────────────────────────── */
+
+/* Reduce motion: disables animations when user toggles reduced_motion or animations_enabled off */
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* High contrast: increases text/border contrast for accessibility */
+.high-contrast {
+  --color-foreground-dark: oklch(1 0 0);
+  --color-muted-foreground-dark: oklch(0.85 0.01 250);
+  --color-border-dark: oklch(0.5 0.02 285);
+}
+
+/* Compact mode: tighter spacing in message lists */
+.compact-mode {
+  --message-padding-y: 2px;
+  --message-gap: 2px;
+  --message-avatar-size: 24px;
+}
+
+/* Message font size (set by SettingsEffects via CSS custom property) */
+:root {
+  --message-font-size: 1rem;
+}
+
+/* Spacious mode: increased spacing in message lists */
+.spacious-mode {
+  --message-padding-y: 8px;
+  --message-gap: 8px;
+  --message-avatar-size: 44px;
+}
+
+/* Larger text: boosts base text size globally */
+.larger-text {
+  font-size: 110%;
+}
+
+/* Screen reader mode: enhanced focus indicators */
+.screen-reader *:focus-visible {
+  outline: 3px solid oklch(0.65 0.25 265) !important;
+  outline-offset: 2px !important;
+}
+
 /* ── Idle State: pause CSS animations to save CPU ──────── */
 
 html.idle .animated-gradient,

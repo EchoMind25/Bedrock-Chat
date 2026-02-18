@@ -1,6 +1,7 @@
 "use client";
 
 import { useThemeStore } from "@/store/theme.store";
+import { useSettingsStore } from "@/store/settings.store";
 import { Toggle } from "@/components/ui/toggle/toggle";
 import { SettingsSection } from "../settings-section";
 import { SettingsRow } from "../settings-row";
@@ -12,16 +13,35 @@ const themeOptions: Array<{ value: ThemeOverrideMode; label: string; desc: strin
 	{ value: "simple_mode", label: "Simple Mode", desc: "Minimal effects for better performance" },
 ];
 
+const ACCENT_COLORS = [
+	{ value: "purple", label: "Purple", color: "oklch(0.65 0.25 265)" },
+	{ value: "blue", label: "Blue", color: "oklch(0.65 0.25 240)" },
+	{ value: "green", label: "Green", color: "oklch(0.65 0.20 155)" },
+	{ value: "pink", label: "Pink", color: "oklch(0.65 0.25 340)" },
+	{ value: "orange", label: "Orange", color: "oklch(0.70 0.20 55)" },
+];
+
 export function AppearanceTab() {
-	const preferences = useThemeStore((s) => s.preferences);
-	const setMessageDensity = useThemeStore((s) => s.setMessageDensity);
-	const setFontSize = useThemeStore((s) => s.setFontSize);
-	const setHighContrast = useThemeStore((s) => s.setHighContrast);
-	const setReducedMotion = useThemeStore((s) => s.setReducedMotion);
-	const setLargerText = useThemeStore((s) => s.setLargerText);
-	const setShowAvatars = useThemeStore((s) => s.setShowAvatars);
-	const setShowTimestamps = useThemeStore((s) => s.setShowTimestamps);
+	// Theme store — localStorage-only preferences (theme mode override)
+	const overrideMode = useThemeStore((s) => s.preferences.overrideMode);
 	const setOverrideMode = useThemeStore((s) => s.setOverrideMode);
+
+	// Settings store — DB-backed preferences
+	const settings = useSettingsStore((s) => s.settings);
+	const updateSettings = useSettingsStore((s) => s.updateSettings);
+
+	const handleFontSizeChange = (size: "small" | "medium" | "large") => {
+		updateSettings({ font_size: size });
+	};
+
+	const handleMessageDensityChange = (density: "compact" | "default" | "spacious") => {
+		updateSettings({
+			message_density: density,
+			compact_mode: density === "compact",
+		});
+	};
+
+	const currentDensity = settings?.message_density ?? "default";
 
 	return (
 		<div className="space-y-8">
@@ -38,7 +58,7 @@ export function AppearanceTab() {
 							type="button"
 							onClick={() => setOverrideMode(option.value)}
 							className={`w-full p-3 rounded-lg border-2 transition-all text-left ${
-								preferences.overrideMode === option.value
+								overrideMode === option.value
 									? "border-blue-500 bg-blue-500/10"
 									: "border-white/10 hover:border-white/20 hover:bg-white/5"
 							}`}
@@ -50,15 +70,34 @@ export function AppearanceTab() {
 				</div>
 			</SettingsSection>
 
+			<SettingsSection title="Accent Color">
+				<div className="flex gap-3">
+					{ACCENT_COLORS.map((ac) => (
+						<button
+							key={ac.value}
+							type="button"
+							onClick={() => updateSettings({ accent_color: ac.value })}
+							className={`w-10 h-10 rounded-full border-2 transition-all ${
+								(settings?.accent_color ?? "purple") === ac.value
+									? "border-white scale-110"
+									: "border-transparent hover:border-white/40"
+							}`}
+							style={{ backgroundColor: ac.color }}
+							title={ac.label}
+						/>
+					))}
+				</div>
+			</SettingsSection>
+
 			<SettingsSection title="Message Density">
 				<div className="flex gap-2">
-					{(["compact", "cozy", "spacious"] as const).map((density) => (
+					{(["compact", "default", "spacious"] as const).map((density) => (
 						<button
 							key={density}
 							type="button"
-							onClick={() => setMessageDensity(density)}
+							onClick={() => handleMessageDensityChange(density)}
 							className={`flex-1 p-3 rounded-lg border-2 transition-all text-center text-sm capitalize ${
-								preferences.messageDensity === density
+								currentDensity === density
 									? "border-blue-500 bg-blue-500/10 text-blue-300"
 									: "border-white/10 hover:border-white/20 text-slate-300"
 							}`}
@@ -75,9 +114,9 @@ export function AppearanceTab() {
 						<button
 							key={size}
 							type="button"
-							onClick={() => setFontSize(size)}
+							onClick={() => handleFontSizeChange(size)}
 							className={`flex-1 p-3 rounded-lg border-2 transition-all text-center text-sm capitalize ${
-								preferences.fontSize === size
+								(settings?.font_size ?? "medium") === size
 									? "border-blue-500 bg-blue-500/10 text-blue-300"
 									: "border-white/10 hover:border-white/20 text-slate-300"
 							}`}
@@ -91,20 +130,26 @@ export function AppearanceTab() {
 			<SettingsSection title="Accessibility">
 				<SettingsRow label="High Contrast" description="Increase text contrast for better readability">
 					<Toggle
-						checked={preferences.highContrast}
-						onChange={(e) => setHighContrast(e.target.checked)}
+						checked={settings?.high_contrast ?? false}
+						onChange={(e) => updateSettings({ high_contrast: e.target.checked })}
 					/>
 				</SettingsRow>
 				<SettingsRow label="Reduced Motion" description="Minimize animations and transitions">
 					<Toggle
-						checked={preferences.reducedMotion}
-						onChange={(e) => setReducedMotion(e.target.checked)}
+						checked={settings?.reduced_motion ?? false}
+						onChange={(e) => updateSettings({ reduced_motion: e.target.checked })}
 					/>
 				</SettingsRow>
 				<SettingsRow label="Larger Text" description="Increase base text size across the app">
 					<Toggle
-						checked={preferences.largerText}
-						onChange={(e) => setLargerText(e.target.checked)}
+						checked={settings?.larger_text ?? false}
+						onChange={(e) => updateSettings({ larger_text: e.target.checked })}
+					/>
+				</SettingsRow>
+				<SettingsRow label="Screen Reader Mode" description="Enhanced focus indicators and ARIA landmarks">
+					<Toggle
+						checked={settings?.screen_reader_mode ?? false}
+						onChange={(e) => updateSettings({ screen_reader_mode: e.target.checked })}
 					/>
 				</SettingsRow>
 			</SettingsSection>
@@ -112,14 +157,14 @@ export function AppearanceTab() {
 			<SettingsSection title="Display">
 				<SettingsRow label="Show Avatars" description="Display user avatars in messages">
 					<Toggle
-						checked={preferences.showAvatars}
-						onChange={(e) => setShowAvatars(e.target.checked)}
+						checked={settings?.show_avatars ?? true}
+						onChange={(e) => updateSettings({ show_avatars: e.target.checked })}
 					/>
 				</SettingsRow>
 				<SettingsRow label="Show Timestamps" description="Display timestamps on messages">
 					<Toggle
-						checked={preferences.showTimestamps}
-						onChange={(e) => setShowTimestamps(e.target.checked)}
+						checked={settings?.show_timestamps ?? true}
+						onChange={(e) => updateSettings({ show_timestamps: e.target.checked })}
 					/>
 				</SettingsRow>
 			</SettingsSection>

@@ -119,6 +119,7 @@ export const useFriendsStore = create<FriendsState>()(
                       id: r.id, fromUserId: s.id as string, fromUsername: s.username as string,
                       fromDisplayName: (s.display_name as string) || (s.username as string),
                       fromAvatar: (s.avatar_url as string) || "", toUserId: userId,
+                      toUsername: "", toDisplayName: "", toAvatar: "",
                       message: r.message || undefined, createdAt: new Date(r.created_at), direction: "incoming" as const,
                     };
                   }),
@@ -126,7 +127,11 @@ export const useFriendsStore = create<FriendsState>()(
                     const recv = r.receiver as unknown as Record<string, unknown>;
                     return {
                       id: r.id, fromUserId: userId, fromUsername: "You",
-                      fromDisplayName: "You", fromAvatar: "", toUserId: recv.id as string,
+                      fromDisplayName: "You", fromAvatar: "",
+                      toUserId: recv.id as string,
+                      toUsername: recv.username as string,
+                      toDisplayName: (recv.display_name as string) || (recv.username as string),
+                      toAvatar: (recv.avatar_url as string) || "",
                       message: r.message || undefined, createdAt: new Date(r.created_at), direction: "outgoing" as const,
                     };
                   }),
@@ -212,6 +217,9 @@ export const useFriendsStore = create<FriendsState>()(
                   fromDisplayName: "You",
                   fromAvatar: "",
                   toUserId: targetUser.id,
+                  toUsername: targetUser.username,
+                  toDisplayName: targetUser.display_name || targetUser.username,
+                  toAvatar: targetUser.avatar_url || "",
                   message: message || undefined,
                   createdAt: new Date(),
                   direction: "outgoing" as const,
@@ -435,6 +443,9 @@ export const useFriendsStore = create<FriendsState>()(
                 fromDisplayName: sender.display_name || sender.username,
                 fromAvatar: sender.avatar_url || "",
                 toUserId: userId,
+                toUsername: "",
+                toDisplayName: "",
+                toAvatar: "",
                 message: (row.message as string) || undefined,
                 createdAt: new Date(row.created_at as string),
                 direction: "incoming",

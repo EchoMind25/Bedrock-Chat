@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { useConsentStore } from "@/store/consent.store";
+import { useSettingsStore } from "@/store/settings.store";
 import { Toggle } from "@/components/ui/toggle/toggle";
 import { SettingsSection } from "../settings-section";
 import { SettingsRow } from "../settings-row";
@@ -11,11 +11,8 @@ export function PrivacyTab() {
 	const preferences = useConsentStore((s) => s.preferences);
 	const savePreferences = useConsentStore((s) => s.savePreferences);
 
-	// Placeholder local state for privacy settings not yet backed by a store
-	const [showOnlineStatus, setShowOnlineStatus] = useState(true);
-	const [allowDMs, setAllowDMs] = useState(true);
-	const [typingIndicators, setTypingIndicators] = useState(true);
-	const [readReceipts, setReadReceipts] = useState(true);
+	const settings = useSettingsStore((s) => s.settings);
+	const updateSettings = useSettingsStore((s) => s.updateSettings);
 
 	return (
 		<div className="space-y-8">
@@ -24,29 +21,29 @@ export function PrivacyTab() {
 				<p className="text-slate-400 text-sm mt-1">Control who can see your activity and contact you</p>
 			</div>
 
-			<SettingsSection title="Privacy" description="These settings will be fully functional in a future update.">
+			<SettingsSection title="Privacy">
 				<SettingsRow label="Show Online Status" description="Let others see when you're online">
 					<Toggle
-						checked={showOnlineStatus}
-						onChange={(e) => setShowOnlineStatus(e.target.checked)}
+						checked={settings?.show_online_status ?? true}
+						onChange={(e) => updateSettings({ show_online_status: e.target.checked })}
 					/>
 				</SettingsRow>
 				<SettingsRow label="Allow Direct Messages" description="Let server members send you DMs">
 					<Toggle
-						checked={allowDMs}
-						onChange={(e) => setAllowDMs(e.target.checked)}
+						checked={settings?.allow_dms ?? true}
+						onChange={(e) => updateSettings({ allow_dms: e.target.checked })}
 					/>
 				</SettingsRow>
 				<SettingsRow label="Typing Indicators" description="Show when you're typing in a conversation">
 					<Toggle
-						checked={typingIndicators}
-						onChange={(e) => setTypingIndicators(e.target.checked)}
+						checked={settings?.typing_indicators ?? true}
+						onChange={(e) => updateSettings({ typing_indicators: e.target.checked })}
 					/>
 				</SettingsRow>
 				<SettingsRow label="Read Receipts" description="Let others know when you've read their messages">
 					<Toggle
-						checked={readReceipts}
-						onChange={(e) => setReadReceipts(e.target.checked)}
+						checked={settings?.read_receipts ?? true}
+						onChange={(e) => updateSettings({ read_receipts: e.target.checked })}
 					/>
 				</SettingsRow>
 			</SettingsSection>

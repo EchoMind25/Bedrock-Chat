@@ -3,6 +3,7 @@
 import { Modal } from "@/components/ui/modal/modal";
 import { Toggle } from "@/components/ui/toggle/toggle";
 import { useThemeStore } from "@/store/theme.store";
+import { useSettingsStore } from "@/store/settings.store";
 import type { ThemeOverrideMode } from "@/lib/themes/types";
 
 interface AppearanceModalProps {
@@ -11,21 +12,21 @@ interface AppearanceModalProps {
 }
 
 export function AppearanceModal({ isOpen, onClose }: AppearanceModalProps) {
-  const preferences = useThemeStore((s) => s.preferences);
-  const setMessageDensity = useThemeStore((s) => s.setMessageDensity);
-  const setFontSize = useThemeStore((s) => s.setFontSize);
-  const setHighContrast = useThemeStore((s) => s.setHighContrast);
-  const setReducedMotion = useThemeStore((s) => s.setReducedMotion);
-  const setLargerText = useThemeStore((s) => s.setLargerText);
-  const setShowAvatars = useThemeStore((s) => s.setShowAvatars);
-  const setShowTimestamps = useThemeStore((s) => s.setShowTimestamps);
+  // Theme store — only for theme mode override (localStorage)
+  const overrideMode = useThemeStore((s) => s.preferences.overrideMode);
   const setOverrideMode = useThemeStore((s) => s.setOverrideMode);
+
+  // Settings store — DB-backed preferences
+  const settings = useSettingsStore((s) => s.settings);
+  const updateSettings = useSettingsStore((s) => s.updateSettings);
 
   const themeOptions: Array<{ value: ThemeOverrideMode; label: string; desc: string }> = [
     { value: "use_server", label: "Use Server Theme", desc: "Respect each server's custom theme" },
     { value: "force_personal", label: "Force Personal Theme", desc: "Apply your preferred theme everywhere" },
     { value: "simple_mode", label: "Simple Mode", desc: "Minimal effects for better performance" },
   ];
+
+  const currentDensity = settings?.message_density ?? "default";
 
   return (
     <Modal
@@ -47,7 +48,7 @@ export function AppearanceModal({ isOpen, onClose }: AppearanceModalProps) {
                 type="button"
                 onClick={() => setOverrideMode(option.value)}
                 className={`w-full p-3 rounded-lg border-2 transition-all text-left ${
-                  preferences.overrideMode === option.value
+                  overrideMode === option.value
                     ? "border-blue-500 bg-blue-500/10"
                     : "border-white/10 hover:border-white/20 hover:bg-white/5"
                 }`}
@@ -65,13 +66,13 @@ export function AppearanceModal({ isOpen, onClose }: AppearanceModalProps) {
             Message Density
           </h3>
           <div className="flex gap-2">
-            {(["compact", "cozy", "spacious"] as const).map((density) => (
+            {(["compact", "default", "spacious"] as const).map((density) => (
               <button
                 key={density}
                 type="button"
-                onClick={() => setMessageDensity(density)}
+                onClick={() => updateSettings({ message_density: density, compact_mode: density === "compact" })}
                 className={`flex-1 p-3 rounded-lg border-2 transition-all text-center text-sm capitalize ${
-                  preferences.messageDensity === density
+                  currentDensity === density
                     ? "border-blue-500 bg-blue-500/10 text-blue-300"
                     : "border-white/10 hover:border-white/20 text-slate-300"
                 }`}
@@ -92,9 +93,9 @@ export function AppearanceModal({ isOpen, onClose }: AppearanceModalProps) {
               <button
                 key={size}
                 type="button"
-                onClick={() => setFontSize(size)}
+                onClick={() => updateSettings({ font_size: size })}
                 className={`flex-1 p-3 rounded-lg border-2 transition-all text-center text-sm capitalize ${
-                  preferences.fontSize === size
+                  (settings?.font_size ?? "medium") === size
                     ? "border-blue-500 bg-blue-500/10 text-blue-300"
                     : "border-white/10 hover:border-white/20 text-slate-300"
                 }`}
@@ -112,18 +113,18 @@ export function AppearanceModal({ isOpen, onClose }: AppearanceModalProps) {
           </h3>
           <div className="space-y-3">
             <Toggle
-              checked={preferences.highContrast}
-              onChange={(e) => setHighContrast(e.target.checked)}
+              checked={settings?.high_contrast ?? false}
+              onChange={(e) => updateSettings({ high_contrast: e.target.checked })}
               label="High Contrast"
             />
             <Toggle
-              checked={preferences.reducedMotion}
-              onChange={(e) => setReducedMotion(e.target.checked)}
+              checked={settings?.reduced_motion ?? false}
+              onChange={(e) => updateSettings({ reduced_motion: e.target.checked })}
               label="Reduced Motion"
             />
             <Toggle
-              checked={preferences.largerText}
-              onChange={(e) => setLargerText(e.target.checked)}
+              checked={settings?.larger_text ?? false}
+              onChange={(e) => updateSettings({ larger_text: e.target.checked })}
               label="Larger Text"
             />
           </div>
@@ -136,13 +137,13 @@ export function AppearanceModal({ isOpen, onClose }: AppearanceModalProps) {
           </h3>
           <div className="space-y-3">
             <Toggle
-              checked={preferences.showAvatars}
-              onChange={(e) => setShowAvatars(e.target.checked)}
+              checked={settings?.show_avatars ?? true}
+              onChange={(e) => updateSettings({ show_avatars: e.target.checked })}
               label="Show Avatars"
             />
             <Toggle
-              checked={preferences.showTimestamps}
-              onChange={(e) => setShowTimestamps(e.target.checked)}
+              checked={settings?.show_timestamps ?? true}
+              onChange={(e) => updateSettings({ show_timestamps: e.target.checked })}
               label="Show Timestamps"
             />
           </div>

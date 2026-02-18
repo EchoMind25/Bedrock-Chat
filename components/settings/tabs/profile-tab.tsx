@@ -103,10 +103,12 @@ export function ProfileTab() {
     try {
       const url = await uploadProfileImage(file, type);
 
-      // Update local state
+      // Clear the local preview so avatarSrc/bannerSrc falls through to the real URL
       if (type === "avatar") {
+        setAvatarPreview(null);
         updateUser({ avatar: url });
       } else {
+        setBannerPreview(null);
         updateUser({ banner: url });
       }
 

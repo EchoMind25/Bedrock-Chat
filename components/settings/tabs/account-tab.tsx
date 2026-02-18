@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth.store";
+import { createClient } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge/badge";
 import { Button } from "@/components/ui/button/button";
 import { Input } from "@/components/ui/input/input";
 import { Modal } from "@/components/ui/modal/modal";
 import { SettingsSection } from "../settings-section";
 import { SettingsRow } from "../settings-row";
+import { toast } from "@/lib/stores/toast-store";
 
 function maskEmail(email: string): string {
 	const [local, domain] = email.split("@");
@@ -28,6 +30,14 @@ export function AccountTab() {
 	const [showDeleteModal, setShowDeleteModal] = useState(false);
 	const [password, setPassword] = useState("");
 	const [localError, setLocalError] = useState<string | null>(null);
+
+	// Password change state
+	const [showPasswordModal, setShowPasswordModal] = useState(false);
+	const [currentPassword, setCurrentPassword] = useState("");
+	const [newPassword, setNewPassword] = useState("");
+	const [confirmPassword, setConfirmPassword] = useState("");
+	const [passwordError, setPasswordError] = useState<string | null>(null);
+	const [isChangingPassword, setIsChangingPassword] = useState(false);
 
 	if (!user) return null;
 
@@ -71,6 +81,80 @@ export function AccountTab() {
 		}
 	};
 
+	const handleOpenPasswordModal = () => {
+		setCurrentPassword("");
+		setNewPassword("");
+		setConfirmPassword("");
+		setPasswordError(null);
+		setShowPasswordModal(true);
+	};
+
+	const handleClosePasswordModal = () => {
+		if (isChangingPassword) return;
+		setShowPasswordModal(false);
+		setCurrentPassword("");
+		setNewPassword("");
+		setConfirmPassword("");
+		setPasswordError(null);
+	};
+
+	const handleChangePassword = async () => {
+		setPasswordError(null);
+
+		if (!currentPassword) {
+			setPasswordError("Please enter your current password");
+			return;
+		}
+		if (newPassword.length < 8) {
+			setPasswordError("New password must be at least 8 characters");
+			return;
+		}
+		if (newPassword !== confirmPassword) {
+			setPasswordError("New passwords do not match");
+			return;
+		}
+		if (currentPassword === newPassword) {
+			setPasswordError("New password must be different from current password");
+			return;
+		}
+
+		setIsChangingPassword(true);
+
+		try {
+			const supabase = createClient();
+
+			// Verify current password by re-authenticating
+			const { error: signInError } = await supabase.auth.signInWithPassword({
+				email: user.email,
+				password: currentPassword,
+			});
+
+			if (signInError) {
+				setPasswordError("Current password is incorrect");
+				setIsChangingPassword(false);
+				return;
+			}
+
+			// Update to new password
+			const { error: updateError } = await supabase.auth.updateUser({
+				password: newPassword,
+			});
+
+			if (updateError) {
+				setPasswordError(updateError.message);
+				setIsChangingPassword(false);
+				return;
+			}
+
+			toast.success("Password Updated", "Your password has been changed successfully");
+			handleClosePasswordModal();
+		} catch {
+			setPasswordError("Failed to change password. Please try again.");
+		} finally {
+			setIsChangingPassword(false);
+		}
+	};
+
 	const displayError = localError || storeError;
 
 	return (
@@ -102,12 +186,11 @@ export function AccountTab() {
 			</SettingsSection>
 
 			<SettingsSection title="Password">
-				<SettingsRow label="Change Password" description="Update your account password" disabled>
-					<Button variant="secondary" size="sm" disabled>
+				<SettingsRow label="Change Password" description="Update your account password">
+					<Button variant="secondary" size="sm" onClick={handleOpenPasswordModal}>
 						Change
 					</Button>
 				</SettingsRow>
-				<p className="text-xs text-slate-500">Password changes will be available soon.</p>
 			</SettingsSection>
 
 			<SettingsSection title="Danger Zone">
@@ -123,6 +206,79 @@ export function AccountTab() {
 				</div>
 			</SettingsSection>
 
+			{/* Password Change Modal */}
+			<Modal
+				isOpen={showPasswordModal}
+				onClose={handleClosePasswordModal}
+				title="Change Password"
+				size="sm"
+				closeOnOverlay={!isChangingPassword}
+				closeOnEscape={!isChangingPassword}
+				footer={
+					<>
+						<Button
+							variant="secondary"
+							size="sm"
+							onClick={handleClosePasswordModal}
+							disabled={isChangingPassword}
+						>
+							Cancel
+						</Button>
+						<Button
+							variant="primary"
+							size="sm"
+							onClick={handleChangePassword}
+							disabled={isChangingPassword || !currentPassword || !newPassword || !confirmPassword}
+						>
+							{isChangingPassword ? "Updating..." : "Update Password"}
+						</Button>
+					</>
+				}
+			>
+				<div className="space-y-4">
+					<Input
+						id="current-password"
+						type="password"
+						label="Current Password"
+						labelClassName="text-slate-300"
+						placeholder="Enter current password"
+						value={currentPassword}
+						onChange={(e) => setCurrentPassword(e.target.value)}
+						disabled={isChangingPassword}
+						autoComplete="current-password"
+					/>
+					<Input
+						id="new-password"
+						type="password"
+						label="New Password"
+						labelClassName="text-slate-300"
+						placeholder="Enter new password (min 8 characters)"
+						value={newPassword}
+						onChange={(e) => setNewPassword(e.target.value)}
+						disabled={isChangingPassword}
+						autoComplete="new-password"
+					/>
+					<Input
+						id="confirm-password"
+						type="password"
+						label="Confirm New Password"
+						labelClassName="text-slate-300"
+						placeholder="Re-enter new password"
+						value={confirmPassword}
+						onChange={(e) => setConfirmPassword(e.target.value)}
+						onKeyDown={(e) => {
+							if (e.key === "Enter" && currentPassword && newPassword && confirmPassword && !isChangingPassword) {
+								handleChangePassword();
+							}
+						}}
+						error={passwordError || undefined}
+						disabled={isChangingPassword}
+						autoComplete="new-password"
+					/>
+				</div>
+			</Modal>
+
+			{/* Delete Account Modal */}
 			<Modal
 				isOpen={showDeleteModal}
 				onClose={handleCloseDeleteModal}

@@ -3,6 +3,7 @@
 import { use, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useDMStore } from "@/store/dm.store";
 import { useAuthStore } from "@/store/auth.store";
+import { useSettingsStore } from "@/store/settings.store";
 import { EmojiPicker } from "@/components/chat/emoji-picker";
 import { Avatar } from "@/components/ui/avatar/avatar";
 import { Badge } from "@/components/ui/badge/badge";
@@ -24,6 +25,8 @@ export default function DMPage({ params }: PageProps) {
 	const otherUserId = rawUserId.startsWith("dm-") ? rawUserId.slice(3) : rawUserId;
 
 	const currentUser = useAuthStore((s) => s.user);
+	const showAvatars = useSettingsStore((s) => s.settings?.show_avatars ?? true);
+	const showTimestamps = useSettingsStore((s) => s.settings?.show_timestamps ?? true);
 
 	const messagesRaw = useDMStore((s) => s.dmMessages[otherUserId]);
 	const messages = messagesRaw ?? EMPTY_MESSAGES;
@@ -128,6 +131,8 @@ export default function DMPage({ params }: PageProps) {
 								message={msg}
 								isGrouped={isGrouped}
 								isOwn={msg.author.id === currentUser?.id}
+								showAvatars={showAvatars}
+								showTimestamps={showTimestamps}
 							/>
 						);
 					})
@@ -200,17 +205,21 @@ function DMMessageBubble({
 	message,
 	isGrouped,
 	isOwn,
+	showAvatars,
+	showTimestamps,
 }: {
 	message: Message;
 	isGrouped: boolean;
 	isOwn: boolean;
+	showAvatars: boolean;
+	showTimestamps: boolean;
 }) {
 	const formatTime = (date: Date) =>
 		date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
 	if (isGrouped) {
 		return (
-			<div className="pl-14 py-0.5 hover:bg-white/[0.02] rounded-sm">
+			<div className={`${showAvatars ? "pl-14" : "pl-0"} py-0.5 hover:bg-white/[0.02] rounded-sm`}>
 				<p className="text-sm text-white/90">{message.content}</p>
 			</div>
 		);
@@ -218,17 +227,21 @@ function DMMessageBubble({
 
 	return (
 		<div className="flex gap-3 pt-2 pb-0.5 hover:bg-white/[0.02] rounded-sm">
-			<Avatar
-				src={message.author.avatar}
-				fallback={message.author.displayName.slice(0, 2)}
-				size="sm"
-			/>
+			{showAvatars && (
+				<Avatar
+					src={message.author.avatar}
+					fallback={message.author.displayName.slice(0, 2)}
+					size="sm"
+				/>
+			)}
 			<div className="flex-1 min-w-0">
 				<div className="flex items-baseline gap-2">
 					<span className={`text-sm font-semibold ${isOwn ? "text-primary" : "text-white"}`}>
 						{message.author.displayName}
 					</span>
-					<span className="text-[10px] text-white/40">{formatTime(message.timestamp)}</span>
+					{showTimestamps && (
+						<span className="text-[10px] text-white/40">{formatTime(message.timestamp)}</span>
+					)}
 				</div>
 				<p className="text-sm text-white/90">{message.content}</p>
 			</div>

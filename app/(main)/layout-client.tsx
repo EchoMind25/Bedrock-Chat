@@ -11,6 +11,7 @@ import { useUIStore } from "@/store/ui.store";
 import { useFavoritesStore } from "@/store/favorites.store";
 import { usePresenceStore } from "@/store/presence.store";
 import { useVoicePresenceStore } from "@/store/voice-presence.store";
+import { useSettingsStore } from "@/store/settings.store";
 import { useIsMobile } from "@/lib/hooks/use-media-query";
 import { ServerList } from "@/components/navigation/server-list/server-list";
 import { ChannelList } from "@/components/navigation/channel-list/channel-list";
@@ -19,6 +20,7 @@ import { MobileNav } from "@/components/navigation/mobile-nav";
 import { PortalOverlay } from "@/components/navigation/portal-overlay";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ErrorRecovery } from "@/components/error-recovery";
+import { SettingsEffects } from "@/components/settings/settings-effects";
 import { useIdleDetection } from "@/lib/hooks/use-idle-detection";
 import { initPerformanceMonitoring } from "@/store/performance.store";
 import { PerformanceMonitor } from "@/lib/performance/monitoring";
@@ -153,6 +155,9 @@ export function MainLayoutClient({
 							.catch(() => {});
 					}
 
+					// Step 2.7: Load user settings (fire-and-forget — non-blocking)
+					useSettingsStore.getState().loadSettings().catch(() => {});
+
 					// Step 3: Init stores (servers awaited, friends/dm fire-and-forget)
 					setLoadingStage("servers");
 					const serverState = useServerStore.getState();
@@ -218,6 +223,13 @@ export function MainLayoutClient({
 			// Supabase client may fail to initialize (e.g. missing env vars)
 		}
 	}, []);
+
+	// Clear settings when user signs out
+	useEffect(() => {
+		if (!isAuthenticated) {
+			useSettingsStore.getState().clearSettings();
+		}
+	}, [isAuthenticated]);
 
 	// Join/leave presence channel when current server changes
 	const currentServerId = useServerStore((s) => s.currentServerId);
@@ -301,6 +313,9 @@ export function MainLayoutClient({
 
 	return (
 		<div className="flex h-screen overflow-hidden bg-[oklch(0.12_0.02_250)]">
+			{/* Apply global settings effects (theme, font size, accessibility) */}
+			<SettingsEffects />
+
 			{/* Skip to main content link for keyboard users */}
 			<a
 				href="#main-content"

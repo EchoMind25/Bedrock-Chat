@@ -4,9 +4,12 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "motion/react";
 import { Mic, Headphones, ChevronDown, Sparkles } from "lucide-react";
 import { useVoiceStore } from "@/store/voice.store";
+import { useSettingsStore } from "@/store/settings.store";
 import { supportsNoiseCancellation, getAudioEnhancementMethod, getBrowserName } from "@/lib/utils/browser";
 import { Button } from "@/components/ui/button/button";
+import { Toggle } from "@/components/ui/toggle/toggle";
 import { SettingsSection } from "../settings-section";
+import { SettingsRow } from "../settings-row";
 
 interface AudioDevice {
 	id: string;
@@ -33,10 +36,6 @@ export function VoiceTab() {
 	const [outputDevices, setOutputDevices] = useState<AudioDevice[]>([
 		{ id: "default", name: "Default" },
 	]);
-	const [inputDevice, setInputDevice] = useState("default");
-	const [outputDevice, setOutputDevice] = useState("default");
-	const [inputVolume, setInputVolume] = useState(80);
-	const [outputVolume, setOutputVolume] = useState(70);
 	const [inputMeterLevel, setInputMeterLevel] = useState(0);
 	const [outputMeterLevel, setOutputMeterLevel] = useState(0);
 	const [isMicTesting, setIsMicTesting] = useState(false);
@@ -44,8 +43,29 @@ export function VoiceTab() {
 	const [micError, setMicError] = useState<string | null>(null);
 	const [showPermissionModal, setShowPermissionModal] = useState(false);
 
+	// DB-backed settings
+	const settings = useSettingsStore((s) => s.settings);
+	const updateSettings = useSettingsStore((s) => s.updateSettings);
+
+	// Voice store (also sync noise cancellation)
 	const noiseCancellationEnabled = useVoiceStore((s) => s.noiseCancellationEnabled);
 	const setNoiseCancellation = useVoiceStore((s) => s.setNoiseCancellation);
+
+	// Derive values from settings store (with defaults)
+	const inputDevice = settings?.input_device ?? "default";
+	const outputDevice = settings?.output_device ?? "default";
+	const inputVolume = settings?.input_volume ?? 100;
+	const outputVolume = settings?.output_volume ?? 100;
+
+	const setInputDevice = (id: string) => updateSettings({ input_device: id === "default" ? null : id });
+	const setOutputDevice = (id: string) => updateSettings({ output_device: id === "default" ? null : id });
+	const setInputVolume = (v: number) => updateSettings({ input_volume: v });
+	const setOutputVolume = (v: number) => updateSettings({ output_volume: v });
+
+	const handleNoiseSuppression = (enabled: boolean) => {
+		setNoiseCancellation(enabled); // Voice store (localStorage)
+		updateSettings({ noise_suppression: enabled }); // DB
+	};
 
 	// Refs for mic test cleanup
 	const streamRef = useRef<MediaStream | null>(null);
@@ -319,8 +339,8 @@ export function VoiceTab() {
 						<div className="flex-1">
 							<div className="flex items-center gap-2">
 								<Sparkles className="w-4 h-4 text-purple-400" />
-								<span className="text-sm font-medium text-slate-200">Noise Cancellation</span>
-								{noiseCancellationEnabled && (
+								<span className="text-sm font-medium text-slate-200">Noise Suppression</span>
+								{(settings?.noise_suppression ?? noiseCancellationEnabled) && (
 									<span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
 										Active
 									</span>
@@ -334,12 +354,19 @@ export function VoiceTab() {
 						</div>
 						<input
 							type="checkbox"
-							checked={noiseCancellationEnabled}
-							onChange={(e) => setNoiseCancellation(e.target.checked)}
+							checked={settings?.noise_suppression ?? noiseCancellationEnabled}
+							onChange={(e) => handleNoiseSuppression(e.target.checked)}
 							disabled={getAudioEnhancementMethod() === "none"}
 							className="w-4 h-4 rounded accent-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
 						/>
 					</label>
+
+					<SettingsRow label="Echo Cancellation" description="Reduce echo from speakers being picked up by your microphone">
+						<Toggle
+							checked={settings?.echo_cancellation ?? true}
+							onChange={(e) => updateSettings({ echo_cancellation: e.target.checked })}
+						/>
+					</SettingsRow>
 
 					<div className="flex items-start gap-2 p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
 						<svg className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">

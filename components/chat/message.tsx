@@ -13,6 +13,7 @@ import { useMessageStore } from '@/store/message.store';
 import { usePresenceStore } from '@/store/presence.store';
 import { useAuthStore } from '@/store/auth.store';
 import { useServerStore } from '@/store/server.store';
+import { useSettingsStore } from '@/store/settings.store';
 
 interface MessageProps {
 	message: Message;
@@ -31,6 +32,8 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 	const deleteMessage = useMessageStore((state) => state.deleteMessage);
 	const currentUser = useAuthStore(state => state.user);
 	const currentServerId = useServerStore((state) => state.currentServerId);
+	const showAvatars = useSettingsStore((state) => state.settings?.show_avatars ?? true);
+	const showTimestamps = useSettingsStore((state) => state.settings?.show_timestamps ?? true);
 
 	// Presence-aware status: only re-renders when THIS author's status changes
 	const authorPresenceStatus = usePresenceStore(
@@ -110,18 +113,20 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 			animate={{ opacity: 1 }}
 		>
 			<div className="flex gap-3">
-				{/* Avatar (hidden when grouped) */}
-				<div className={isGrouped ? 'w-10 shrink-0' : 'w-10 shrink-0'}>
-					{!isGrouped && (
-						<Avatar
-							src={message.author.avatar}
-							alt={message.author.displayName}
-							fallback={message.author.displayName}
-							size="md"
-							status={authorPresenceStatus}
-						/>
-					)}
-				</div>
+				{/* Avatar (hidden when grouped or when showAvatars is off) */}
+				{showAvatars && (
+					<div className="w-10 shrink-0">
+						{!isGrouped && (
+							<Avatar
+								src={message.author.avatar}
+								alt={message.author.displayName}
+								fallback={message.author.displayName}
+								size="md"
+								status={authorPresenceStatus}
+							/>
+						)}
+					</div>
+				)}
 
 				{/* Content */}
 				<div className="flex-1 min-w-0">
@@ -141,12 +146,14 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 									BOT
 								</span>
 							)}
-							<span
-								className="text-xs text-white/40 cursor-default"
-								title={formatAbsoluteTime(message.timestamp)}
-							>
-								{formatTimestamp(message.timestamp)}
-							</span>
+							{showTimestamps && (
+								<span
+									className="text-xs text-white/40 cursor-default"
+									title={formatAbsoluteTime(message.timestamp)}
+								>
+									{formatTimestamp(message.timestamp)}
+								</span>
+							)}
 						</div>
 					)}
 
@@ -204,7 +211,7 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 										const isImage = attachment.contentType?.startsWith('image/');
 										const isVideo = attachment.contentType?.startsWith('video/');
 
-										if (isImage) {
+										if (isImage && attachment.url) {
 											return (
 												<div key={attachment.id} className="max-w-md">
 													<img

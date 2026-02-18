@@ -21,6 +21,9 @@ export interface FriendRequest {
 	fromDisplayName: string;
 	fromAvatar: string;
 	toUserId: string;
+	toUsername: string;
+	toDisplayName: string;
+	toAvatar: string;
 	message?: string;
 	createdAt: Date;
 	direction: "incoming" | "outgoing";

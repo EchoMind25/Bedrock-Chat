@@ -18,6 +18,12 @@ export function FriendRequestCard({ request }: FriendRequestCardProps) {
 
 	const isIncoming = request.direction === "incoming";
 
+	// For incoming: show the sender (who sent us the request)
+	// For outgoing: show the receiver (who we sent the request to)
+	const displayAvatar = isIncoming ? request.fromAvatar : request.toAvatar;
+	const displayName = isIncoming ? request.fromDisplayName : request.toDisplayName;
+	const displayUsername = isIncoming ? request.fromUsername : request.toUsername;
+
 	const handleAccept = () => {
 		acceptRequest(request.id);
 	};
@@ -52,16 +58,16 @@ export function FriendRequestCard({ request }: FriendRequestCardProps) {
 			<Card variant="medium" hoverable>
 				<CardHeader className="flex-row items-center gap-4">
 					<Avatar
-						src={request.fromAvatar}
-						fallback={request.fromDisplayName.slice(0, 2)}
+						src={displayAvatar}
+						fallback={displayName.slice(0, 2)}
 						size="md"
 					/>
 					<div className="flex-1 min-w-0">
 						<CardTitle className="truncate text-base">
-							{request.fromDisplayName}
+							{displayName}
 						</CardTitle>
 						<CardDescription className="truncate">
-							@{request.fromUsername}
+							@{displayUsername}
 						</CardDescription>
 					</div>
 					<span className="text-xs text-white/40">
