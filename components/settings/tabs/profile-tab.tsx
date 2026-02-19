@@ -10,6 +10,7 @@ import type { AvatarStatus } from "@/components/ui/avatar/avatar";
 import { Input, Textarea } from "@/components/ui/input/input";
 import { SettingsSection } from "../settings-section";
 import { uploadProfileImage } from "@/lib/upload-profile-image";
+import { getImageUrl, BANNER_TRANSFORM } from "@/lib/utils/image-url";
 import { toast } from "@/lib/stores/toast-store";
 
 const statusToAvatar: Record<UserStatus, AvatarStatus> = {
@@ -165,7 +166,7 @@ export function ProfileTab() {
         >
           {bannerSrc ? (
             <img
-              src={bannerSrc}
+              src={getImageUrl(bannerSrc, BANNER_TRANSFORM.full)}
               alt="Profile banner"
               className="w-full h-full object-cover"
             />

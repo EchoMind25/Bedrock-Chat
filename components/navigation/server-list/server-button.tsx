@@ -4,6 +4,7 @@ import type { Server } from "@/lib/types/server";
 import { motion } from "motion/react";
 import { MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { getImageUrl, SERVER_ICON_TRANSFORM } from "@/lib/utils/image-url";
 
 interface ServerButtonProps {
 	server: Server;
@@ -70,7 +71,7 @@ export function ServerButton({
 					<MessageCircle className="relative z-10 w-6 h-6" />
 				) : server.icon?.startsWith("http") ? (
 					<img
-						src={server.icon}
+						src={getImageUrl(server.icon, SERVER_ICON_TRANSFORM)}
 						alt={server.name}
 						width={48}
 						height={48}

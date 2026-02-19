@@ -27,7 +27,7 @@ export function ImageUpload({
   onChange,
   onFileSelect,
   aspectRatio = "square",
-  maxSizeMB = 5,
+  maxSizeMB = 10,
   label,
   placeholder,
   className,
@@ -67,6 +67,10 @@ export function ImageUpload({
       toast.error("File Too Large", `Image must be smaller than ${maxSizeMB}MB`);
       return;
     }
+
+    // Reset error state synchronously so React batches it with the value
+    // update — prevents a one-render-cycle gap where hasValidImage is false.
+    setImageError(false);
 
     // Deferred-upload mode: show instant local preview, pass file to parent
     if (onFileSelect) {
@@ -229,7 +233,7 @@ export function ImageUpload({
                   {placeholder || "Click to upload or drag and drop"}
                 </p>
                 <p className="text-xs text-white/40">
-                  PNG, JPG, WebP or GIF (max {maxSizeMB}MB)
+                  PNG, JPG, WebP or GIF{maxSizeMB < 100 ? ` (max ${maxSizeMB}MB)` : ""}
                 </p>
               </div>
             </motion.div>

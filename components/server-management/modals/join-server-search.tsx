@@ -7,6 +7,7 @@ import { Button } from "../../ui/button/button";
 import { useServerManagementStore } from "../../../store/server-management.store";
 import { useServerStore } from "../../../store/server.store";
 import { cn } from "../../../lib/utils/cn";
+import { getImageUrl, SERVER_ICON_TRANSFORM } from "../../../lib/utils/image-url";
 import type { DiscoverableServer } from "../../../store/server-management.store";
 
 interface JoinServerSearchProps {
@@ -175,7 +176,7 @@ export function JoinServerSearch({ onSuccess }: JoinServerSearchProps) {
                       <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
                         {server.icon_url ? (
                           <img
-                            src={server.icon_url}
+                            src={getImageUrl(server.icon_url, SERVER_ICON_TRANSFORM)}
                             alt={server.name}
                             className="w-full h-full rounded-xl object-cover"
                           />

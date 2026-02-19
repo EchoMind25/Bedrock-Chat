@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils/cn";
+import { getImageUrl, AVATAR_TRANSFORM } from "@/lib/utils/image-url";
 import { motion } from "motion/react";
 import type { ImgHTMLAttributes, ReactNode, Ref } from "react";
 import { useState } from "react";
@@ -96,7 +97,12 @@ export function Avatar({
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  const showFallback = !src || imageError || !imageLoaded;
+  // Auto-apply Supabase Image Transforms for crisp rendering at any size
+  const transformedSrc = src
+    ? getImageUrl(src, AVATAR_TRANSFORM[size])
+    : undefined;
+
+  const showFallback = !transformedSrc || imageError || !imageLoaded;
 
   const initials = fallback
     ? fallback
@@ -121,7 +127,7 @@ export function Avatar({
           <span className="select-none">{initials}</span>
         ) : (
           <motion.img
-            src={src}
+            src={transformedSrc}
             alt={alt}
             className="w-full h-full object-cover"
             onError={() => setImageError(true)}

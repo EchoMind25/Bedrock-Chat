@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import sharp from "sharp";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB (full-res originals)
+
+const MIME_TO_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
 
 // Service-role client for storage operations (bypasses RLS)
 const serviceSupabase = createClient(
@@ -51,7 +57,7 @@ export async function POST(req: NextRequest) {
   // Validate file size
   if (file.size > MAX_FILE_SIZE) {
     return NextResponse.json(
-      { error: "File too large. Maximum size is 5MB" },
+      { error: "File too large. Maximum size is 10MB" },
       { status: 400 }
     );
   }
@@ -74,37 +80,29 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Process with sharp: strip EXIF/metadata, resize, convert to WebP
+  // Upload full-resolution original — Supabase Image Transformations
+  // handle resizing on-the-fly via CDN (no server-side processing needed).
   const buffer = Buffer.from(await file.arrayBuffer());
-  let processed: Buffer;
+  const ext = MIME_TO_EXT[file.type] || "jpg";
+  const path = `${serverId}/${type}.${ext}`;
 
-  try {
-    if (type === "logo") {
-      processed = await sharp(buffer)
-        .rotate() // Auto-rotate based on EXIF orientation, then strips EXIF
-        .resize(256, 256, { fit: "cover", position: "centre" })
-        .webp({ quality: 85 })
-        .toBuffer();
-    } else {
-      processed = await sharp(buffer)
-        .rotate()
-        .resize(1920, 480, { fit: "cover", position: "centre" })
-        .webp({ quality: 85 })
-        .toBuffer();
-    }
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to process image" },
-      { status: 400 }
-    );
+  // Remove old file at a different extension (e.g. switching from png to jpg)
+  const { data: existing } = await serviceSupabase.storage
+    .from("server-assets")
+    .list(serverId);
+
+  const staleFiles = (existing || [])
+    .filter((f) => f.name.startsWith(`${type}.`) && f.name !== `${type}.${ext}`)
+    .map((f) => `${serverId}/${f.name}`);
+
+  if (staleFiles.length > 0) {
+    await serviceSupabase.storage.from("server-assets").remove(staleFiles);
   }
 
-  // Upload to Supabase Storage
-  const path = `${serverId}/${type}.webp`;
   const { error: uploadError } = await serviceSupabase.storage
     .from("server-assets")
-    .upload(path, processed, {
-      contentType: "image/webp",
+    .upload(path, buffer, {
+      contentType: file.type,
       cacheControl: "3600",
       upsert: true,
     });

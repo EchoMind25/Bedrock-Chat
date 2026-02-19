@@ -5,6 +5,7 @@ import { UserPlus, Check, Clock, ChevronDown, Shield, Crown, X } from "lucide-re
 import { motion, AnimatePresence } from "motion/react";
 import { Avatar, type AvatarStatus } from "@/components/ui/avatar/avatar";
 import { Button } from "@/components/ui/button/button";
+import { getImageUrl, BANNER_TRANSFORM } from "@/lib/utils/image-url";
 import { useFriendsStore } from "@/store/friends.store";
 import { useAuthStore } from "@/store/auth.store";
 import { useServerStore } from "@/store/server.store";
@@ -142,7 +143,7 @@ export function UserProfileCard({ member, serverId, onClose }: UserProfileCardPr
 			>
 				{member.banner ? (
 					<img
-						src={member.banner}
+						src={getImageUrl(member.banner, BANNER_TRANSFORM.card)}
 						alt=""
 						className="absolute inset-0 w-full h-full object-cover"
 					/>

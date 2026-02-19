@@ -1,7 +1,6 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import sharp from "sharp";
 
 type ImageType = "logo" | "banner";
 
@@ -105,21 +104,9 @@ export async function uploadServerImage(
     };
   }
 
-  // Strip EXIF metadata with sharp — removes GPS coordinates, device info, and all PII
-  // sharp().rotate() applies EXIF orientation correction, then discards all metadata
-  let processedBuffer: Buffer;
-  try {
-    if (detectedMime === "image/gif") {
-      // GIFs don't contain EXIF; sharp can't reliably handle animated GIFs
-      processedBuffer = buffer;
-    } else {
-      processedBuffer = await sharp(buffer)
-        .rotate() // auto-strips all EXIF including GPS, corrects orientation
-        .toBuffer();
-    }
-  } catch {
-    return { error: "Failed to process image" };
-  }
+  // Upload full-resolution original — Supabase Image Transformations
+  // handle resizing on-the-fly via CDN (no server-side processing needed).
+  const processedBuffer = buffer;
 
   // Upload path scoped to server: {serverId}/{type}.{ext}
   // upsert: true overwrites the previous image on re-upload

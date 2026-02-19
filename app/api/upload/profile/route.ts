@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import sharp from "sharp";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-const AVATAR_MAX_SIZE = 2 * 1024 * 1024; // 2MB
-const BANNER_MAX_SIZE = 5 * 1024 * 1024; // 5MB
+const AVATAR_MAX_SIZE = 5 * 1024 * 1024; // 5MB
+const BANNER_MAX_SIZE = 10 * 1024 * 1024; // 10MB
+
+const MIME_TO_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
 
 // Service-role client for storage operations (bypasses RLS)
 const serviceSupabase = createClient(
@@ -53,43 +59,35 @@ export async function POST(req: NextRequest) {
   if (file.size > maxSize) {
     return NextResponse.json(
       {
-        error: `File too large. Max ${type === "avatar" ? "2MB" : "5MB"}`,
+        error: `File too large. Max ${type === "avatar" ? "5MB" : "10MB"}`,
       },
       { status: 400 }
     );
   }
 
-  // Process with sharp: strip ALL EXIF/metadata, resize, convert to WebP
+  // Upload full-resolution original — Supabase Image Transformations
+  // handle resizing on-the-fly via CDN (no server-side processing needed).
   const buffer = Buffer.from(await file.arrayBuffer());
-  let processed: Buffer;
+  const ext = MIME_TO_EXT[file.type] || "jpg";
+  const path = `${user.id}/${type}.${ext}`;
 
-  try {
-    if (type === "avatar") {
-      processed = await sharp(buffer)
-        .rotate() // Auto-rotate based on EXIF orientation, then strips EXIF
-        .resize(256, 256, { fit: "cover", position: "centre" })
-        .webp({ quality: 85 })
-        .toBuffer();
-    } else {
-      processed = await sharp(buffer)
-        .rotate()
-        .resize(1920, 480, { fit: "cover", position: "centre" })
-        .webp({ quality: 85 })
-        .toBuffer();
-    }
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to process image" },
-      { status: 400 }
-    );
+  // Remove old file at a different extension (e.g. switching from png to jpg)
+  const { data: existing } = await serviceSupabase.storage
+    .from("user-assets")
+    .list(user.id);
+
+  const staleFiles = (existing || [])
+    .filter((f) => f.name.startsWith(`${type}.`) && f.name !== `${type}.${ext}`)
+    .map((f) => `${user.id}/${f.name}`);
+
+  if (staleFiles.length > 0) {
+    await serviceSupabase.storage.from("user-assets").remove(staleFiles);
   }
 
-  // Upload to Supabase Storage
-  const path = `${user.id}/${type}.webp`;
   const { error: uploadError } = await serviceSupabase.storage
     .from("user-assets")
-    .upload(path, processed, {
-      contentType: "image/webp",
+    .upload(path, buffer, {
+      contentType: file.type,
       cacheControl: "3600",
       upsert: true,
     });
