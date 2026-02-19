@@ -37,6 +37,9 @@ export function ServerSettingsModal() {
   // Pending image files (uploaded on save, not on select)
   const [pendingFiles, setPendingFiles] = useState<{ logo?: File; banner?: File }>({});
 
+  // Key to force OverviewTab remount after save (resets local state from updated props)
+  const [overviewKey, setOverviewKey] = useState(0);
+
   // Reset edited state when modal opens/closes or server changes
   useEffect(() => {
     if (isServerSettingsOpen && currentServer) {
@@ -64,6 +67,10 @@ export function ServerSettingsModal() {
     const dbUpdates: Record<string, unknown> = {};
     const storeUpdates: Partial<Server> = { ...editedServer };
     const errors: string[] = [];
+
+    // Remove blob: URLs from storeUpdates — only real uploaded URLs should be stored
+    if (pendingFiles.logo) delete storeUpdates.icon;
+    if (pendingFiles.banner) delete storeUpdates.banner;
 
     // --- Phase 1: Upload images (failures don't block other saves) ---
 
@@ -196,6 +203,7 @@ export function ServerSettingsModal() {
       setHasChanges(false);
       setEditedServer({});
       setPendingFiles({});
+      setOverviewKey((k) => k + 1);
     } else {
       toast.error(
         "Partially Saved",
@@ -374,6 +382,7 @@ export function ServerSettingsModal() {
         <div className="flex-1 overflow-y-auto settings-scrollbar pl-6 pr-2">
           {serverSettingsTab === "overview" && (
             <OverviewTab
+              key={overviewKey}
               server={displayServer}
               onChange={handleOverviewChange}
               onPendingFile={handlePendingFile}

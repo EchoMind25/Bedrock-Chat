@@ -54,10 +54,19 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 
 	const isOwnMessage = currentUser?.id === message.author.id;
 
-	const handleAuthorClick = () => {
+	const handleAuthorClick = async () => {
 		if (message.author.isBot || !currentServerId) return;
-		const members = useMemberStore.getState().membersByServer[currentServerId] ?? [];
-		const member = members.find((m) => m.userId === message.author.id);
+
+		const store = useMemberStore.getState();
+		let members = store.membersByServer[currentServerId];
+
+		// Load members if they haven't been fetched yet
+		if (!members || members.length === 0) {
+			await store.loadMembers(currentServerId);
+			members = useMemberStore.getState().membersByServer[currentServerId];
+		}
+
+		const member = members?.find((m) => m.userId === message.author.id);
 		if (member) {
 			setSelectedMember(member);
 		}
