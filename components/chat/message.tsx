@@ -1,12 +1,14 @@
 'use client';
 
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useState, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Avatar } from '@/components/ui/avatar/avatar';
 import type { AvatarStatus } from '@/components/ui/avatar/avatar';
 import { ReactionBar } from './reaction-bar';
 import { EmojiPicker } from './emoji-picker';
 import { ReportDialog } from './report-dialog';
+import { UserProfileCard } from '@/components/user-profile-card';
 import type { Message } from '@/lib/types/message';
 import { parseMarkdown, renderMarkdown } from '@/lib/utils/markdown';
 import { useMessageStore } from '@/store/message.store';
@@ -14,6 +16,8 @@ import { usePresenceStore } from '@/store/presence.store';
 import { useAuthStore } from '@/store/auth.store';
 import { useServerStore } from '@/store/server.store';
 import { useSettingsStore } from '@/store/settings.store';
+import { useMemberStore } from '@/store/member.store';
+import type { MemberWithProfile } from '@/store/member.store';
 
 interface MessageProps {
 	message: Message;
@@ -27,6 +31,7 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 	const [isEditing, setIsEditing] = useState(false);
 	const [editContent, setEditContent] = useState(message.content);
 	const [isReportOpen, setIsReportOpen] = useState(false);
+	const [selectedMember, setSelectedMember] = useState<MemberWithProfile | null>(null);
 	const addReaction = useMessageStore((state) => state.addReaction);
 	const editMessage = useMessageStore((state) => state.editMessage);
 	const deleteMessage = useMessageStore((state) => state.deleteMessage);
@@ -48,6 +53,15 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 	);
 
 	const isOwnMessage = currentUser?.id === message.author.id;
+
+	const handleAuthorClick = () => {
+		if (message.author.isBot || !currentServerId) return;
+		const members = useMemberStore.getState().membersByServer[currentServerId] ?? [];
+		const member = members.find((m) => m.userId === message.author.id);
+		if (member) {
+			setSelectedMember(member);
+		}
+	};
 
 	const handleAddReaction = (emoji: string) => {
 		addReaction(channelId, message.id, emoji);
@@ -117,13 +131,26 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 				{showAvatars && (
 					<div className="w-10 shrink-0">
 						{!isGrouped && (
-							<Avatar
-								src={message.author.avatar}
-								alt={message.author.displayName}
-								fallback={message.author.displayName}
-								size="md"
-								status={authorPresenceStatus}
-							/>
+							<div
+								role="button"
+								tabIndex={0}
+								onClick={handleAuthorClick}
+								onKeyDown={(e) => {
+									if (e.key === "Enter" || e.key === " ") {
+										e.preventDefault();
+										handleAuthorClick();
+									}
+								}}
+								className="cursor-pointer rounded-full hover:opacity-80 transition-opacity focus-visible:ring-2 focus-visible:ring-[oklch(0.5_0.12_250)] focus-visible:outline-hidden"
+							>
+								<Avatar
+									src={message.author.avatar}
+									alt={message.author.displayName}
+									fallback={message.author.displayName}
+									size="md"
+									status={authorPresenceStatus}
+								/>
+							</div>
 						)}
 					</div>
 				)}
@@ -134,7 +161,16 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 					{!isGrouped && (
 						<div className="flex items-baseline gap-2 mb-1">
 							<span
-								className="font-semibold"
+								className="font-semibold cursor-pointer hover:underline"
+								role="button"
+								tabIndex={0}
+								onClick={handleAuthorClick}
+								onKeyDown={(e) => {
+									if (e.key === "Enter" || e.key === " ") {
+										e.preventDefault();
+										handleAuthorClick();
+									}
+								}}
 								style={{
 									color: message.author.roleColor || 'white',
 								}}
@@ -358,6 +394,37 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 					isOpen={isReportOpen}
 					onClose={() => setIsReportOpen(false)}
 				/>
+			)}
+
+			{/* User profile card */}
+			{selectedMember && currentServerId && typeof document !== "undefined" && createPortal(
+				<AnimatePresence>
+					{selectedMember && (
+						<motion.div
+							key="message-profile-overlay"
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							exit={{ opacity: 0 }}
+							transition={{ duration: 0.15 }}
+							className="fixed inset-0 z-[9998]"
+						>
+							<div
+								className="absolute inset-0 bg-black/40"
+								onClick={() => setSelectedMember(null)}
+							/>
+							<div className="absolute inset-0 z-[1] flex items-center justify-center pointer-events-none">
+								<div className="pointer-events-auto">
+									<UserProfileCard
+										member={selectedMember}
+										serverId={currentServerId}
+										onClose={() => setSelectedMember(null)}
+									/>
+								</div>
+							</div>
+						</motion.div>
+					)}
+				</AnimatePresence>,
+				document.body,
 			)}
 		</motion.div>
 	);

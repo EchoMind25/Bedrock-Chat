@@ -5,6 +5,8 @@ import { motion } from "motion/react";
 import { useAuthStore } from "@/store/auth.store";
 import { Button } from "@/components/ui/button/button";
 import { Input } from "@/components/ui/input/input";
+import { uploadProfileImage } from "@/lib/upload-profile-image";
+import { toast } from "@/lib/stores/toast-store";
 
 interface OnboardingProfileProps {
 	onNext: () => void;
@@ -20,31 +22,54 @@ export function OnboardingProfile({ onNext, onBack }: OnboardingProfileProps) {
 
 	const [displayName, setDisplayName] = useState(user?.displayName || "");
 	const [avatarPreview, setAvatarPreview] = useState(user?.avatar || "");
+	const [avatarFile, setAvatarFile] = useState<File | null>(null);
+	const [isUploading, setIsUploading] = useState(false);
 
 	const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
 		if (!file) return;
 
-		// Read as data URL for preview
-		const reader = new FileReader();
-		reader.onload = (ev) => {
-			const result = ev.target?.result as string;
-			setAvatarPreview(result);
-		};
-		reader.readAsDataURL(file);
+		// Store the File for upload on continue
+		setAvatarFile(file);
+
+		// Show instant local preview (no base64 encoding)
+		const previewUrl = URL.createObjectURL(file);
+		setAvatarPreview(previewUrl);
 	};
 
-	const handleContinue = () => {
+	const handleContinue = async () => {
 		const updates: { displayName?: string; avatar?: string } = {};
+
 		if (displayName && displayName !== user?.displayName) {
 			updates.displayName = displayName;
 		}
-		if (avatarPreview && avatarPreview !== user?.avatar) {
-			updates.avatar = avatarPreview;
+
+		// Upload avatar file if one was selected
+		if (avatarFile) {
+			setIsUploading(true);
+			try {
+				const url = await uploadProfileImage(avatarFile, "avatar");
+				updates.avatar = url;
+			} catch (err) {
+				toast.error(
+					"Upload Failed",
+					err instanceof Error ? err.message : "Could not upload avatar",
+				);
+				setIsUploading(false);
+				return;
+			}
+			setIsUploading(false);
 		}
+
 		if (Object.keys(updates).length > 0) {
 			updateUser(updates);
 		}
+
+		// Clean up object URL
+		if (avatarPreview && avatarPreview.startsWith("blob:")) {
+			URL.revokeObjectURL(avatarPreview);
+		}
+
 		onNext();
 	};
 
@@ -118,7 +143,7 @@ export function OnboardingProfile({ onNext, onBack }: OnboardingProfileProps) {
 					<input
 						id="avatar-upload"
 						type="file"
-						accept="image/*"
+						accept="image/png,image/jpeg,image/webp,image/gif"
 						onChange={handleAvatarChange}
 						className="hidden"
 					/>
@@ -149,8 +174,10 @@ export function OnboardingProfile({ onNext, onBack }: OnboardingProfileProps) {
 					size="lg"
 					className="w-full"
 					onClick={handleContinue}
+					loading={isUploading}
+					disabled={isUploading}
 				>
-					Continue
+					{isUploading ? "Uploading..." : "Continue"}
 				</Button>
 				<button
 					type="button"

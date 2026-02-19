@@ -60,55 +60,71 @@ export function ServerSettingsModal() {
 
     setIsSaving(true);
 
-    try {
-      const supabase = createClient();
-      const dbUpdates: Record<string, unknown> = {};
+    const supabase = createClient();
+    const dbUpdates: Record<string, unknown> = {};
+    const storeUpdates: Partial<Server> = { ...editedServer };
+    const errors: string[] = [];
 
-      // --- Upload pending image files first ---
-      let uploadedIconUrl: string | undefined;
-      let uploadedBannerUrl: string | undefined;
+    // --- Phase 1: Upload images (failures don't block other saves) ---
 
-      if (pendingFiles.logo) {
-        uploadedIconUrl = await uploadServerImage(
+    if (pendingFiles.logo) {
+      try {
+        const uploadedIconUrl = await uploadServerImage(
           currentServer.id,
           pendingFiles.logo,
           "logo",
         );
         dbUpdates.icon_url = uploadedIconUrl;
+        storeUpdates.icon = uploadedIconUrl;
+      } catch (err) {
+        errors.push(`Logo upload failed: ${err instanceof Error ? err.message : "Unknown error"}`);
       }
+    }
 
-      if (pendingFiles.banner) {
-        uploadedBannerUrl = await uploadServerImage(
+    if (pendingFiles.banner) {
+      try {
+        const uploadedBannerUrl = await uploadServerImage(
           currentServer.id,
           pendingFiles.banner,
           "banner",
         );
         dbUpdates.banner_url = uploadedBannerUrl;
+        storeUpdates.banner = uploadedBannerUrl;
+      } catch (err) {
+        errors.push(`Banner upload failed: ${err instanceof Error ? err.message : "Unknown error"}`);
       }
+    }
 
-      // --- Non-file field changes ---
-      if (editedServer.name !== undefined) dbUpdates.name = editedServer.name;
-      if (editedServer.description !== undefined) dbUpdates.description = editedServer.description;
+    // --- Phase 2: Text field changes ---
 
-      // Icon/banner cleared (set to null) without a new file
-      if (!pendingFiles.logo && editedServer.icon !== undefined) {
-        dbUpdates.icon_url = editedServer.icon;
-      }
-      if (!pendingFiles.banner && editedServer.banner !== undefined) {
-        dbUpdates.banner_url = editedServer.banner;
-      }
+    if (editedServer.name !== undefined) dbUpdates.name = editedServer.name;
+    if (editedServer.description !== undefined) dbUpdates.description = editedServer.description;
 
-      if (Object.keys(dbUpdates).length > 0) {
+    // Icon/banner cleared (set to null) without a new file
+    if (!pendingFiles.logo && editedServer.icon !== undefined) {
+      dbUpdates.icon_url = editedServer.icon;
+    }
+    if (!pendingFiles.banner && editedServer.banner !== undefined) {
+      dbUpdates.banner_url = editedServer.banner;
+    }
+
+    if (Object.keys(dbUpdates).length > 0) {
+      try {
         const { error } = await supabase
           .from("servers")
           .update(dbUpdates)
           .eq("id", currentServer.id);
 
         if (error) throw error;
+      } catch (err) {
+        errors.push(`Settings update failed: ${err instanceof Error ? err.message : "Unknown error"}`);
       }
+    }
 
-      // Persist role changes to Supabase
-      if (editedServer.roles) {
+    // --- Phase 3: Role changes ---
+
+    if (editedServer.roles) {
+      try {
         const originalRoleIds = new Set((currentServer.roles || []).map((r) => r.id));
         const editedRoleIds = new Set(editedServer.roles.map((r) => r.id));
 
@@ -150,47 +166,45 @@ export function ServerSettingsModal() {
             if (updateErr) throw updateErr;
           }
         }
+      } catch (err) {
+        errors.push(`Role changes failed: ${err instanceof Error ? err.message : "Unknown error"}`);
       }
+    }
 
-      // --- Build store updates, replacing blob: URLs with real URLs ---
-      const storeUpdates: Partial<Server> = { ...editedServer };
+    // --- Phase 4: Update store with whatever succeeded ---
 
-      if (uploadedIconUrl) {
-        storeUpdates.icon = uploadedIconUrl;
-      }
-      if (uploadedBannerUrl) {
-        storeUpdates.banner = uploadedBannerUrl;
-      }
+    // Keep settings.icon / settings.banner in sync with top-level fields
+    if (storeUpdates.icon !== undefined || storeUpdates.banner !== undefined) {
+      storeUpdates.settings = {
+        ...(currentServer.settings || {}),
+        ...(storeUpdates.icon !== undefined && { icon: storeUpdates.icon }),
+        ...(storeUpdates.banner !== undefined && { banner: storeUpdates.banner }),
+      } as Server["settings"];
+    }
 
-      // Keep settings.icon / settings.banner in sync with top-level fields
-      if (storeUpdates.icon !== undefined || storeUpdates.banner !== undefined) {
-        storeUpdates.settings = {
-          ...(currentServer.settings || {}),
-          ...(storeUpdates.icon !== undefined && { icon: storeUpdates.icon }),
-          ...(storeUpdates.banner !== undefined && { banner: storeUpdates.banner }),
-        } as Server["settings"];
-      }
+    // Update server in store
+    useServerStore.setState((state) => ({
+      servers: state.servers.map((server) =>
+        server.id === currentServer.id
+          ? { ...server, ...storeUpdates }
+          : server
+      ),
+    }));
 
-      // Update server in store
-      useServerStore.setState((state) => ({
-        servers: state.servers.map((server) =>
-          server.id === currentServer.id
-            ? { ...server, ...storeUpdates }
-            : server
-        ),
-      }));
-
+    if (errors.length === 0) {
       toast.success("Settings Saved", "Your server settings have been updated");
       setHasChanges(false);
       setEditedServer({});
       setPendingFiles({});
-    } catch (err) {
-      console.error("Error saving server settings:", err);
-      const message = err instanceof Error ? err.message : "Could not save settings. Please try again.";
-      toast.error("Save Failed", message);
-    } finally {
-      setIsSaving(false);
+    } else {
+      toast.error(
+        "Partially Saved",
+        errors.join("; "),
+      );
+      setPendingFiles({});
     }
+
+    setIsSaving(false);
   };
 
   const handleOverviewChange = (updates: Partial<Server>) => {
