@@ -76,10 +76,12 @@ CREATE POLICY "users_own_voice_logs" ON voice_participant_log
 CREATE POLICY "parents_view_family_voice_logs" ON voice_participant_log
   FOR SELECT USING (
     EXISTS (
-      SELECT 1 FROM family_members fm
-      JOIN family_accounts fa ON fa.id = fm.family_id
-      WHERE fa.parent_id = auth.uid()
-      AND fm.user_id = voice_participant_log.user_id
+      SELECT 1 FROM family_members fm_teen
+      JOIN family_members fm_parent ON fm_parent.family_id = fm_teen.family_id
+      WHERE fm_parent.user_id = auth.uid()
+      AND fm_parent.role = 'parent'
+      AND fm_teen.user_id = voice_participant_log.user_id
+      AND fm_teen.role = 'child'
     )
   );
 
@@ -92,10 +94,12 @@ CREATE POLICY "call_participants_access" ON direct_calls
 CREATE POLICY "parents_view_teen_calls" ON direct_calls
   FOR SELECT USING (
     EXISTS (
-      SELECT 1 FROM family_members fm
-      JOIN family_accounts fa ON fa.id = fm.family_id
-      WHERE fa.parent_id = auth.uid()
-      AND (fm.user_id = direct_calls.caller_id OR fm.user_id = direct_calls.callee_id)
+      SELECT 1 FROM family_members fm_teen
+      JOIN family_members fm_parent ON fm_parent.family_id = fm_teen.family_id
+      WHERE fm_parent.user_id = auth.uid()
+      AND fm_parent.role = 'parent'
+      AND fm_teen.role = 'child'
+      AND (fm_teen.user_id = direct_calls.caller_id OR fm_teen.user_id = direct_calls.callee_id)
     )
   );
 
