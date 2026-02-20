@@ -219,7 +219,7 @@ export function BugReportWidget() {
   return (
     <>
       {/* Floating bug report button */}
-      <div id="bug-report-widget" className="fixed bottom-6 right-6 z-40">
+      <div id="bug-report-widget" className="fixed bottom-6 right-6 z-[9999]">
         <div className="relative">
           {/* Tooltip */}
           <AnimatePresence>
