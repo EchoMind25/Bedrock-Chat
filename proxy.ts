@@ -31,33 +31,20 @@ const securityHeaders = {
 	// Referrer policy for privacy
 	"Referrer-Policy": "strict-origin-when-cross-origin",
 
-	// Permissions policy - restrict features (allow microphone for voice)
-	// Note: Daily.co SDK will attempt to enumerate camera devices on initialization,
-	// which triggers permission policy violations in console. These are harmless warnings
-	// indicating the security policy is working - screen sharing uses screenVideo tracks
-	// and does not require camera access.
+	// Permissions policy - restrict features (allow microphone + camera for voice/video calls)
 	"Permissions-Policy":
-		"microphone=(self), camera=(), geolocation=(), payment=()",
+		"microphone=(self), camera=(self), geolocation=(), payment=()",
 
-	// Content Security Policy — allow Supabase + Daily.co
-	// NOTE: Sentry is intentionally excluded from connect-src.
-	// Daily.co's built-in Sentry telemetry (o77906.ingest.sentry.io) is blocked
-	// at the CSP level — not just by ad blockers. This is a privacy requirement.
+	// Content Security Policy — allow Supabase + LiveKit
 	"Content-Security-Policy": [
 		"default-src 'self'",
-		// TECH DEBT: Both 'unsafe-inline' and 'unsafe-eval' required for Daily.co.
-		// Daily.co's call object bundle loads itself via dynamic code evaluation
-		// (eval/new Function), which requires 'unsafe-eval' in all environments.
-		// Daily.co does not support nonce/hash-based CSP for its call object scripts.
-		// This is a known limitation of Daily.co (temporary vendor). Track for
-		// removal when self-hosted WebRTC infrastructure is deployed.
-		"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://c.daily.co https://*.daily.co",
+		"script-src 'self' 'unsafe-inline'",
 		"style-src 'self' 'unsafe-inline'",
 		"img-src 'self' data: https:",
 		"font-src 'self' data:",
-		"connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.daily.co wss://*.daily.co https://api.daily.co",
-		"frame-src 'self' https://*.daily.co",
-		"media-src 'self' https://*.daily.co blob: mediastream:",
+		"connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://*.livekit.cloud https://*.livekit.cloud",
+		"frame-src 'self'",
+		"media-src 'self' blob: mediastream:",
 		"worker-src 'self' blob:",
 		"frame-ancestors 'none'",
 		"base-uri 'self'",

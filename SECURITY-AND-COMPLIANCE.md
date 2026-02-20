@@ -104,12 +104,12 @@ All headers set in `proxy.ts`:
 
 ```
 default-src 'self';
-script-src 'self' 'unsafe-inline' [+ 'unsafe-eval' in dev only];
+script-src 'self' 'unsafe-inline';
 style-src 'self' 'unsafe-inline';
 img-src 'self' data: https:;
-connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.daily.co wss://*.daily.co https://api.daily.co;
-frame-src 'self' https://*.daily.co;
-media-src 'self' https://*.daily.co blob:;
+connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://*.livekit.cloud https://*.livekit.cloud;
+frame-src 'self';
+media-src 'self' blob: mediastream:;
 worker-src 'self' blob:;
 frame-ancestors 'none';
 base-uri 'self';

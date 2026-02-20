@@ -185,7 +185,7 @@ export default function PrivacyPolicyPage() {
 								and real-time messaging (PostgreSQL)
 							</li>
 							<li>
-								<strong>Daily.co</strong> -- WebRTC voice and video
+								<strong>LiveKit</strong> -- WebRTC voice and video
 								calls
 							</li>
 							<li>

@@ -494,7 +494,10 @@ profiles ←→ friendships / friend_requests / blocked_users
 | `NEXT_PUBLIC_SUPABASE_URL` | Public | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public | Supabase anonymous key (RLS enforced) |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Server-only** | Admin operations (account deletion, etc.) |
-| `NEXT_PUBLIC_DAILY_API_KEY` | Public | Daily.co voice/video API key |
+| `LIVEKIT_API_KEY` | **Server-only** | LiveKit voice/video API key |
+| `LIVEKIT_API_SECRET` | **Server-only** | LiveKit voice/video API secret |
+| `LIVEKIT_URL` | **Server-only** | LiveKit WebSocket URL |
+| `NEXT_PUBLIC_LIVEKIT_URL` | Public | LiveKit WebSocket URL (client-safe) |
 
 **Never expose `SUPABASE_SERVICE_ROLE_KEY` to the client.** It bypasses RLS.
 

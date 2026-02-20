@@ -265,8 +265,8 @@ export function VoiceSettings({ isOpen, onClose }: VoiceSettingsProps) {
                 )}
               </div>
               <p className="text-xs text-slate-400 mt-1">
-                {getAudioEnhancementMethod() === 'daily-co' &&
-                  "Browser-native noise cancellation (Daily.co)"}
+                {getAudioEnhancementMethod() === 'browser-native' &&
+                  "Browser-native noise cancellation (WebRTC)"}
                 {getAudioEnhancementMethod() === 'rnnoise' &&
                   "Client-side RNNoise processing (WASM)"}
                 {getAudioEnhancementMethod() === 'none' &&
@@ -291,7 +291,7 @@ export function VoiceSettings({ isOpen, onClose }: VoiceSettingsProps) {
             <div className="flex-1">
               <p className="text-xs text-purple-300 font-medium">Privacy-First Processing</p>
               <p className="text-xs text-purple-400/80 mt-1">
-                {getAudioEnhancementMethod() === 'daily-co' &&
+                {getAudioEnhancementMethod() === 'browser-native' &&
                   "Processed by your browser's native WebRTC pipeline. No audio data sent to third-party servers."}
                 {getAudioEnhancementMethod() === 'rnnoise' &&
                   "100% client-side processing using Web Audio API. Your audio never leaves your device."}

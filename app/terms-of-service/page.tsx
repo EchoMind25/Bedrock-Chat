@@ -570,7 +570,7 @@ export default function TermsOfServicePage() {
 								authentication, and real-time messaging
 							</li>
 							<li>
-								<strong>Daily.co</strong> -- voice and video
+								<strong>LiveKit</strong> -- voice and video
 								call infrastructure (WebRTC)
 							</li>
 							<li>
