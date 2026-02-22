@@ -7,6 +7,7 @@ import { useAuthStore } from "@/store/auth.store";
 import { isAbortError } from "@/lib/utils/is-abort-error";
 import { toast } from "@/lib/stores/toast-store";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { usePointsStore } from "@/store/points.store";
 
 export type FriendTab = "all" | "online" | "pending" | "blocked";
 
@@ -271,6 +272,14 @@ export const useFriendsStore = create<FriendsState>()(
             }));
 
             toast.success("Friend Added", `You are now friends with ${request.fromDisplayName}`);
+
+            // Award points and track social-butterfly achievement
+            try {
+              const ps = usePointsStore.getState();
+              ps.awardFriendInvited();
+              const friendCount = get().friends.length; // Already includes the new friend from optimistic update above
+              ps.updateAchievementProgress("social-butterfly", friendCount);
+            } catch { /* ignore */ }
           } catch (err) {
             console.error("Error accepting friend request:", err);
             toast.error("Failed", "Could not accept friend request");

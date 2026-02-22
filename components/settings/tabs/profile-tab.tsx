@@ -14,6 +14,7 @@ import { SettingsSection } from "../settings-section";
 import { uploadProfileImage } from "@/lib/upload-profile-image";
 import { getImageUrl, BANNER_TRANSFORM } from "@/lib/utils/image-url";
 import { toast } from "@/lib/stores/toast-store";
+import { usePointsStore } from "@/store/points.store";
 
 const statusToAvatar: Record<UserStatus, AvatarStatus> = {
   online: "online",
@@ -57,16 +58,26 @@ export function ProfileTab() {
 
   const avatarStatus = statusToAvatar[user.status] || "online";
 
+  // Check if profile is complete after any update
+  const checkProfileComplete = (overrides: Partial<typeof user> = {}) => {
+    const merged = { ...user, ...overrides };
+    if (merged.displayName && merged.avatar && merged.bio) {
+      try { usePointsStore.getState().awardProfileCompleted(); } catch { /* ignore */ }
+    }
+  };
+
   const handleDisplayNameBlur = () => {
     const trimmed = displayName.trim();
     if (trimmed && trimmed !== user.displayName) {
       updateUser({ displayName: trimmed });
+      checkProfileComplete({ displayName: trimmed });
     }
   };
 
   const handleBioBlur = () => {
     const trimmed = bio.trim();
     updateUser({ bio: trimmed });
+    checkProfileComplete({ bio: trimmed });
   };
 
   const handleStatusChange = (status: UserStatus) => {
@@ -122,6 +133,7 @@ export function ProfileTab() {
       }
 
       toast.success("Upload Complete", `Your ${type} has been updated`);
+      if (type === "avatar") checkProfileComplete({ avatar: url });
     } catch (err) {
       // Revert preview on failure
       if (type === "avatar") {

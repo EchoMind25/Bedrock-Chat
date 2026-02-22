@@ -12,6 +12,7 @@ import { useFavoritesStore } from "@/store/favorites.store";
 import { usePresenceStore } from "@/store/presence.store";
 import { useVoicePresenceStore } from "@/store/voice-presence.store";
 import { useSettingsStore } from "@/store/settings.store";
+import { usePointsStore } from "@/store/points.store";
 import { useIsMobile } from "@/lib/hooks/use-media-query";
 import { ServerList } from "@/components/navigation/server-list/server-list";
 import { ChannelList } from "@/components/navigation/channel-list/channel-list";
@@ -28,6 +29,7 @@ import { PerformanceMonitor } from "@/lib/performance/monitoring";
 import { PerformanceOverlay } from "@/components/performance/PerformanceOverlay";
 import { PerformanceDashboard } from "@/components/performance/PerformanceDashboard";
 import { RewardToasts } from "@/components/rewards/reward-toast";
+import { EasterEggDetectors } from "@/components/rewards/easter-egg-detectors";
 import { logError } from "@/lib/utils/error-logger";
 
 const MemberListPanel = lazy(() =>
@@ -159,6 +161,14 @@ export function MainLayoutClient({
 
 					// Step 2.7: Load user settings (fire-and-forget — non-blocking)
 					useSettingsStore.getState().loadSettings().catch(() => {});
+
+					// Step 2.8: Auto-collect daily login bonus (fire-and-forget)
+					try { usePointsStore.getState().collectDailyLogin(); } catch { /* ignore */ }
+
+					// Step 2.9: Request notification permission if user has desktop notifications enabled
+					if (typeof Notification !== "undefined" && Notification.permission === "default") {
+						Notification.requestPermission().catch(() => {});
+					}
 
 					// Step 3: Init stores (servers awaited, friends/dm fire-and-forget)
 					setLoadingStage("servers");
@@ -318,6 +328,7 @@ export function MainLayoutClient({
 			{/* Apply global settings effects (theme, font size, accessibility) */}
 			<SettingsEffects />
 			<ColorBlindFilters />
+			<EasterEggDetectors />
 
 			{/* Skip to main content link for keyboard users */}
 			<a

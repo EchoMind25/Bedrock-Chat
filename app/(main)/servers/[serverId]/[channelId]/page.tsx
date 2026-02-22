@@ -6,6 +6,7 @@ import { useServerStore } from "@/store/server.store";
 import { useAuthStore } from "@/store/auth.store";
 import { useMemberStore } from "@/store/member.store";
 import { hasAcceptedNsfw } from "@/lib/utils/nsfw-gate";
+import { usePointsStore } from "@/store/points.store";
 
 // Lazy load heavy chat components (includes @tanstack/react-virtual)
 const ChannelHeader = lazy(() =>
@@ -86,6 +87,22 @@ export default function ChannelPage({ params }: PageProps) {
 		}
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [serverId, channelId]); // Exclude store actions - stable Zustand actions
+
+	// Easter egg: server tour — track visited channels per server
+	useEffect(() => {
+		if (!server || !channelId) return;
+		try {
+			const key = `bedrock-visited-${serverId}`;
+			const visited: string[] = JSON.parse(sessionStorage.getItem(key) || "[]");
+			if (!visited.includes(channelId)) {
+				visited.push(channelId);
+				sessionStorage.setItem(key, JSON.stringify(visited));
+			}
+			if (server.channels.length > 1 && server.channels.every((c) => visited.includes(c.id))) {
+				usePointsStore.getState().discoverEasterEgg("server-tour");
+			}
+		} catch { /* ignore */ }
+	}, [serverId, channelId, server]);
 
 	// Show loading skeleton while stores are initializing
 	if (!isInitialized) {

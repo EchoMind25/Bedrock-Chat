@@ -3,6 +3,7 @@ import { conditionalDevtools } from '@/lib/utils/devtools-config';
 import type { Message, Attachment } from '@/lib/types/message';
 import { useAuthStore } from './auth.store';
 import { createClient } from '@/lib/supabase/client';
+import { usePointsStore } from './points.store';
 
 interface AttachmentInput {
   url: string;
@@ -113,6 +114,21 @@ export const useMessageStore = create<MessageState>()(
                       [channelId]: [...(state.messages[channelId] || []), newMessage],
                     },
                   }));
+
+                  // Send desktop notification if permitted and tab is not focused
+                  if (
+                    typeof Notification !== "undefined" &&
+                    Notification.permission === "granted" &&
+                    document.hidden
+                  ) {
+                    try {
+                      new Notification(newMessage.author.displayName, {
+                        body: newMessage.content.slice(0, 100),
+                        icon: newMessage.author.avatar || "/icons/icon-192.svg",
+                        tag: `msg-${newMessage.id}`,
+                      });
+                    } catch { /* ignore notification errors */ }
+                  }
                 }
               } catch (err) {
                 console.error('[Realtime] INSERT handler error:', err);
@@ -350,6 +366,32 @@ export const useMessageStore = create<MessageState>()(
               [channelId]: [...(state.messages[channelId] || []), newMessage],
             },
           }));
+
+          // Award points and track achievements for sending a message (fire-and-forget)
+          try {
+            const ps = usePointsStore.getState();
+            ps.awardMessagePoints(content.trim());
+
+            // Achievement: first-message (requirement: 1)
+            ps.updateAchievementProgress("first-message", 1);
+
+            // Achievement: chatterbox (requirement: 100) — count from daily caps
+            const msgCount = (ps.achievements.find((a) => a.id === "chatterbox")?.progress ?? 0) + 1;
+            ps.updateAchievementProgress("chatterbox", msgCount);
+
+            // Easter egg: message-42 (the answer to everything)
+            if (msgCount === 42) {
+              ps.discoverEasterEgg("message-42");
+            }
+
+            // Easter egg: midnight user
+            const hour = new Date().getHours();
+            if (hour >= 0 && hour < 4) {
+              ps.discoverEasterEgg("midnight-user");
+            }
+          } catch {
+            // Points system failure should never block messaging
+          }
         } catch (err) {
           console.error('[MessageStore] Error sending message:', err);
         }
@@ -364,6 +406,8 @@ export const useMessageStore = create<MessageState>()(
           await supabase.from('message_reactions').insert({
             message_id: messageId, user_id: user.id, emoji,
           });
+          // Easter egg: first emoji reaction
+          try { usePointsStore.getState().discoverEasterEgg("first-emoji-react"); } catch { /* ignore */ }
         } catch { /* ignore duplicate */ }
 
         set((state) => ({

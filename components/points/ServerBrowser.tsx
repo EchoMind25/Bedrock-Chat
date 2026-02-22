@@ -172,6 +172,12 @@ export function ServerBrowser() {
 			),
 		);
 		awardServerJoined(serverId);
+
+		// Track server join achievements
+		const joinedCount = servers.filter((s) => s.isJoined).length + 1;
+		const ps = usePointsStore.getState();
+		ps.updateAchievementProgress("server-hopper", joinedCount);
+		ps.updateAchievementProgress("world-traveler", joinedCount);
 	};
 
 	return (

@@ -27,6 +27,7 @@ import {
 } from "@/lib/utils/orbital-layout";
 import { useState } from "react";
 import type { VoiceParticipant } from "@/store/voice.store";
+import { usePointsStore } from "@/store/points.store";
 
 interface VoiceChannelProps {
   channelId: string;
@@ -51,6 +52,7 @@ export function VoiceChannel({
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const leavingRef = useRef(false);
+  const joinTimeRef = useRef<number>(Date.now());
 
   // Voice store selectors
   const connectionStatus = useVoiceStore((s) => s.connectionStatus);
@@ -160,6 +162,7 @@ export function VoiceChannel({
         );
 
         useVoiceStore.getState().setPermissionStep("none");
+        joinTimeRef.current = Date.now();
         joinVoiceChannel(channelId, channelName, serverId);
       } else if (currentStep === "camera") {
         try {
@@ -197,6 +200,16 @@ export function VoiceChannel({
   const handleLeave = useCallback(() => {
     if (leavingRef.current) return;
     leavingRef.current = true;
+
+    // Award voice points based on call duration
+    try {
+      const durationMinutes = (Date.now() - joinTimeRef.current) / 1000 / 60;
+      if (durationMinutes >= 1) {
+        const ps = usePointsStore.getState();
+        ps.awardVoicePoints(Math.floor(durationMinutes));
+        ps.updateAchievementProgress("voice-debut", 1);
+      }
+    } catch { /* ignore */ }
 
     const store = useVoiceStore.getState();
     leaveVoiceChannel(

@@ -559,6 +559,11 @@ export const usePointsStore = create<PointsState>()(
 						pendingRewards: [...state.pendingRewards, ...rewards],
 					});
 
+					// Update streak achievements
+					get().updateAchievementProgress("consistent", newStreak);
+					get().updateAchievementProgress("dedicated", newStreak);
+					get().updateAchievementProgress("unstoppable", newStreak);
+
 					checkMilestones(newTotal, set, get);
 				},
 
@@ -616,6 +621,11 @@ export const usePointsStore = create<PointsState>()(
 							},
 						],
 					});
+
+					// Track egg-hunting achievements
+					const discoveredCount = updatedEggs.filter((e) => e.discoveredAt).length;
+					get().updateAchievementProgress("egg-hunter", discoveredCount);
+					get().updateAchievementProgress("treasure-hunter", discoveredCount);
 
 					checkMilestones(newTotal, set, get);
 				},

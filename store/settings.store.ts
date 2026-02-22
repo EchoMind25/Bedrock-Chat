@@ -3,6 +3,38 @@ import { conditionalDevtools } from "@/lib/utils/devtools-config";
 import { createClient } from "@/lib/supabase/client";
 import { logError } from "@/lib/utils/error-logger";
 
+// ── localStorage fallback ─────────────────────────────────
+// When DB columns don't exist yet (migration not applied),
+// settings are persisted to localStorage so they survive refreshes.
+
+const LS_KEY = "bedrock-settings-fallback";
+
+function loadLocalFallback(): Record<string, unknown> {
+	try {
+		const raw = localStorage.getItem(LS_KEY);
+		return raw ? JSON.parse(raw) : {};
+	} catch {
+		return {};
+	}
+}
+
+function saveLocalFallback(updates: Record<string, unknown>) {
+	try {
+		const existing = loadLocalFallback();
+		localStorage.setItem(LS_KEY, JSON.stringify({ ...existing, ...updates }));
+	} catch {
+		// localStorage full or unavailable — silently ignore
+	}
+}
+
+function clearLocalFallback() {
+	try {
+		localStorage.removeItem(LS_KEY);
+	} catch {
+		// ignore
+	}
+}
+
 // ── Types ──────────────────────────────────────────────────
 
 export interface UserSettings {
@@ -158,10 +190,13 @@ export const useSettingsStore = create<SettingsState>()(
 						.eq("user_id", user.id)
 						.single();
 
+					// Grab localStorage fallback for columns not yet in DB
+					const fallback = loadLocalFallback();
+
 					if (error && error.code === "PGRST116") {
-						// Row should exist via trigger. Use local defaults.
+						// Row should exist via trigger. Use local defaults + localStorage fallback.
 						set({
-							settings: { user_id: user.id, ...DEFAULT_SETTINGS } as UserSettings,
+							settings: { user_id: user.id, ...DEFAULT_SETTINGS, ...fallback } as UserSettings,
 							isLoading: false,
 						});
 						return;
@@ -173,9 +208,9 @@ export const useSettingsStore = create<SettingsState>()(
 						return;
 					}
 
-					// Merge DB data with local defaults for any missing fields
+					// Merge: defaults < DB data < localStorage fallback (for columns not yet in DB)
 					set({
-						settings: { ...DEFAULT_SETTINGS, ...data } as UserSettings,
+						settings: { ...DEFAULT_SETTINGS, ...data, ...fallback } as UserSettings,
 						isLoading: false,
 					});
 				} catch (err) {
@@ -192,8 +227,10 @@ export const useSettingsStore = create<SettingsState>()(
 				if (!settings) return;
 
 				// Optimistic update — apply locally FIRST for instant UI response
-				const previous = settings;
 				set({ settings: { ...settings, ...updates } });
+
+				// Always persist to localStorage as fallback
+				saveLocalFallback(updates);
 
 				try {
 					const supabase = createClient();
@@ -206,17 +243,25 @@ export const useSettingsStore = create<SettingsState>()(
 						.eq("user_id", settings.user_id);
 
 					if (error) {
+						// PGRST204 = column not found in schema cache.
+						// This means the migration hasn't been applied yet.
+						// Keep the optimistic update — it's persisted in localStorage.
+						if (error.code === "PGRST204") {
+							// Silently ignore — localStorage fallback handles persistence
+							return;
+						}
+						// For other errors, revert the optimistic update
 						logError("STORE_INIT", error);
-						// Revert on failure
-						set({ settings: previous });
+						set({ settings: { ...settings } });
 					}
 				} catch (err) {
 					logError("STORE_INIT", err);
-					set({ settings: previous });
+					// Keep optimistic update on network errors — localStorage has the data
 				}
 			},
 
 			clearSettings: () => {
+				clearLocalFallback();
 				set({ settings: null, isLoading: false, error: null });
 			},
 		}),

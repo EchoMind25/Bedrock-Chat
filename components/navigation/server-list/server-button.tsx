@@ -1,10 +1,13 @@
 "use client";
 
+import { useRef, useCallback } from "react";
 import type { Server } from "@/lib/types/server";
 import { motion } from "motion/react";
 import { MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { getImageUrl, SERVER_ICON_TRANSFORM } from "@/lib/utils/image-url";
+import { createClickCounter } from "@/lib/easter-eggs";
+import { usePointsStore } from "@/store/points.store";
 
 interface ServerButtonProps {
 	server: Server;
@@ -21,6 +24,18 @@ export function ServerButton({
 	isHome = false,
 	badgeCount = 0,
 }: ServerButtonProps) {
+	const discoverEasterEgg = usePointsStore((s) => s.discoverEasterEgg);
+	const clickCounterRef = useRef(
+		isHome
+			? createClickCounter(7, 5000, () => discoverEasterEgg("logo-click-7"))
+			: null,
+	);
+
+	const handleClick = useCallback(() => {
+		if (isHome) clickCounterRef.current?.handleClick();
+		onClick();
+	}, [isHome, onClick]);
+
 	const hasUnread = (!isHome && server.unreadCount > 0) || badgeCount > 0;
 	const displayBadge = isHome ? badgeCount : server.unreadCount;
 
@@ -44,7 +59,7 @@ export function ServerButton({
 			<motion.button
 				type="button"
 				layoutId={isActive ? "portal-server-icon" : undefined}
-				onClick={onClick}
+				onClick={handleClick}
 				className={cn(
 					"relative w-12 h-12 min-w-[48px] min-h-[48px] rounded-full transition-all duration-200 flex items-center justify-center text-2xl overflow-hidden group touch-manipulation focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2",
 					isActive

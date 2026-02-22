@@ -12,6 +12,7 @@ import { useServerManagementStore } from "../../../store/server-management.store
 import { useServerStore } from "../../../store/server.store";
 import { useAuthStore } from "../../../store/auth.store";
 import { toast } from "../../../lib/stores/toast-store";
+import { usePointsStore } from "../../../store/points.store";
 import { cn } from "../../../lib/utils/cn";
 import { createClient } from "../../../lib/supabase/client";
 import type { ChannelType } from "../../../lib/types/server";
@@ -284,6 +285,13 @@ export function CreateServerModal() {
       }));
 
       toast.success("Server Created", `${serverName} has been created successfully`);
+
+      // Award points and track achievement for server creation
+      try {
+        usePointsStore.getState().awardServerCreated();
+        usePointsStore.getState().updateAchievementProgress("founder", 1);
+      } catch { /* ignore */ }
+
       handleClose();
 
       const firstChannel = channels[0];

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useThemeStore } from "@/store/theme.store";
 import { useSettingsStore } from "@/store/settings.store";
 import { Toggle } from "@/components/ui/toggle/toggle";
@@ -18,6 +18,7 @@ import { getTimePeriod, getTimePeriodLabel, getAdaptiveAdjustment, applyAdaptive
 import type { ThemeOverrideMode } from "@/lib/themes/types";
 import type { SettingsUpdate, UserSettings } from "@/store/settings.store";
 import { Eye, EyeOff, Sun, Moon, Sunrise, Sunset } from "lucide-react";
+import { usePointsStore } from "@/store/points.store";
 
 // ── Constants ────────────────────────────────────────────────
 
@@ -99,6 +100,8 @@ function OptionButtons<T extends string>({
 
 export function AppearanceTab() {
 	const [showPreview, setShowPreview] = useState(true);
+	const themeToggleCount = useRef(0);
+	const discoverEasterEgg = usePointsStore((s) => s.discoverEasterEgg);
 
 	// Theme store — localStorage-only preferences
 	const overrideMode = useThemeStore((s) => s.preferences.overrideMode);
@@ -186,7 +189,13 @@ export function AppearanceTab() {
 								<button
 									key={option.value}
 									type="button"
-									onClick={() => setOverrideMode(option.value)}
+									onClick={() => {
+									setOverrideMode(option.value);
+									themeToggleCount.current++;
+									if (themeToggleCount.current >= 10) {
+										discoverEasterEgg("dark-mode-toggle-10");
+									}
+								}}
 									className={`w-full p-3 rounded-lg border-2 transition-all text-left ${
 										overrideMode === option.value
 											? "border-blue-500 bg-blue-500/10"
@@ -232,7 +241,7 @@ export function AppearanceTab() {
 							value={settings?.font_family ?? "system"}
 							onChange={(v) => updateSettings({ font_family: v })}
 						/>
-						<div className="grid grid-cols-2 gap-4 mt-3">
+						<div className="space-y-3 mt-3">
 							<div>
 								<label className="text-xs text-slate-400 font-medium mb-1.5 block">Chat Font Size</label>
 								<OptionButtons

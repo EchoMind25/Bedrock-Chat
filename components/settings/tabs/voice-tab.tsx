@@ -242,23 +242,55 @@ export function VoiceTab() {
 		await startMicAnalysis();
 	}, [isMicTesting, stopMicTest, startMicAnalysis]);
 
-	// Output test
-	const handleTestOutput = () => {
+	// Output test — plays a short tone through the selected output device
+	const handleTestOutput = async () => {
 		setIsOutputTesting(true);
-		let level = 0;
-		const interval = setInterval(() => {
-			level += 5;
-			setOutputMeterLevel(Math.min(level, outputVolume));
-			if (level >= 100) {
-				clearInterval(interval);
-				outputIntervalRef.current = null;
+		try {
+			const ctx = new AudioContext();
+
+			// Route to selected output device if supported
+			if (outputDevice !== "default" && "setSinkId" in ctx) {
+				await (ctx as AudioContext & { setSinkId: (id: string) => Promise<void> }).setSinkId(outputDevice);
+			}
+
+			// Create a pleasant two-tone beep (440Hz then 554Hz)
+			const duration = 0.8;
+			const gainNode = ctx.createGain();
+			gainNode.gain.setValueAtTime((outputVolume / 100) * 0.3, ctx.currentTime);
+			gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+			gainNode.connect(ctx.destination);
+
+			const osc = ctx.createOscillator();
+			osc.type = "sine";
+			osc.frequency.setValueAtTime(440, ctx.currentTime);
+			osc.frequency.setValueAtTime(554, ctx.currentTime + 0.4);
+			osc.connect(gainNode);
+			osc.start(ctx.currentTime);
+			osc.stop(ctx.currentTime + duration);
+
+			// Animate meter during playback
+			let level = 0;
+			const interval = setInterval(() => {
+				level += 5;
+				setOutputMeterLevel(Math.min(level, outputVolume));
+				if (level >= 100) {
+					clearInterval(interval);
+					outputIntervalRef.current = null;
+				}
+			}, 50);
+			outputIntervalRef.current = interval;
+
+			osc.onended = () => {
+				ctx.close().catch(() => {});
 				setTimeout(() => {
 					setOutputMeterLevel(0);
 					setIsOutputTesting(false);
-				}, 500);
-			}
-		}, 50);
-		outputIntervalRef.current = interval;
+				}, 200);
+			};
+		} catch {
+			setIsOutputTesting(false);
+			setOutputMeterLevel(0);
+		}
 	};
 
 	// Cleanup on unmount
