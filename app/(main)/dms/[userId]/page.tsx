@@ -1,13 +1,18 @@
 "use client";
 
-import { use, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { use, useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "motion/react";
 import { useDMStore } from "@/store/dm.store";
 import { useAuthStore } from "@/store/auth.store";
 import { useSettingsStore } from "@/store/settings.store";
+import { useFriendsStore } from "@/store/friends.store";
 import { EmojiPicker } from "@/components/chat/emoji-picker";
+import { FriendProfileCard } from "@/components/friends/friend-profile-card";
 import { Avatar } from "@/components/ui/avatar/avatar";
 import { Badge } from "@/components/ui/badge/badge";
 import type { Message } from "@/lib/types/message";
+import type { Friend } from "@/lib/types/friend";
 
 // Stable empty array to prevent selector reference instability
 const EMPTY_MESSAGES: Message[] = [];
@@ -38,6 +43,16 @@ export default function DMPage({ params }: PageProps) {
 	// Get the DM conversation for the header
 	const dm = useDMStore((s) => s.dms.find((d) => d.id === `dm-${otherUserId}`));
 	const otherParticipant = dm?.participants.find((p) => p.userId === otherUserId);
+
+	// Look up friend for profile card
+	const friend = useFriendsStore(
+		useCallback((s) => s.friends.find((f) => f.userId === otherUserId) ?? null, [otherUserId])
+	);
+	const [showProfileCard, setShowProfileCard] = useState(false);
+
+	const handleProfileClick = useCallback(() => {
+		if (friend) setShowProfileCard(true);
+	}, [friend]);
 
 	const bottomRef = useRef<HTMLDivElement>(null);
 	const initializedRef = useRef<Set<string>>(new Set());
@@ -71,7 +86,7 @@ export default function DMPage({ params }: PageProps) {
 	if (isLoading || !hasLoaded) {
 		return (
 			<div className="flex-1 flex flex-col bg-[oklch(0.14_0.02_250)]">
-				<DMHeaderDisplay name={otherParticipant?.displayName} avatar={otherParticipant?.avatar} status={otherParticipant?.status} />
+				<DMHeaderDisplay name={otherParticipant?.displayName} avatar={otherParticipant?.avatar} status={otherParticipant?.status} onProfileClick={handleProfileClick} />
 				<DMMessageSkeleton />
 			</div>
 		);
@@ -80,7 +95,7 @@ export default function DMPage({ params }: PageProps) {
 	if (hasError) {
 		return (
 			<div className="flex-1 flex flex-col bg-[oklch(0.14_0.02_250)]">
-				<DMHeaderDisplay name={otherParticipant?.displayName} avatar={otherParticipant?.avatar} status={otherParticipant?.status} />
+				<DMHeaderDisplay name={otherParticipant?.displayName} avatar={otherParticipant?.avatar} status={otherParticipant?.status} onProfileClick={handleProfileClick} />
 				<div className="flex-1 flex items-center justify-center">
 					<div className="text-center space-y-2">
 						<h3 className="text-lg font-semibold text-white">Unable to load messages</h3>
@@ -103,7 +118,7 @@ export default function DMPage({ params }: PageProps) {
 	return (
 		<div className="flex-1 flex flex-col bg-[oklch(0.14_0.02_250)]">
 			{/* Header */}
-			<DMHeaderDisplay name={otherParticipant?.displayName} avatar={otherParticipant?.avatar} status={otherParticipant?.status} />
+			<DMHeaderDisplay name={otherParticipant?.displayName} avatar={otherParticipant?.avatar} status={otherParticipant?.status} onProfileClick={handleProfileClick} />
 
 			{/* Messages */}
 			<div className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-1">
@@ -133,6 +148,7 @@ export default function DMPage({ params }: PageProps) {
 								isOwn={msg.author.id === currentUser?.id}
 								showAvatars={showAvatars}
 								showTimestamps={showTimestamps}
+								onProfileClick={handleProfileClick}
 							/>
 						);
 					})
@@ -145,6 +161,36 @@ export default function DMPage({ params }: PageProps) {
 				otherUserId={otherUserId}
 				otherName={otherParticipant?.displayName || "user"}
 			/>
+
+			{/* Friend profile card portal */}
+			{showProfileCard && friend && typeof document !== "undefined" && createPortal(
+				<AnimatePresence>
+					{showProfileCard && (
+						<motion.div
+							key="dm-profile-overlay"
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							exit={{ opacity: 0 }}
+							transition={{ duration: 0.15 }}
+							className="fixed inset-0 z-[9998]"
+						>
+							<div
+								className="absolute inset-0 bg-black/40"
+								onClick={() => setShowProfileCard(false)}
+							/>
+							<div className="absolute inset-0 z-[1] flex items-center justify-center pointer-events-none">
+								<div className="pointer-events-auto">
+									<FriendProfileCard
+										friend={friend}
+										onClose={() => setShowProfileCard(false)}
+									/>
+								</div>
+							</div>
+						</motion.div>
+					)}
+				</AnimatePresence>,
+				document.body,
+			)}
 		</div>
 	);
 }
@@ -155,10 +201,12 @@ function DMHeaderDisplay({
 	name,
 	avatar,
 	status,
+	onProfileClick,
 }: {
 	name?: string;
 	avatar?: string;
 	status?: string;
+	onProfileClick?: () => void;
 }) {
 	const statusText =
 		status === "online" ? "Online"
@@ -168,7 +216,18 @@ function DMHeaderDisplay({
 
 	return (
 		<div className="h-12 px-4 flex items-center justify-between border-b border-white/10 bg-[oklch(0.15_0.02_250)] shrink-0">
-			<div className="flex items-center gap-3">
+			<div
+				className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+				role="button"
+				tabIndex={0}
+				onClick={onProfileClick}
+				onKeyDown={(e) => {
+					if ((e.key === "Enter" || e.key === " ") && onProfileClick) {
+						e.preventDefault();
+						onProfileClick();
+					}
+				}}
+			>
 				<Avatar
 					src={avatar || ""}
 					fallback={(name || "DM").slice(0, 2)}
@@ -180,7 +239,7 @@ function DMHeaderDisplay({
 					size="sm"
 				/>
 				<div className="flex flex-col">
-					<h2 className="font-semibold text-white text-sm">{name || "Direct Message"}</h2>
+					<h2 className="font-semibold text-white text-sm hover:underline">{name || "Direct Message"}</h2>
 					<p className="text-xs text-white/50">{statusText}</p>
 				</div>
 			</div>
@@ -207,15 +266,19 @@ function DMMessageBubble({
 	isOwn,
 	showAvatars,
 	showTimestamps,
+	onProfileClick,
 }: {
 	message: Message;
 	isGrouped: boolean;
 	isOwn: boolean;
 	showAvatars: boolean;
 	showTimestamps: boolean;
+	onProfileClick?: () => void;
 }) {
 	const formatTime = (date: Date) =>
 		date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+
+	const clickable = !isOwn && onProfileClick;
 
 	if (isGrouped) {
 		return (
@@ -228,15 +291,39 @@ function DMMessageBubble({
 	return (
 		<div className="flex gap-3 pt-2 pb-0.5 hover:bg-white/[0.02] rounded-sm">
 			{showAvatars && (
-				<Avatar
-					src={message.author.avatar}
-					fallback={message.author.displayName.slice(0, 2)}
-					size="sm"
-				/>
+				<div
+					className={clickable ? "cursor-pointer rounded-full hover:opacity-80 transition-opacity focus-visible:ring-2 focus-visible:ring-[oklch(0.5_0.12_250)] focus-visible:outline-hidden" : ""}
+					role={clickable ? "button" : undefined}
+					tabIndex={clickable ? 0 : undefined}
+					onClick={clickable ? onProfileClick : undefined}
+					onKeyDown={clickable ? (e) => {
+						if (e.key === "Enter" || e.key === " ") {
+							e.preventDefault();
+							onProfileClick!();
+						}
+					} : undefined}
+				>
+					<Avatar
+						src={message.author.avatar}
+						fallback={message.author.displayName.slice(0, 2)}
+						size="sm"
+					/>
+				</div>
 			)}
 			<div className="flex-1 min-w-0">
 				<div className="flex items-baseline gap-2">
-					<span className={`text-sm font-semibold ${isOwn ? "text-primary" : "text-white"}`}>
+					<span
+						className={`text-sm font-semibold ${isOwn ? "text-primary" : "text-white"} ${clickable ? "cursor-pointer hover:underline" : ""}`}
+						role={clickable ? "button" : undefined}
+						tabIndex={clickable ? 0 : undefined}
+						onClick={clickable ? onProfileClick : undefined}
+						onKeyDown={clickable ? (e) => {
+							if (e.key === "Enter" || e.key === " ") {
+								e.preventDefault();
+								onProfileClick!();
+							}
+						} : undefined}
+					>
 						{message.author.displayName}
 					</span>
 					{showTimestamps && (

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { useRouter } from "next/navigation";
-import { User, Shield, Palette, Lock, Bell, Mic, Code, Crown, X, LogOut } from "lucide-react";
+import { User, Shield, Palette, Lock, Bell, Mic, Code, Crown, X, LogOut, Sparkles, Trophy } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useUIStore } from "@/store/ui.store";
 import { useAuthStore } from "@/store/auth.store";
@@ -18,6 +18,8 @@ import { NotificationsTab } from "./tabs/notifications-tab";
 import { VoiceTab } from "./tabs/voice-tab";
 import { DeveloperTab } from "./tabs/developer-tab";
 import { AdminTab } from "./tabs/admin-tab";
+import { IdentityTab } from "./tabs/identity-tab";
+import { RewardsTab } from "./tabs/rewards-tab";
 
 interface NavItem {
 	id: string;
@@ -30,6 +32,8 @@ const NAV_ITEMS: NavItem[] = [
 	{ id: "profile", label: "My Profile", icon: User, category: "USER SETTINGS" },
 	{ id: "account", label: "Account", icon: Shield, category: "USER SETTINGS" },
 	{ id: "appearance", label: "Appearance", icon: Palette, category: "APP SETTINGS" },
+	{ id: "identity", label: "Style & Identity", icon: Sparkles, category: "APP SETTINGS" },
+	{ id: "rewards", label: "Rewards", icon: Trophy, category: "APP SETTINGS" },
 	{ id: "privacy", label: "Privacy & Safety", icon: Lock, category: "APP SETTINGS" },
 	{ id: "notifications", label: "Notifications", icon: Bell, category: "APP SETTINGS" },
 	{ id: "voice", label: "Voice & Audio", icon: Mic, category: "APP SETTINGS" },
@@ -100,6 +104,8 @@ export function SettingsModal() {
 			case "profile": return <ProfileTab />;
 			case "account": return <AccountTab />;
 			case "appearance": return <AppearanceTab />;
+			case "identity": return <IdentityTab />;
+			case "rewards": return <RewardsTab />;
 			case "privacy": return <PrivacyTab />;
 			case "notifications": return <NotificationsTab />;
 			case "voice": return <VoiceTab />;

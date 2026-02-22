@@ -28,11 +28,23 @@ export function PrivacyTab() {
 						onChange={(e) => updateSettings({ show_online_status: e.target.checked })}
 					/>
 				</SettingsRow>
-				<SettingsRow label="Allow Direct Messages" description="Let server members send you DMs">
-					<Toggle
-						checked={settings?.allow_dms ?? true}
-						onChange={(e) => updateSettings({ allow_dms: e.target.checked })}
-					/>
+				<SettingsRow label="Allow Direct Messages" description="Control who can send you DMs">
+					<div className="flex gap-1.5">
+						{(["everyone", "friends", "none"] as const).map((option) => (
+							<button
+								key={option}
+								type="button"
+								onClick={() => updateSettings({ allow_dms: option })}
+								className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors capitalize ${
+									(settings?.allow_dms ?? "everyone") === option
+										? "bg-blue-500/20 text-blue-300 border border-blue-500/40"
+										: "bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10"
+								}`}
+							>
+								{option}
+							</button>
+						))}
+					</div>
 				</SettingsRow>
 				<SettingsRow label="Typing Indicators" description="Show when you're typing in a conversation">
 					<Toggle

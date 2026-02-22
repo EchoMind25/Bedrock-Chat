@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useSettingsStore } from "@/store/settings.store";
+import { loadFont } from "@/lib/fonts/font-loader";
 
 const ACCENT_COLOR_MAP: Record<string, string> = {
 	purple: "oklch(0.65 0.25 265)",
@@ -11,6 +12,27 @@ const ACCENT_COLOR_MAP: Record<string, string> = {
 	orange: "oklch(0.70 0.20 55)",
 };
 
+const FONT_FAMILY_MAP: Record<string, string> = {
+	system: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+	inter: '"Inter", sans-serif',
+	"sf-pro": '"SF Pro Display", -apple-system, sans-serif',
+	"jetbrains-mono": '"JetBrains Mono", monospace',
+	merriweather: '"Merriweather", serif',
+	opendyslexic: '"OpenDyslexic", sans-serif',
+};
+
+const SIZE_MAP: Record<string, string> = {
+	small: "0.875rem",
+	medium: "1rem",
+	large: "1.125rem",
+};
+
+const LINE_HEIGHT_MAP: Record<string, string> = {
+	tight: "1.3",
+	normal: "1.5",
+	relaxed: "1.8",
+};
+
 /**
  * Renders nothing — applies global CSS effects based on user settings.
  * Mount once in the app shell (inside auth provider).
@@ -18,21 +40,45 @@ const ACCENT_COLOR_MAP: Record<string, string> = {
 export function SettingsEffects() {
 	const settings = useSettingsStore((s) => s.settings);
 
-	// Font size → CSS custom property
+	// ── Message font size ────────────────────────────────────
 	useEffect(() => {
-		const size = settings?.font_size ?? "medium";
-		const map: Record<string, string> = {
-			small: "0.875rem",
-			medium: "1rem",
-			large: "1.125rem",
-		};
 		document.documentElement.style.setProperty(
 			"--message-font-size",
-			map[size],
+			SIZE_MAP[settings?.message_font_size ?? "medium"],
 		);
-	}, [settings?.font_size]);
+	}, [settings?.message_font_size]);
 
-	// Larger text → additional font size boost
+	// ── UI font size ─────────────────────────────────────────
+	useEffect(() => {
+		document.documentElement.style.setProperty(
+			"--ui-font-size",
+			SIZE_MAP[settings?.ui_font_size ?? "medium"],
+		);
+	}, [settings?.ui_font_size]);
+
+	// ── Font family ──────────────────────────────────────────
+	useEffect(() => {
+		const family = settings?.dyslexia_font
+			? "opendyslexic"
+			: (settings?.font_family ?? "system");
+
+		loadFont(family);
+
+		document.documentElement.style.setProperty(
+			"--app-font-family",
+			FONT_FAMILY_MAP[family] ?? FONT_FAMILY_MAP.system,
+		);
+	}, [settings?.font_family, settings?.dyslexia_font]);
+
+	// ── Line height ──────────────────────────────────────────
+	useEffect(() => {
+		document.documentElement.style.setProperty(
+			"--message-line-height",
+			LINE_HEIGHT_MAP[settings?.line_height ?? "normal"],
+		);
+	}, [settings?.line_height]);
+
+	// ── Larger text ──────────────────────────────────────────
 	useEffect(() => {
 		document.documentElement.classList.toggle(
 			"larger-text",
@@ -40,15 +86,18 @@ export function SettingsEffects() {
 		);
 	}, [settings?.larger_text]);
 
-	// Reduced motion / animations disabled → single CSS class
+	// ── Reduced motion / animations ──────────────────────────
 	useEffect(() => {
+		const speed = settings?.animation_speed ?? 1.0;
 		const shouldReduce =
 			(settings?.reduced_motion ?? false) ||
-			settings?.animations_enabled === false;
+			settings?.animations_enabled === false ||
+			speed === 0;
 		document.documentElement.classList.toggle("reduce-motion", shouldReduce);
-	}, [settings?.reduced_motion, settings?.animations_enabled]);
+		document.documentElement.style.setProperty("--animation-speed", String(speed));
+	}, [settings?.reduced_motion, settings?.animations_enabled, settings?.animation_speed]);
 
-	// High contrast → CSS class
+	// ── High contrast ────────────────────────────────────────
 	useEffect(() => {
 		document.documentElement.classList.toggle(
 			"high-contrast",
@@ -56,7 +105,7 @@ export function SettingsEffects() {
 		);
 	}, [settings?.high_contrast]);
 
-	// Screen reader mode → CSS class
+	// ── Screen reader mode ───────────────────────────────────
 	useEffect(() => {
 		document.documentElement.classList.toggle(
 			"screen-reader",
@@ -64,7 +113,7 @@ export function SettingsEffects() {
 		);
 	}, [settings?.screen_reader_mode]);
 
-	// Compact mode → CSS class
+	// ── Compact mode ─────────────────────────────────────────
 	useEffect(() => {
 		document.documentElement.classList.toggle(
 			"compact-mode",
@@ -72,7 +121,7 @@ export function SettingsEffects() {
 		);
 	}, [settings?.compact_mode]);
 
-	// Message density → CSS classes (compact-mode already handled above, add spacious)
+	// ── Message density (spacious) ───────────────────────────
 	useEffect(() => {
 		const density = settings?.message_density ?? "default";
 		document.documentElement.classList.toggle(
@@ -81,12 +130,41 @@ export function SettingsEffects() {
 		);
 	}, [settings?.message_density]);
 
-	// Accent color → CSS custom property
+	// ── Accent color ─────────────────────────────────────────
 	useEffect(() => {
-		const accent = settings?.accent_color ?? "purple";
-		const color = ACCENT_COLOR_MAP[accent] ?? ACCENT_COLOR_MAP.purple;
+		const accent = settings?.accent_color ?? "oklch(0.65 0.25 265)";
+		// Support legacy keyword values via fallback map
+		const color = ACCENT_COLOR_MAP[accent] ?? accent;
 		document.documentElement.style.setProperty("--color-primary", color);
 	}, [settings?.accent_color]);
+
+	// ── Message style ────────────────────────────────────────
+	useEffect(() => {
+		document.documentElement.dataset.messageStyle = settings?.message_style ?? "flat";
+	}, [settings?.message_style]);
+
+	// ── Chat background ──────────────────────────────────────
+	useEffect(() => {
+		document.documentElement.style.setProperty(
+			"--chat-background",
+			settings?.chat_background || "none",
+		);
+	}, [settings?.chat_background]);
+
+	// ── Color blind mode ─────────────────────────────────────
+	useEffect(() => {
+		document.documentElement.dataset.colorBlindMode = settings?.color_blind_mode ?? "none";
+	}, [settings?.color_blind_mode]);
+
+	// ── Focus indicator ──────────────────────────────────────
+	useEffect(() => {
+		document.documentElement.dataset.focusIndicator = settings?.focus_indicator ?? "default";
+	}, [settings?.focus_indicator]);
+
+	// ── Timestamp format (consumed by JS formatters) ─────────
+	useEffect(() => {
+		document.documentElement.dataset.timestampFormat = settings?.timestamp_format ?? "relative";
+	}, [settings?.timestamp_format]);
 
 	return null;
 }

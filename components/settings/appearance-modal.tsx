@@ -93,9 +93,9 @@ export function AppearanceModal({ isOpen, onClose }: AppearanceModalProps) {
               <button
                 key={size}
                 type="button"
-                onClick={() => updateSettings({ font_size: size })}
+                onClick={() => updateSettings({ message_font_size: size })}
                 className={`flex-1 p-3 rounded-lg border-2 transition-all text-center text-sm capitalize ${
-                  (settings?.font_size ?? "medium") === size
+                  (settings?.message_font_size ?? "medium") === size
                     ? "border-blue-500 bg-blue-500/10 text-blue-300"
                     : "border-white/10 hover:border-white/20 text-slate-300"
                 }`}

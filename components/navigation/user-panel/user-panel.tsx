@@ -8,6 +8,7 @@ import type { UserStatus } from "@/store/auth.store";
 import { usePresenceStore } from "@/store/presence.store";
 import { useFamilyStore } from "@/store/family.store";
 import { useUIStore } from "@/store/ui.store";
+import { usePointsStore } from "@/store/points.store";
 import { performFullLogout } from "@/lib/utils/logout";
 import { Avatar } from "@/components/ui/avatar/avatar";
 import type { AvatarStatus } from "@/components/ui/avatar/avatar";
@@ -21,6 +22,7 @@ export function UserPanel() {
 	const updateUser = useAuthStore((s) => s.updateUser);
 	const openSettings = useUIStore((s) => s.openSettings);
 	const setPresenceStatus = usePresenceStore((s) => s.setStatus);
+	const totalPoints = usePointsStore((s) => s.totalPoints);
 	const [showSettings, setShowSettings] = useState(false);
 	const [isMuted, setIsMuted] = useState(false);
 	const [isDeafened, setIsDeafened] = useState(false);
@@ -131,9 +133,31 @@ export function UserPanel() {
 					<p className="text-sm font-semibold text-white truncate">
 						{user.displayName}
 					</p>
-					<p className="text-xs text-white/60 truncate">
-						@{user.username}
-					</p>
+					<div className="flex items-center gap-1.5">
+						<p className="text-xs text-white/60 truncate">
+							@{user.username}
+						</p>
+						{totalPoints > 0 && (
+							<span
+								className="text-[10px] text-yellow-400/80 font-medium cursor-pointer hover:text-yellow-300 transition-colors"
+								onClick={(e) => {
+									e.stopPropagation();
+									openSettings("rewards");
+								}}
+								role="button"
+								tabIndex={0}
+								onKeyDown={(e) => {
+									if (e.key === "Enter" || e.key === " ") {
+										e.preventDefault();
+										e.stopPropagation();
+										openSettings("rewards");
+									}
+								}}
+							>
+								{totalPoints >= 1000 ? `${(totalPoints / 1000).toFixed(1)}k` : totalPoints} pts
+							</span>
+						)}
+					</div>
 				</div>
 			</button>
 

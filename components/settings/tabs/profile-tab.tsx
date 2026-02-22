@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { Camera, Loader2 } from "lucide-react";
 import { useAuthStore } from "@/store/auth.store";
 import { usePresenceStore } from "@/store/presence.store";
+import { useThemeStore } from "@/store/theme.store";
+import { DEFAULT_PROFILE_THEMES } from "@/lib/themes/default-themes";
 import type { UserStatus } from "@/store/auth.store";
 import { Avatar } from "@/components/ui/avatar/avatar";
 import type { AvatarStatus } from "@/components/ui/avatar/avatar";
@@ -34,6 +36,12 @@ export function ProfileTab() {
   const user = useAuthStore((s) => s.user);
   const updateUser = useAuthStore((s) => s.updateUser);
   const setPresenceStatus = usePresenceStore((s) => s.setStatus);
+  const activeProfileThemeId = useThemeStore((s) => s.activeProfileThemeId);
+
+  const profileTheme = useMemo(
+    () => DEFAULT_PROFILE_THEMES.find((t) => t.id === activeProfileThemeId) ?? DEFAULT_PROFILE_THEMES[0],
+    [activeProfileThemeId],
+  );
 
   const [displayName, setDisplayName] = useState(user?.displayName ?? "");
   const [bio, setBio] = useState(user?.bio ?? "");
@@ -158,7 +166,10 @@ export function ProfileTab() {
       </div>
 
       {/* Profile Banner + Avatar */}
-      <div className="rounded-xl overflow-hidden border border-white/10">
+      <div
+        className="rounded-xl overflow-hidden border-2 transition-all"
+        style={{ borderColor: profileTheme.cardBorder }}
+      >
         {/* Banner — clickable upload area */}
         <div
           className="h-28 relative group cursor-pointer"
@@ -171,7 +182,10 @@ export function ProfileTab() {
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full bg-gradient-to-r from-primary/40 via-purple-500/30 to-blue-500/40" />
+            <div
+              className="w-full h-full"
+              style={{ background: profileTheme.cardBackground }}
+            />
           )}
 
           {/* Hover overlay */}
@@ -199,8 +213,9 @@ export function ProfileTab() {
         <div className="p-4 bg-white/5 relative">
           {/* Avatar — clickable upload area */}
           <div
-            className="absolute -top-10 left-4 group cursor-pointer"
+            className="absolute -top-10 left-4 group cursor-pointer rounded-full"
             onClick={() => avatarInputRef.current?.click()}
+            style={{ boxShadow: `0 0 16px ${profileTheme.avatarGlow}` }}
           >
             <Avatar
               src={avatarSrc}
@@ -228,7 +243,7 @@ export function ProfileTab() {
           </div>
 
           <div className="ml-20 pt-2">
-            <p className="font-semibold text-white">{user.displayName}</p>
+            <p className="font-semibold" style={{ color: profileTheme.nameColor }}>{user.displayName}</p>
             <p className="text-sm text-slate-400">@{user.username}</p>
           </div>
         </div>

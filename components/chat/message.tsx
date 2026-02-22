@@ -240,7 +240,7 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 						</div>
 					) : (
 						<>
-							<div className="text-white/90 wrap-break-word">
+							<div className="message-content-wrapper text-white/90 wrap-break-word" style={{ fontSize: 'var(--message-font-size)', lineHeight: 'var(--message-line-height)' }}>
 								{renderMarkdown(parsedContent)}
 							</div>
 

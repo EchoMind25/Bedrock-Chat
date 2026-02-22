@@ -559,6 +559,60 @@
       opacity: 0.5;
     }
   }
+
+  .status-effect-pulse,
+  .status-effect-breathe,
+  .status-effect-shimmer {
+    animation: none;
+  }
+}
+
+/* ── Status Effect Animations ──────────────────────────── */
+
+@keyframes status-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.6;
+  }
+}
+
+@keyframes status-breathe {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 currentColor;
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 8px 2px currentColor;
+  }
+}
+
+@keyframes status-shimmer {
+  0% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.6);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+
+.status-effect-pulse {
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
+.status-effect-breathe {
+  animation: status-breathe 3s ease-in-out infinite;
+}
+
+.status-effect-shimmer {
+  animation: status-shimmer 2.5s ease-in-out infinite;
 }
 
 /* ── Settings-driven CSS classes ────────────────────────── */
@@ -589,6 +643,71 @@
 /* Message font size (set by SettingsEffects via CSS custom property) */
 :root {
   --message-font-size: 1rem;
+  --app-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --ui-font-size: 1rem;
+  --message-line-height: 1.5;
+  --animation-speed: 1;
+  --chat-background: none;
+}
+
+body {
+  font-family: var(--app-font-family);
+}
+
+/* ── Message style variants ──────────────────────────────── */
+
+[data-message-style="bubble"] .message-content-wrapper {
+  border-radius: 18px;
+  padding: 8px 14px;
+  background: oklch(0.18 0.02 250 / 0.6);
+  max-width: 80%;
+  width: fit-content;
+}
+
+[data-message-style="bubble"] .message-content-wrapper.own-message {
+  background: var(--color-primary);
+  margin-left: auto;
+  color: white;
+}
+
+[data-message-style="minimal"] .message-content-wrapper {
+  border: none;
+  background: transparent;
+  padding: 2px 0;
+}
+
+/* ── Color blind mode filters ────────────────────────────── */
+
+[data-color-blind-mode="protanopia"] .main-content-area {
+  filter: url('#protanopia-filter');
+}
+
+[data-color-blind-mode="deuteranopia"] .main-content-area {
+  filter: url('#deuteranopia-filter');
+}
+
+[data-color-blind-mode="tritanopia"] .main-content-area {
+  filter: url('#tritanopia-filter');
+}
+
+/* ── Focus indicator variants ────────────────────────────── */
+
+[data-focus-indicator="high-visibility"] *:focus-visible {
+  outline: 3px solid oklch(0.8 0.25 90) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 6px oklch(0.8 0.25 90 / 0.3) !important;
+}
+
+[data-focus-indicator="outline-only"] *:focus-visible {
+  outline: 2px dashed currentColor !important;
+  outline-offset: 2px !important;
+  box-shadow: none !important;
+}
+
+/* ── Chat background ─────────────────────────────────────── */
+
+.chat-area-background {
+  background: var(--chat-background, none);
 }
 
 /* Spacious mode: increased spacing in message lists */

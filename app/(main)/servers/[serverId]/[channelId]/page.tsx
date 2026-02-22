@@ -151,7 +151,7 @@ export default function ChannelPage({ params }: PageProps) {
 	}
 
 	return (
-		<div className="flex-1 flex flex-col bg-[oklch(0.14_0.02_250)]">
+		<div className="flex-1 flex flex-col bg-[oklch(0.14_0.02_250)] chat-area-background">
 			<Suspense fallback={<ChannelLoadingSkeleton />}>
 				{/* Channel Header */}
 				<ChannelHeader channel={channel} memberCount={liveMemberCount} />

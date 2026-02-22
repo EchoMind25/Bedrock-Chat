@@ -6,58 +6,107 @@ import { logError } from "@/lib/utils/error-logger";
 // ── Types ──────────────────────────────────────────────────
 
 export interface UserSettings {
-	id: string;
 	user_id: string;
-	theme: "dark" | "light" | "auto";
+
+	// Theme
+	theme: "dark" | "light" | "system";
 	accent_color: string;
-	font_size: "small" | "medium" | "large";
+
+	// Typography
+	message_font_size: "small" | "medium" | "large";
+	font_family: "system" | "inter" | "sf-pro" | "jetbrains-mono" | "merriweather" | "opendyslexic";
+	ui_font_size: "small" | "medium" | "large";
+	line_height: "tight" | "normal" | "relaxed";
+
+	// Chat visuals
+	message_style: "flat" | "bubble" | "minimal";
+	message_density: "compact" | "default" | "spacious";
 	compact_mode: boolean;
-	animations_enabled: boolean;
+	chat_background: string | null;
+	timestamp_format: "relative" | "12h" | "24h" | "full";
+
+	// Display
+	show_avatars: boolean;
+	show_timestamps: boolean;
 	show_online_status: boolean;
-	allow_dms: boolean;
+	larger_text: boolean;
+
+	// Accessibility
+	high_contrast: boolean;
+	reduced_motion: boolean;
+	animations_enabled: boolean;
+	animation_speed: number;
+	screen_reader_mode: boolean;
+	color_blind_mode: "none" | "protanopia" | "deuteranopia" | "tritanopia";
+	dyslexia_font: boolean;
+	focus_indicator: "default" | "high-visibility" | "outline-only";
+
+	// Privacy
+	allow_dms: "everyone" | "friends" | "none";
 	read_receipts: boolean;
 	typing_indicators: boolean;
+
+	// Notifications
+	notifications_enabled: boolean;
 	desktop_notifications: boolean;
 	sound_enabled: boolean;
 	notification_sound: string;
 	mention_notifications: boolean;
 	dm_notifications: boolean;
-	high_contrast: boolean;
-	reduced_motion: boolean;
-	screen_reader_mode: boolean;
+
+	// Voice
 	input_device: string | null;
 	output_device: string | null;
 	input_volume: number;
 	output_volume: number;
 	noise_suppression: boolean;
 	echo_cancellation: boolean;
+
+	// Advanced
 	developer_mode: boolean;
-	larger_text: boolean;
-	show_avatars: boolean;
-	show_timestamps: boolean;
-	message_density: "compact" | "default" | "spacious";
+
+	// Theme sharing
+	custom_theme_json: Record<string, unknown> | null;
+
+	// Adaptive
+	adaptive_theme: boolean;
 }
 
-export type SettingsUpdate = Partial<Omit<UserSettings, "id" | "user_id">>;
+export type SettingsUpdate = Partial<Omit<UserSettings, "user_id">>;
 
-const DEFAULT_SETTINGS: Omit<UserSettings, "id" | "user_id"> = {
+const DEFAULT_SETTINGS: Omit<UserSettings, "user_id"> = {
 	theme: "dark",
-	accent_color: "purple",
-	font_size: "medium",
+	accent_color: "oklch(0.65 0.25 265)",
+	message_font_size: "medium",
+	font_family: "system",
+	ui_font_size: "medium",
+	line_height: "normal",
+	message_style: "flat",
+	message_density: "default",
 	compact_mode: false,
-	animations_enabled: true,
+	chat_background: null,
+	timestamp_format: "relative",
+	show_avatars: true,
+	show_timestamps: true,
 	show_online_status: true,
-	allow_dms: true,
+	larger_text: false,
+	high_contrast: false,
+	reduced_motion: false,
+	animations_enabled: true,
+	animation_speed: 1.0,
+	screen_reader_mode: false,
+	color_blind_mode: "none",
+	dyslexia_font: false,
+	focus_indicator: "default",
+	allow_dms: "everyone",
 	read_receipts: true,
 	typing_indicators: true,
+	notifications_enabled: true,
 	desktop_notifications: true,
 	sound_enabled: true,
 	notification_sound: "default",
 	mention_notifications: true,
 	dm_notifications: true,
-	high_contrast: false,
-	reduced_motion: false,
-	screen_reader_mode: false,
 	input_device: null,
 	output_device: null,
 	input_volume: 100,
@@ -65,10 +114,8 @@ const DEFAULT_SETTINGS: Omit<UserSettings, "id" | "user_id"> = {
 	noise_suppression: true,
 	echo_cancellation: true,
 	developer_mode: false,
-	larger_text: false,
-	show_avatars: true,
-	show_timestamps: true,
-	message_density: "default",
+	custom_theme_json: null,
+	adaptive_theme: false,
 };
 
 // ── State Interface ────────────────────────────────────────
@@ -105,33 +152,32 @@ export const useSettingsStore = create<SettingsState>()(
 						return;
 					}
 
-					let { data, error } = await supabase
+					const { data, error } = await supabase
 						.from("user_settings")
 						.select("*")
 						.eq("user_id", user.id)
 						.single();
 
-					// First login — create default settings row
 					if (error && error.code === "PGRST116") {
-						const { data: newRow, error: insertError } = await supabase
-							.from("user_settings")
-							.insert({ user_id: user.id, ...DEFAULT_SETTINGS })
-							.select()
-							.single();
+						// Row should exist via trigger. Use local defaults.
+						set({
+							settings: { user_id: user.id, ...DEFAULT_SETTINGS } as UserSettings,
+							isLoading: false,
+						});
+						return;
+					}
 
-						if (insertError) {
-							logError("STORE_INIT", insertError);
-							set({ isLoading: false, error: insertError.message });
-							return;
-						}
-						data = newRow;
-					} else if (error) {
+					if (error) {
 						logError("STORE_INIT", error);
 						set({ isLoading: false, error: error.message });
 						return;
 					}
 
-					set({ settings: data, isLoading: false });
+					// Merge DB data with local defaults for any missing fields
+					set({
+						settings: { ...DEFAULT_SETTINGS, ...data } as UserSettings,
+						isLoading: false,
+					});
 				} catch (err) {
 					logError("STORE_INIT", err);
 					set({
@@ -157,7 +203,7 @@ export const useSettingsStore = create<SettingsState>()(
 							...updates,
 							updated_at: new Date().toISOString(),
 						})
-						.eq("id", settings.id);
+						.eq("user_id", settings.user_id);
 
 					if (error) {
 						logError("STORE_INIT", error);

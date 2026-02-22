@@ -21,11 +21,13 @@ import { PortalOverlay } from "@/components/navigation/portal-overlay";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ErrorRecovery } from "@/components/error-recovery";
 import { SettingsEffects } from "@/components/settings/settings-effects";
+import { ColorBlindFilters } from "@/components/accessibility/color-blind-filters";
 import { useIdleDetection } from "@/lib/hooks/use-idle-detection";
 import { initPerformanceMonitoring } from "@/store/performance.store";
 import { PerformanceMonitor } from "@/lib/performance/monitoring";
 import { PerformanceOverlay } from "@/components/performance/PerformanceOverlay";
 import { PerformanceDashboard } from "@/components/performance/PerformanceDashboard";
+import { RewardToasts } from "@/components/rewards/reward-toast";
 import { logError } from "@/lib/utils/error-logger";
 
 const MemberListPanel = lazy(() =>
@@ -315,6 +317,7 @@ export function MainLayoutClient({
 		<div className="flex h-screen overflow-hidden bg-[oklch(0.12_0.02_250)]">
 			{/* Apply global settings effects (theme, font size, accessibility) */}
 			<SettingsEffects />
+			<ColorBlindFilters />
 
 			{/* Skip to main content link for keyboard users */}
 			<a
@@ -359,7 +362,7 @@ export function MainLayoutClient({
 			<ErrorBoundary level="page" name="MainContent">
 				<main
 					id="main-content"
-					className="relative z-20 flex-1 flex flex-col overflow-hidden"
+					className="relative z-20 flex-1 flex flex-col overflow-hidden main-content-area"
 					style={
 						isMobile
 							? { paddingBottom: "calc(56px + env(safe-area-inset-bottom))" }
@@ -426,6 +429,9 @@ export function MainLayoutClient({
 
 			{/* Portal transition overlay */}
 			<PortalOverlay />
+
+			{/* Reward toasts */}
+			<RewardToasts />
 
 			{/* Performance monitoring overlays */}
 			<PerformanceOverlay />
