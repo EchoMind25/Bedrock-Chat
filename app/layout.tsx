@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { ConsentBanner } from "@/components/consent/consent-banner";
 import { GlobalEntranceTransition } from "@/components/transitions/global-entrance-transition";
-import { BugReportWidget } from "@/components/bug-report/bug-report-widget";
+import { BugReportWidgetWrapper } from "@/components/widget/bug-report-wrapper";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -60,7 +60,7 @@ export default function RootLayout({
         <ServiceWorkerRegister />
         {children}
         <ConsentBanner />
-        <BugReportWidget />
+        <BugReportWidgetWrapper />
         <GlobalEntranceTransition />
       </body>
     </html>

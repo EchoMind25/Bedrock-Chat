@@ -397,23 +397,76 @@ export const useDMStore = create<DMState>()(
 										senderId,
 									);
 
-									// Add to conversation messages if that conversation is loaded
-									set((state) => ({
-										dmMessages: {
+									const dmKey = `dm-${senderId}`;
+									const isNewConversation = !get().dms.some((dm) => dm.id === dmKey);
+
+									set((state) => {
+										const updatedDmMessages = {
 											...state.dmMessages,
 											[senderId]: [...(state.dmMessages[senderId] || []), newMessage],
-										},
-										// Update last message and unread count in sidebar
-										dms: state.dms.map((dm) =>
-											dm.id === `dm-${senderId}`
-												? {
-														...dm,
-														lastMessage: { content: payload.new.content as string, timestamp: new Date(), authorId: senderId },
-														unreadCount: state.currentDmId === `dm-${senderId}` ? dm.unreadCount : dm.unreadCount + 1,
-													}
-												: dm
-										),
-									}));
+										};
+
+										if (!isNewConversation) {
+											// Update existing conversation
+											return {
+												dmMessages: updatedDmMessages,
+												dms: state.dms.map((dm) =>
+													dm.id === dmKey
+														? {
+																...dm,
+																lastMessage: { content: payload.new.content as string, timestamp: new Date(), authorId: senderId },
+																unreadCount: state.currentDmId === dmKey ? dm.unreadCount : dm.unreadCount + 1,
+															}
+														: dm
+												),
+											};
+										}
+
+										// New conversation — create DM entry and prepend to list
+										const senderUsername = (senderProfile?.username as string) || "Unknown";
+										const senderDisplayName = (senderProfile?.display_name as string) || senderUsername;
+										const senderAvatar = (senderProfile?.avatar_url as string) || "";
+
+										const newDm: DirectMessage = {
+											id: dmKey,
+											participants: [
+												{
+													id: `p-${senderId}`,
+													userId: senderId,
+													username: senderUsername,
+													displayName: senderDisplayName,
+													avatar: senderAvatar,
+													status: "online" as const,
+												},
+												{
+													id: `p-${currentUserId}`,
+													userId: currentUserId,
+													username: "You",
+													displayName: "You",
+													avatar: "",
+													status: "online" as const,
+												},
+											],
+											lastMessage: {
+												content: payload.new.content as string,
+												timestamp: new Date(),
+												authorId: senderId,
+											},
+											unreadCount: state.currentDmId === dmKey ? 0 : 1,
+											isEncrypted: true,
+											createdAt: new Date(),
+										};
+
+										return {
+											dmMessages: updatedDmMessages,
+											dms: [newDm, ...state.dms],
+										};
+									});
+
+									if (isNewConversation) {
+										const name = (senderProfile?.display_name as string) || (senderProfile?.username as string) || "Someone";
+										toast.info("New Message", `${name} sent you a message`);
+									}
 								} catch (err) {
 									console.error("[DM Realtime] INSERT handler error:", err);
 								}

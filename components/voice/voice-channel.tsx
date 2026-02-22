@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "motion/react";
 import { useEffect, useMemo, useCallback, useRef } from "react";
-import { Users, RefreshCw, PhoneOff } from "lucide-react";
+import { Users, RefreshCw, PhoneOff, Link2, Check } from "lucide-react";
 import {
   LiveKitRoom,
   RoomAudioRenderer,
@@ -49,6 +49,7 @@ export function VoiceChannel({
   onLeave,
 }: VoiceChannelProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const leavingRef = useRef(false);
 
   // Voice store selectors
@@ -298,6 +299,31 @@ export function VoiceChannel({
                 </div>
               )}
 
+              {isConnected && (
+                <motion.button
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg glass-interactive hover:bg-white/10 text-white/80 hover:text-white transition-colors border border-white/10"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    const url = `${window.location.origin}/channels/${serverId}/voice/${channelId}`;
+                    navigator.clipboard.writeText(url);
+                    setLinkCopied(true);
+                    setTimeout(() => setLinkCopied(false), 2000);
+                  }}
+                  aria-label="Copy invite link"
+                  title="Copy invite link"
+                >
+                  {linkCopied ? (
+                    <Check className="w-4 h-4 text-[oklch(0.7_0.2_145)]" />
+                  ) : (
+                    <Link2 className="w-4 h-4" />
+                  )}
+                  <span className="text-sm font-medium">
+                    {linkCopied ? "Copied!" : "Invite Link"}
+                  </span>
+                </motion.button>
+              )}
+
               <motion.button
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/90 hover:bg-red-600/90 text-white transition-colors"
                 whileHover={{ scale: 1.05 }}
@@ -324,9 +350,11 @@ export function VoiceChannel({
             onConnected={() => {
               useVoiceStore.getState().setConnectionStatus("connected");
             }}
+            className="flex-1 flex flex-col min-h-0"
           >
             <RoomAudioRenderer />
             <LiveKitParticipantSync />
+            <LiveKitControlSync />
             <VoiceChannelContent
               isConnected={isConnected}
               isConnecting={false}
@@ -476,6 +504,41 @@ function LiveKitParticipantSync() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  return null;
+}
+
+/**
+ * Syncs Zustand control state (mute, video, screen share) TO LiveKit room.
+ * Must be rendered inside LiveKitRoom.
+ */
+function LiveKitControlSync() {
+  const { localParticipant } = useLocalParticipant();
+
+  const isMuted = useVoiceStore((s) => s.isMuted);
+  const isVideoOn = useVoiceStore((s) => s.isVideoOn);
+  const isScreenSharing = useVoiceStore((s) => s.isScreenSharing);
+
+  // Sync mute state → LiveKit microphone
+  useEffect(() => {
+    if (!localParticipant) return;
+    localParticipant.setMicrophoneEnabled(!isMuted);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMuted]);
+
+  // Sync video state → LiveKit camera
+  useEffect(() => {
+    if (!localParticipant) return;
+    localParticipant.setCameraEnabled(isVideoOn);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isVideoOn]);
+
+  // Sync screen share state → LiveKit screen share
+  useEffect(() => {
+    if (!localParticipant) return;
+    localParticipant.setScreenShareEnabled(isScreenSharing);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isScreenSharing]);
 
   return null;
 }

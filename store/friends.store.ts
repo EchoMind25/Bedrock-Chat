@@ -488,6 +488,125 @@ export const useFriendsStore = create<FriendsState>()(
                 },
               }));
             })
+            // When a request the current user sent is accepted (status UPDATE)
+            .on("postgres_changes", {
+              event: "UPDATE",
+              schema: "public",
+              table: "friend_requests",
+              filter: `sender_id=eq.${userId}`,
+            }, (payload) => {
+              const row = payload.new as Record<string, unknown>;
+              if (row.status === "accepted") {
+                set((state) => ({
+                  friendRequests: {
+                    ...state.friendRequests,
+                    outgoing: state.friendRequests.outgoing.filter((r) => r.id !== row.id),
+                  },
+                }));
+              }
+            })
+            // Friendships: new friendship created (current user is user1_id)
+            .on("postgres_changes", {
+              event: "INSERT",
+              schema: "public",
+              table: "friendships",
+              filter: `user1_id=eq.${userId}`,
+            }, async (payload) => {
+              const row = payload.new as Record<string, unknown>;
+              const otherUserId = row.user2_id as string;
+
+              if (get().friends.some((f) => f.userId === otherUserId)) return;
+
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("id, username, display_name, avatar_url, status")
+                .eq("id", otherUserId)
+                .single();
+
+              if (!profile) return;
+
+              set((state) => ({
+                friends: [...state.friends, {
+                  id: row.id as string,
+                  userId: profile.id,
+                  username: profile.username,
+                  displayName: profile.display_name || profile.username,
+                  avatar: profile.avatar_url || "",
+                  status: (profile.status as Friend["status"]) || "offline",
+                  friendshipStatus: "accepted" as const,
+                  createdAt: new Date(row.created_at as string),
+                }],
+                friendRequests: {
+                  ...state.friendRequests,
+                  outgoing: state.friendRequests.outgoing.filter((r) => r.toUserId !== otherUserId),
+                },
+              }));
+
+              toast.info("Friend Added", `${profile.display_name || profile.username} accepted your friend request`);
+            })
+            // Friendships: new friendship created (current user is user2_id)
+            .on("postgres_changes", {
+              event: "INSERT",
+              schema: "public",
+              table: "friendships",
+              filter: `user2_id=eq.${userId}`,
+            }, async (payload) => {
+              const row = payload.new as Record<string, unknown>;
+              const otherUserId = row.user1_id as string;
+
+              if (get().friends.some((f) => f.userId === otherUserId)) return;
+
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("id, username, display_name, avatar_url, status")
+                .eq("id", otherUserId)
+                .single();
+
+              if (!profile) return;
+
+              set((state) => ({
+                friends: [...state.friends, {
+                  id: row.id as string,
+                  userId: profile.id,
+                  username: profile.username,
+                  displayName: profile.display_name || profile.username,
+                  avatar: profile.avatar_url || "",
+                  status: (profile.status as Friend["status"]) || "offline",
+                  friendshipStatus: "accepted" as const,
+                  createdAt: new Date(row.created_at as string),
+                }],
+                friendRequests: {
+                  ...state.friendRequests,
+                  outgoing: state.friendRequests.outgoing.filter((r) => r.toUserId !== otherUserId),
+                },
+              }));
+
+              toast.info("Friend Added", `${profile.display_name || profile.username} accepted your friend request`);
+            })
+            // Friendships: friendship removed by other party (current user is user1_id)
+            .on("postgres_changes", {
+              event: "DELETE",
+              schema: "public",
+              table: "friendships",
+              filter: `user1_id=eq.${userId}`,
+            }, (payload) => {
+              const oldRow = payload.old as Record<string, unknown>;
+              set((state) => ({
+                friends: state.friends.filter((f) => f.id !== oldRow.id),
+              }));
+            })
+            // Friendships: friendship removed by other party (current user is user2_id)
+            .on("postgres_changes", {
+              event: "DELETE",
+              schema: "public",
+              table: "friendships",
+              filter: `user2_id=eq.${userId}`,
+            }, (payload) => {
+              const oldRow = payload.old as Record<string, unknown>;
+              set((state) => ({
+                friends: state.friends.filter((f) => f.id !== oldRow.id),
+              }));
+            })
             .subscribe();
         },
 
