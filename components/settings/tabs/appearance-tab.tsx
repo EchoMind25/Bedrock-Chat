@@ -59,12 +59,18 @@ const FOCUS_OPTIONS: Array<{ value: UserSettings["focus_indicator"]; label: stri
 
 const CHAT_BACKGROUNDS: Array<{ label: string; value: string | null }> = [
 	{ label: "None", value: null },
-	{ label: "Deep Space", value: "linear-gradient(180deg, oklch(0.08 0.03 265), oklch(0.12 0.02 285))" },
-	{ label: "Aurora", value: "linear-gradient(135deg, oklch(0.10 0.04 195), oklch(0.08 0.03 310))" },
-	{ label: "Sunset", value: "linear-gradient(180deg, oklch(0.12 0.04 40), oklch(0.08 0.03 55))" },
-	{ label: "Forest", value: "linear-gradient(180deg, oklch(0.09 0.03 140), oklch(0.12 0.02 155))" },
-	{ label: "Ocean", value: "linear-gradient(180deg, oklch(0.08 0.04 220), oklch(0.12 0.03 240))" },
-	{ label: "Ember", value: "linear-gradient(180deg, oklch(0.10 0.04 25), oklch(0.08 0.03 10))" },
+	{ label: "Deep Space", value: "radial-gradient(ellipse at 50% 0%, oklch(0.18 0.06 265), oklch(0.06 0.02 280))" },
+	{ label: "Aurora", value: "linear-gradient(135deg, oklch(0.12 0.08 170), oklch(0.08 0.06 265), oklch(0.10 0.07 310))" },
+	{ label: "Sunset", value: "linear-gradient(180deg, oklch(0.18 0.10 40), oklch(0.10 0.06 25), oklch(0.06 0.03 350))" },
+	{ label: "Forest", value: "linear-gradient(160deg, oklch(0.10 0.06 155), oklch(0.06 0.04 130), oklch(0.08 0.03 110))" },
+	{ label: "Ocean", value: "radial-gradient(ellipse at 30% 80%, oklch(0.14 0.08 220), oklch(0.06 0.04 250))" },
+	{ label: "Ember", value: "radial-gradient(ellipse at 50% 100%, oklch(0.16 0.08 30), oklch(0.06 0.02 15))" },
+	{ label: "Nebula", value: "linear-gradient(135deg, oklch(0.10 0.08 290), oklch(0.06 0.05 320), oklch(0.12 0.07 250))" },
+	{ label: "Arctic", value: "linear-gradient(180deg, oklch(0.14 0.04 220), oklch(0.08 0.02 210), oklch(0.04 0.01 200))" },
+	{ label: "Lava", value: "radial-gradient(circle at 50% 50%, oklch(0.14 0.10 40), oklch(0.06 0.05 15), oklch(0.04 0.02 0))" },
+	{ label: "Grid", value: "repeating-linear-gradient(0deg, oklch(0.18 0.02 265 / 0.15) 0px, transparent 1px, transparent 40px), repeating-linear-gradient(90deg, oklch(0.18 0.02 265 / 0.15) 0px, transparent 1px, transparent 40px), oklch(0.10 0.02 265)" },
+	{ label: "Dots", value: "radial-gradient(circle, oklch(0.25 0.03 265 / 0.3) 1px, transparent 1px), oklch(0.10 0.02 265)" },
+	{ label: "Spotlight", value: "radial-gradient(circle at 50% 30%, oklch(0.20 0.06 265 / 0.5), transparent 60%), oklch(0.08 0.02 265)" },
 ];
 
 // ── Component ────────────────────────────────────────────────

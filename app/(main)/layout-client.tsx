@@ -2,7 +2,7 @@
 
 import { useEffect, useState, lazy, Suspense } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, MotionConfig } from "motion/react";
 import { useAuthStore } from "@/store/auth.store";
 import { useServerStore } from "@/store/server.store";
 import { useFriendsStore } from "@/store/friends.store";
@@ -31,6 +31,7 @@ import { PerformanceDashboard } from "@/components/performance/PerformanceDashbo
 import { RewardToasts } from "@/components/rewards/reward-toast";
 import { EasterEggDetectors } from "@/components/rewards/easter-egg-detectors";
 import { logError } from "@/lib/utils/error-logger";
+import { subscribeToPush } from "@/lib/utils/push-subscribe";
 
 const MemberListPanel = lazy(() =>
 	import("@/components/navigation/member-list/member-list-panel").then((m) => ({
@@ -58,6 +59,9 @@ export function MainLayoutClient({
 	// Circuit breaker and error recovery state
 	const [initError, setInitError] = useState<string | null>(null);
 	const [loadingStage, setLoadingStage] = useState<"auth" | "servers" | "ready">("auth");
+
+	// Reduced motion: disables Motion library JS animations
+	const reducedMotion = useSettingsStore((s) => s.settings?.reduced_motion ?? false);
 
 	// Idle detection: pauses CSS animations after 30s of inactivity
 	const isIdle = useIdleDetection();
@@ -165,9 +169,15 @@ export function MainLayoutClient({
 					// Step 2.8: Auto-collect daily login bonus (fire-and-forget)
 					try { usePointsStore.getState().collectDailyLogin(); } catch { /* ignore */ }
 
-					// Step 2.9: Request notification permission if user has desktop notifications enabled
-					if (typeof Notification !== "undefined" && Notification.permission === "default") {
-						Notification.requestPermission().catch(() => {});
+					// Step 2.9: Request notification permission and subscribe to Web Push
+					if (typeof Notification !== "undefined") {
+						if (Notification.permission === "default") {
+							Notification.requestPermission()
+								.then((p) => { if (p === "granted") subscribeToPush(); })
+								.catch(() => {});
+						} else if (Notification.permission === "granted") {
+							subscribeToPush();
+						}
 					}
 
 					// Step 3: Init stores (servers awaited, friends/dm fire-and-forget)
@@ -324,6 +334,7 @@ export function MainLayoutClient({
 	}
 
 	return (
+		<MotionConfig reducedMotion={reducedMotion ? "always" : "never"}>
 		<div className="flex h-screen overflow-hidden bg-[oklch(0.12_0.02_250)]">
 			{/* Apply global settings effects (theme, font size, accessibility) */}
 			<SettingsEffects />
@@ -448,6 +459,7 @@ export function MainLayoutClient({
 			<PerformanceOverlay />
 			<PerformanceDashboard />
 		</div>
+		</MotionConfig>
 	);
 }
 

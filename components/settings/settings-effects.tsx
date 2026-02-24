@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useSettingsStore } from "@/store/settings.store";
 import { loadFont } from "@/lib/fonts/font-loader";
+import { generatePalette, extractHCL } from "@/lib/themes/color-generator";
 
 const ACCENT_COLOR_MAP: Record<string, string> = {
 	purple: "oklch(0.65 0.25 265)",
@@ -50,10 +51,10 @@ export function SettingsEffects() {
 
 	// ── UI font size ─────────────────────────────────────────
 	useEffect(() => {
-		document.documentElement.style.setProperty(
-			"--ui-font-size",
-			SIZE_MAP[settings?.ui_font_size ?? "medium"],
-		);
+		const size = SIZE_MAP[settings?.ui_font_size ?? "medium"];
+		document.documentElement.style.setProperty("--ui-font-size", size);
+		// Set root font-size so all rem-based Tailwind sizing scales globally
+		document.documentElement.style.fontSize = size;
 	}, [settings?.ui_font_size]);
 
 	// ── Font family ──────────────────────────────────────────
@@ -130,12 +131,24 @@ export function SettingsEffects() {
 		);
 	}, [settings?.message_density]);
 
-	// ── Accent color ─────────────────────────────────────────
+	// ── Accent color + derived palette ───────────────────────
 	useEffect(() => {
 		const accent = settings?.accent_color ?? "oklch(0.65 0.25 265)";
-		// Support legacy keyword values via fallback map
 		const color = ACCENT_COLOR_MAP[accent] ?? accent;
-		document.documentElement.style.setProperty("--color-primary", color);
+		const root = document.documentElement;
+		root.style.setProperty("--color-primary", color);
+
+		// Derive full palette from accent and apply as CSS variables
+		const hcl = extractHCL(color);
+		if (hcl) {
+			const palette = generatePalette(hcl.h, hcl.c, hcl.l);
+			root.style.setProperty("--color-primary-hover", palette.primaryHover);
+			root.style.setProperty("--color-surface-tint", palette.surface);
+			root.style.setProperty("--color-surface-hover", palette.surfaceHover);
+			root.style.setProperty("--color-border-tint", palette.border);
+			root.style.setProperty("--color-text-muted-tint", palette.textMuted);
+			root.style.setProperty("--color-atmosphere", palette.atmosphere);
+		}
 	}, [settings?.accent_color]);
 
 	// ── Message style ────────────────────────────────────────

@@ -190,3 +190,48 @@ self.addEventListener("periodicsync", (event) => {
     event.waitUntil(trimCache());
   }
 });
+
+// ── Push Notifications ────────────────────────────────────
+
+self.addEventListener("push", (event) => {
+  if (!event.data) return;
+
+  let data;
+  try {
+    data = event.data.json();
+  } catch {
+    data = { title: "Bedrock Chat", body: event.data.text() };
+  }
+
+  const title = data.title || "Bedrock Chat";
+  const options = {
+    body: data.body || "",
+    icon: data.icon || "/icons/icon-192.svg",
+    badge: "/icons/icon-192.svg",
+    tag: data.tag || "bedrock-push",
+    data: { url: data.url || "/" },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// ── Notification Click ────────────────────────────────────
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const url = event.notification.data?.url || "/";
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      // Focus existing tab if available
+      for (const client of clients) {
+        if (client.url.includes(self.location.origin) && "focus" in client) {
+          return client.focus();
+        }
+      }
+      // Otherwise open a new tab
+      return self.clients.openWindow(url);
+    })
+  );
+});

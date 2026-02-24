@@ -5,6 +5,7 @@ import { Toggle } from "@/components/ui/toggle/toggle";
 import { SettingsSection } from "../settings-section";
 import { SettingsRow } from "../settings-row";
 import { toast } from "@/lib/stores/toast-store";
+import { subscribeToPush, unsubscribeFromPush } from "@/lib/utils/push-subscribe";
 
 export function NotificationsTab() {
 	const settings = useSettingsStore((s) => s.settings);
@@ -25,6 +26,13 @@ export function NotificationsTab() {
 			}
 		}
 		updateSettings({ desktop_notifications: enabled });
+
+		// Subscribe/unsubscribe from Web Push
+		if (enabled) {
+			subscribeToPush();
+		} else {
+			unsubscribeFromPush();
+		}
 	};
 
 	return (

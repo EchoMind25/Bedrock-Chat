@@ -4,6 +4,7 @@ import type { Message, Attachment } from '@/lib/types/message';
 import { useAuthStore } from './auth.store';
 import { createClient } from '@/lib/supabase/client';
 import { usePointsStore } from './points.store';
+import { showDesktopNotification } from '@/lib/utils/notifications';
 
 interface AttachmentInput {
   url: string;
@@ -115,20 +116,12 @@ export const useMessageStore = create<MessageState>()(
                     },
                   }));
 
-                  // Send desktop notification if permitted and tab is not focused
-                  if (
-                    typeof Notification !== "undefined" &&
-                    Notification.permission === "granted" &&
-                    document.hidden
-                  ) {
-                    try {
-                      new Notification(newMessage.author.displayName, {
-                        body: newMessage.content.slice(0, 100),
-                        icon: newMessage.author.avatar || "/icons/icon-192.svg",
-                        tag: `msg-${newMessage.id}`,
-                      });
-                    } catch { /* ignore notification errors */ }
-                  }
+                  // Desktop notification (respects user settings, uses service worker on iOS)
+                  showDesktopNotification(newMessage.author.displayName, {
+                    body: newMessage.content.slice(0, 100),
+                    icon: newMessage.author.avatar || "/icons/icon-192.svg",
+                    tag: `msg-${newMessage.id}`,
+                  });
                 }
               } catch (err) {
                 console.error('[Realtime] INSERT handler error:', err);

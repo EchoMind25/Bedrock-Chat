@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/store/auth.store";
 import { isAbortError } from "@/lib/utils/is-abort-error";
 import { toast } from "@/lib/stores/toast-store";
+import { showDesktopNotification } from "@/lib/utils/notifications";
 
 interface DMState {
 	dms: DirectMessage[];
@@ -23,7 +24,7 @@ interface DMState {
 	init: () => void;
 	setCurrentDm: (dmId: string) => void;
 	createDm: (userId: string) => DirectMessage | null;
-	markDmRead: (dmId: string) => void;
+	markDmRead: (dmId: string) => Promise<void>;
 	closeDm: (dmId: string) => void;
 	getCurrentDm: () => DirectMessage | undefined;
 	getDmByUserId: (userId: string) => DirectMessage | undefined;
@@ -175,15 +176,29 @@ export const useDMStore = create<DMState>()(
 					return newDm;
 				},
 
-				markDmRead: (dmId) => {
-					// Always clear local unread badge
+				markDmRead: async (dmId) => {
+					// Always clear local unread badge immediately
 					set((state) => ({
 						dms: state.dms.map((dm) => dm.id === dmId ? { ...dm, unreadCount: 0 } : dm),
 					}));
 
-					// TODO: Move to server-side enforcement via RLS policy or database trigger before public launch
-					// Only write read_at to DB if user has read_receipts enabled
-					// (When read receipt DB writes are implemented, guard them here)
+					// Persist read_at to database so unread state survives re-login
+					const userId = useAuthStore.getState().user?.id;
+					if (!userId) return;
+
+					const otherUserId = dmId.replace("dm-", "");
+
+					try {
+						const supabase = createClient();
+						await supabase
+							.from("direct_messages")
+							.update({ read_at: new Date().toISOString() })
+							.eq("receiver_id", userId)
+							.eq("sender_id", otherUserId)
+							.is("read_at", null);
+					} catch (err) {
+						console.error("[DM] Failed to persist read_at:", err);
+					}
 				},
 
 				closeDm: (dmId) => {
@@ -355,6 +370,19 @@ export const useDMStore = create<DMState>()(
 									: dm
 							),
 						}));
+
+						// Send Web Push to receiver (fire-and-forget)
+						fetch("/api/push/send", {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({
+								userId: receiverId,
+								title: user.displayName || user.username,
+								body: content.trim().slice(0, 100),
+								tag: `dm-${data.id}`,
+								url: `/dms/${user.id}`,
+							}),
+						}).catch(() => {});
 					} catch (err) {
 						console.error("[DM] Send failed:", err);
 					}
@@ -467,6 +495,15 @@ export const useDMStore = create<DMState>()(
 										const name = (senderProfile?.display_name as string) || (senderProfile?.username as string) || "Someone";
 										toast.info("New Message", `${name} sent you a message`);
 									}
+
+									// Desktop notification for incoming DMs
+									const displayName = (senderProfile?.display_name as string) || (senderProfile?.username as string) || "Someone";
+									showDesktopNotification(displayName, {
+										body: (payload.new.content as string).slice(0, 100),
+										icon: (senderProfile?.avatar_url as string) || "/icons/icon-192.svg",
+										tag: `dm-${payload.new.id}`,
+										isDm: true,
+									});
 								} catch (err) {
 									console.error("[DM Realtime] INSERT handler error:", err);
 								}
