@@ -39,6 +39,7 @@ export function ServerSettingsModal() {
   const [editedServer, setEditedServer] = useState<Partial<Server>>({});
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Pending image files (uploaded on save, not on select)
   const [pendingFiles, setPendingFiles] = useState<{ logo?: File; banner?: File }>({});
@@ -52,6 +53,7 @@ export function ServerSettingsModal() {
       setEditedServer({});
       setHasChanges(false);
       setPendingFiles({});
+      setSaveError(null);
     }
   }, [isServerSettingsOpen, currentServer?.id]);
 
@@ -68,6 +70,7 @@ export function ServerSettingsModal() {
     if (!currentServer) return;
 
     setIsSaving(true);
+    setSaveError(null);
 
     const supabase = createClient();
     const dbUpdates: Record<string, unknown> = {};
@@ -246,12 +249,12 @@ export function ServerSettingsModal() {
       setHasChanges(false);
       setEditedServer({});
       setPendingFiles({});
+      setSaveError(null);
       setOverviewKey((k) => k + 1);
     } else {
-      toast.error(
-        "Partially Saved",
-        errors.join("; "),
-      );
+      const errorMsg = errors.join("; ");
+      toast.error("Partially Saved", errorMsg);
+      setSaveError(errorMsg);
       setPendingFiles({});
     }
 
@@ -369,11 +372,15 @@ export function ServerSettingsModal() {
       title={`${currentServer.name} Settings`}
       size="xl"
       footer={
-        <div className="flex items-center justify-between w-full">
-          <div className="text-sm text-slate-400">
-            {hasChanges && "You have unsaved changes"}
+        <div className="flex items-center justify-between w-full gap-4">
+          <div className="text-sm min-w-0 truncate">
+            {saveError ? (
+              <span className="text-red-400">{saveError}</span>
+            ) : hasChanges ? (
+              <span className="text-slate-400">You have unsaved changes</span>
+            ) : null}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Button variant="ghost" onClick={handleClose}>
               Cancel
             </Button>
