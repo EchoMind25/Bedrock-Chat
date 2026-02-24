@@ -34,6 +34,10 @@ interface ServerState {
 	toggleCategory: (serverId: string, categoryId: string) => void;
 	markChannelRead: (channelId: string) => void;
 
+	// Server management
+	leaveServer: (serverId: string) => Promise<void>;
+	deleteServer: (serverId: string) => Promise<void>;
+
 	// Category management
 	createCategory: (serverId: string, name: string, position?: number) => Promise<ChannelCategory>;
 	updateCategory: (serverId: string, categoryId: string, name: string) => Promise<void>;
@@ -426,6 +430,76 @@ export const useServerStore = create<ServerState>()(
 							};
 						}),
 					}));
+				},
+
+				// Server Management
+				leaveServer: async (serverId) => {
+					const userId = useAuthStore.getState().user?.id;
+					if (!userId) return;
+
+					const server = get().servers.find(s => s.id === serverId);
+					if (!server) return;
+
+					if (server.isOwner) {
+						toast.error("Cannot Leave", "You own this server. Transfer ownership or delete it instead.");
+						return;
+					}
+
+					const supabase = createClient();
+					const { error } = await supabase
+						.from("server_members")
+						.delete()
+						.eq("server_id", serverId)
+						.eq("user_id", userId);
+
+					if (error) {
+						toast.error("Leave Failed", "Could not leave the server.");
+						throw error;
+					}
+
+					const remainingServers = get().servers.filter(s => s.id !== serverId);
+					const nextServer = remainingServers.find(s => s.id !== "home") || remainingServers[0];
+					set({
+						servers: remainingServers,
+						currentServerId: nextServer?.id || null,
+						currentChannelId: nextServer?.channels[0]?.id || null,
+					});
+
+					toast.success("Left Server", `You left ${server.name}`);
+				},
+
+				deleteServer: async (serverId) => {
+					const userId = useAuthStore.getState().user?.id;
+					if (!userId) return;
+
+					const server = get().servers.find(s => s.id === serverId);
+					if (!server) return;
+
+					if (!server.isOwner) {
+						toast.error("Cannot Delete", "Only the server owner can delete this server.");
+						return;
+					}
+
+					const supabase = createClient();
+					const { error } = await supabase
+						.from("servers")
+						.delete()
+						.eq("id", serverId);
+
+					if (error) {
+						toast.error("Delete Failed", "Could not delete the server.");
+						throw error;
+					}
+
+					const remainingServers = get().servers.filter(s => s.id !== serverId);
+					const nextServer = remainingServers.find(s => s.id !== "home") || remainingServers[0];
+					set({
+						servers: remainingServers,
+						currentServerId: nextServer?.id || null,
+						currentChannelId: nextServer?.channels[0]?.id || null,
+					});
+
+					toast.success("Server Deleted", `${server.name} has been deleted`);
 				},
 
 				// Category Management

@@ -20,7 +20,7 @@ export interface AuditLogEntry {
   actorAvatar: string;
   targetId?: string;
   targetName?: string;
-  targetType?: "channel" | "role" | "user" | "invite" | "server";
+  targetType?: "channel" | "role" | "user" | "invite" | "server" | "emoji" | "sticker" | "sound" | "event" | "webhook" | "bot" | "theme" | "welcome" | "template";
   changes?: Record<string, { old: unknown; new: unknown }>;
   reason?: string;
   createdAt: Date;
@@ -42,7 +42,26 @@ export type AuditLogAction =
   | "invite_delete"
   | "message_delete"
   | "message_pin"
-  | "message_unpin";
+  | "message_unpin"
+  // Server customization actions
+  | "emoji_create"
+  | "emoji_delete"
+  | "sticker_create"
+  | "sticker_delete"
+  | "sound_create"
+  | "sound_delete"
+  | "event_create"
+  | "event_update"
+  | "event_cancel"
+  | "webhook_create"
+  | "webhook_update"
+  | "webhook_delete"
+  | "bot_create"
+  | "bot_update"
+  | "bot_delete"
+  | "theme_update"
+  | "welcome_screen_update"
+  | "template_create";
 
 export interface AutoModSettings {
   enabled: boolean;
@@ -84,6 +103,24 @@ export const getAuditLogActionName = (action: AuditLogAction): string => {
     message_delete: "Message Deleted",
     message_pin: "Message Pinned",
     message_unpin: "Message Unpinned",
+    emoji_create: "Emoji Created",
+    emoji_delete: "Emoji Deleted",
+    sticker_create: "Sticker Created",
+    sticker_delete: "Sticker Deleted",
+    sound_create: "Sound Created",
+    sound_delete: "Sound Deleted",
+    event_create: "Event Created",
+    event_update: "Event Updated",
+    event_cancel: "Event Cancelled",
+    webhook_create: "Webhook Created",
+    webhook_update: "Webhook Updated",
+    webhook_delete: "Webhook Deleted",
+    bot_create: "Bot Created",
+    bot_update: "Bot Updated",
+    bot_delete: "Bot Deleted",
+    theme_update: "Theme Updated",
+    welcome_screen_update: "Welcome Screen Updated",
+    template_create: "Template Created",
   };
   return names[action];
 };
@@ -107,6 +144,24 @@ export const getAuditLogActionIcon = (action: AuditLogAction): string => {
     message_delete: "Trash2",
     message_pin: "Pin",
     message_unpin: "PinOff",
+    emoji_create: "Smile",
+    emoji_delete: "Trash2",
+    sticker_create: "Sticker",
+    sticker_delete: "Trash2",
+    sound_create: "Volume2",
+    sound_delete: "Trash2",
+    event_create: "CalendarPlus",
+    event_update: "CalendarCog",
+    event_cancel: "CalendarX",
+    webhook_create: "Webhook",
+    webhook_update: "Edit",
+    webhook_delete: "Trash2",
+    bot_create: "Bot",
+    bot_update: "Edit",
+    bot_delete: "Trash2",
+    theme_update: "Palette",
+    welcome_screen_update: "PartyPopper",
+    template_create: "Copy",
   };
   return icons[action];
 };

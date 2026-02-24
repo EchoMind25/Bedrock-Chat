@@ -8,6 +8,7 @@ import { User, Shield, Palette, Lock, Bell, Mic, Code, Crown, X, LogOut, Sparkle
 import type { LucideIcon } from "lucide-react";
 import { useUIStore } from "@/store/ui.store";
 import { useAuthStore } from "@/store/auth.store";
+import { usePlatformRoleStore } from "@/store/platform-role.store";
 import { performFullLogout } from "@/lib/utils/logout";
 
 import { ProfileTab } from "./tabs/profile-tab";
@@ -50,6 +51,9 @@ export function SettingsModal() {
 	const closeSettings = useUIStore((s) => s.closeSettings);
 	const setTab = useUIStore((s) => s.setSettingsTab);
 	const user = useAuthStore((s) => s.user);
+	const platformRoleLoaded = usePlatformRoleStore((s) => s.isLoaded);
+	const platformIsDeveloper = usePlatformRoleStore((s) => s.isDeveloper());
+	const platformIsStaff = usePlatformRoleStore((s) => s.isStaff());
 
 	useEffect(() => {
 		setMounted(true);
@@ -77,12 +81,15 @@ export function SettingsModal() {
 
 	if (!mounted) return null;
 
-	// Filter restricted tabs
-	const isDeveloper = process.env.NODE_ENV === "development" ||
+	// Filter restricted tabs based on platform role
+	// Fall back to env-var check while platform roles haven't loaded yet
+	const isDeveloperFallback = process.env.NODE_ENV === "development" ||
 		(user?.id && process.env.NEXT_PUBLIC_DEVELOPER_IDS?.split(",").includes(user.id));
+	const showDeveloperTab = platformRoleLoaded ? platformIsDeveloper : isDeveloperFallback;
+	const showAdminTab = platformRoleLoaded ? platformIsStaff : (user?.accountType === "parent");
 	const visibleItems = NAV_ITEMS.filter((item) => {
-		if (item.id === "admin" && user?.accountType !== "parent") return false;
-		if (item.id === "developer" && !isDeveloper) return false;
+		if (item.id === "developer" && !showDeveloperTab) return false;
+		if (item.id === "admin" && !showAdminTab) return false;
 		return true;
 	});
 

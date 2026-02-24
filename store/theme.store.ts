@@ -22,6 +22,9 @@ import type {
 	ThemeEffects,
 	ThemeLayout,
 } from "@/lib/themes/types";
+import type { ServerThemeConfig } from "@/lib/types/server-theme";
+import { mapDbServerTheme, toDbServerTheme } from "@/lib/types/server-theme";
+import { createClient } from "@/lib/supabase/client";
 
 // ── State Interface ────────────────────────────────────────
 
@@ -32,6 +35,9 @@ interface ThemeState {
 	// Server-level themes (keyed by serverId)
 	serverThemes: Record<string, string>; // serverId → themeId
 	customThemes: ServerTheme[]; // User-created custom themes
+
+	// DB-backed server theme configs (per-server branding)
+	serverThemeConfigs: Map<string, ServerThemeConfig>;
 
 	// Profile themes
 	activeProfileThemeId: string;
@@ -46,6 +52,11 @@ interface ThemeState {
 	applyThemeForServer: (serverId: string) => void;
 	saveCustomTheme: (theme: ServerTheme) => void;
 	deleteCustomTheme: (themeId: string) => void;
+
+	// Actions: DB-backed server theme configs
+	loadServerThemeConfig: (serverId: string) => Promise<ServerThemeConfig | null>;
+	saveServerThemeConfig: (serverId: string, config: Partial<ServerThemeConfig>) => Promise<void>;
+	getServerThemeConfig: (serverId: string) => ServerThemeConfig | undefined;
 
 	// Actions: Customization
 	updateActiveColors: (colors: Partial<ThemeColors>) => void;
@@ -83,6 +94,7 @@ export const useThemeStore = create<ThemeState>()(
 				activeTheme: NEON_STREET,
 				serverThemes: {},
 				customThemes: [],
+				serverThemeConfigs: new Map(),
 				activeProfileThemeId: "default",
 				unlockedProfileThemeIds: ["default"],
 				unlockedStatusEffectIds: [
@@ -321,6 +333,68 @@ export const useThemeStore = create<ThemeState>()(
 							showTimestamps: show,
 						},
 					})),
+
+				// ── DB-Backed Server Theme Config ─────
+
+				loadServerThemeConfig: async (serverId) => {
+					// Check cache first
+					const cached = get().serverThemeConfigs.get(serverId);
+					if (cached) return cached;
+
+					try {
+						const supabase = createClient();
+						const { data, error } = await supabase
+							.from("server_themes")
+							.select("*")
+							.eq("server_id", serverId)
+							.single();
+
+						if (error || !data) return null;
+
+						const config = mapDbServerTheme(data as Record<string, unknown>);
+						set((s) => {
+							const configs = new Map(s.serverThemeConfigs);
+							configs.set(serverId, config);
+							return { serverThemeConfigs: configs };
+						});
+						return config;
+					} catch {
+						return null;
+					}
+				},
+
+				saveServerThemeConfig: async (serverId, config) => {
+					const supabase = createClient();
+					const dbData = toDbServerTheme(config);
+
+					const { error } = await supabase
+						.from("server_themes")
+						.update(dbData)
+						.eq("server_id", serverId);
+
+					if (error) throw error;
+
+					// Update cache
+					const existing = get().serverThemeConfigs.get(serverId);
+					if (existing) {
+						const updated = {
+							...existing,
+							...config,
+							colors: config.colors ? { ...existing.colors, ...config.colors } : existing.colors,
+							effects: config.effects ? { ...existing.effects, ...config.effects } : existing.effects,
+							updatedAt: new Date(),
+						};
+						set((s) => {
+							const configs = new Map(s.serverThemeConfigs);
+							configs.set(serverId, updated);
+							return { serverThemeConfigs: configs };
+						});
+					}
+				},
+
+				getServerThemeConfig: (serverId) => {
+					return get().serverThemeConfigs.get(serverId);
+				},
 
 				// ── Helpers ────────────────────────────
 

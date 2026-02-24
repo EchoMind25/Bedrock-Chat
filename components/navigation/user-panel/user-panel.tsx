@@ -9,6 +9,7 @@ import { usePresenceStore } from "@/store/presence.store";
 import { useFamilyStore } from "@/store/family.store";
 import { useUIStore } from "@/store/ui.store";
 import { usePointsStore } from "@/store/points.store";
+import { usePlatformRoleStore } from "@/store/platform-role.store";
 import { performFullLogout } from "@/lib/utils/logout";
 import { Avatar } from "@/components/ui/avatar/avatar";
 import type { AvatarStatus } from "@/components/ui/avatar/avatar";
@@ -23,6 +24,8 @@ export function UserPanel() {
 	const openSettings = useUIStore((s) => s.openSettings);
 	const setPresenceStatus = usePresenceStore((s) => s.setStatus);
 	const totalPoints = usePointsStore((s) => s.totalPoints);
+	const platformIsDeveloper = usePlatformRoleStore((s) => s.isDeveloper());
+	const platformIsStaff = usePlatformRoleStore((s) => s.isStaff());
 	const [showSettings, setShowSettings] = useState(false);
 	const [isMuted, setIsMuted] = useState(false);
 	const [isDeafened, setIsDeafened] = useState(false);
@@ -266,6 +269,38 @@ export function UserPanel() {
 									</svg>
 									My Profile
 								</button>
+								{platformIsDeveloper && (
+									<button
+										type="button"
+										className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded-sm transition-colors flex items-center gap-2"
+										onClick={() => {
+											setShowSettings(false);
+											router.push("/developers");
+										}}
+									>
+										<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<title>Developer Portal</title>
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+										</svg>
+										Developer Portal
+									</button>
+								)}
+								{platformIsStaff && (
+									<button
+										type="button"
+										className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded-sm transition-colors flex items-center gap-2"
+										onClick={() => {
+											setShowSettings(false);
+											openSettings("admin");
+										}}
+									>
+										<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<title>Admin Panel</title>
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+										</svg>
+										Admin Panel
+									</button>
+								)}
 								<div className="h-px bg-white/10 my-1" />
 								{statusOptions.map((option) => (
 									<button

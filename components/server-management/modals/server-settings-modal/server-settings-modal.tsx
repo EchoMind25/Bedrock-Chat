@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Settings, Shield, Hash, Ban, Link as LinkIcon, Folder } from "lucide-react";
+import { Settings, Shield, Hash, Ban, Link as LinkIcon, Folder, Palette, Smile, PartyPopper, CalendarDays, Webhook, Bot } from "lucide-react";
 import { Modal } from "../../../ui/modal/modal";
 import { Button } from "../../../ui/button/button";
 import { OverviewTab } from "./overview-tab";
@@ -10,6 +10,12 @@ import { ChannelsTab } from "./channels-tab";
 import { CategoriesTab } from "./categories-tab";
 import { ModerationTab } from "./moderation-tab";
 import { InvitesTab } from "./invites-tab";
+import { AppearanceTab } from "./appearance-tab";
+import { EmojisTab } from "./emojis-tab";
+import { WelcomeTab } from "./welcome-tab";
+import { EventsTab } from "./events-tab";
+import { WebhooksTab } from "./webhooks-tab";
+import { BotsTab } from "./bots-tab";
 import { useServerManagementStore } from "../../../../store/server-management.store";
 import { useServerStore } from "../../../../store/server.store";
 import { toast } from "../../../../lib/stores/toast-store";
@@ -343,11 +349,17 @@ export function ServerSettingsModal() {
 
   const tabs = [
     { id: "overview" as const, label: "Overview", icon: Settings },
+    { id: "appearance" as const, label: "Appearance", icon: Palette },
     { id: "roles" as const, label: "Roles", icon: Shield, count: displayServer.roles?.length },
     { id: "channels" as const, label: "Channels", icon: Hash, count: displayServer.channels.length },
     { id: "categories" as const, label: "Categories", icon: Folder, count: displayServer.categories.length },
+    { id: "emojis" as const, label: "Emojis", icon: Smile },
+    { id: "welcome" as const, label: "Welcome", icon: PartyPopper },
+    { id: "events" as const, label: "Events", icon: CalendarDays },
     { id: "moderation" as const, label: "Moderation", icon: Ban },
     { id: "invites" as const, label: "Invites", icon: LinkIcon },
+    { id: "webhooks" as const, label: "Webhooks", icon: Webhook },
+    { id: "bots" as const, label: "Bots", icon: Bot },
   ];
 
   return (
@@ -452,6 +464,24 @@ export function ServerSettingsModal() {
           )}
           {serverSettingsTab === "invites" && (
             <InvitesTab server={displayServer} />
+          )}
+          {serverSettingsTab === "appearance" && (
+            <AppearanceTab serverId={currentServer.id} />
+          )}
+          {serverSettingsTab === "emojis" && (
+            <EmojisTab serverId={currentServer.id} />
+          )}
+          {serverSettingsTab === "welcome" && (
+            <WelcomeTab serverId={currentServer.id} />
+          )}
+          {serverSettingsTab === "events" && (
+            <EventsTab serverId={currentServer.id} />
+          )}
+          {serverSettingsTab === "webhooks" && (
+            <WebhooksTab serverId={currentServer.id} />
+          )}
+          {serverSettingsTab === "bots" && (
+            <BotsTab serverId={currentServer.id} />
           )}
         </div>
       </div>

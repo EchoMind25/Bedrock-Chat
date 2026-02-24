@@ -166,6 +166,11 @@ export function MainLayoutClient({
 					// Step 2.7: Load user settings (fire-and-forget — non-blocking)
 					useSettingsStore.getState().loadSettings().catch(() => {});
 
+					// Step 2.75: Load platform role and permissions (fire-and-forget)
+					import("@/store/platform-role.store")
+						.then(({ usePlatformRoleStore }) => usePlatformRoleStore.getState().loadPermissions())
+						.catch(() => {});
+
 					// Step 2.8: Auto-collect daily login bonus (fire-and-forget)
 					try { usePointsStore.getState().collectDailyLogin(); } catch { /* ignore */ }
 

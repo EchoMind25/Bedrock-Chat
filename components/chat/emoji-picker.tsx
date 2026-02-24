@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from 'motion/react';
 import { useState } from 'react';
+import { ServerEmojiCategory } from './emoji-picker/server-emoji-category';
 
 interface EmojiPickerProps {
 	onSelect: (emoji: string) => void;
@@ -11,6 +12,7 @@ interface EmojiPickerProps {
 }
 
 const EMOJI_CATEGORIES = {
+	'Server': [],  // Custom server emojis - rendered separately
 	'Smileys': ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙'],
 	'Gestures': ['👍', '👎', '👌', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '👇', '☝️', '👋', '🤚', '🖐️', '✋', '🖖', '👏', '🙌'],
 	'Hearts': ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟'],
@@ -20,12 +22,14 @@ const EMOJI_CATEGORIES = {
 };
 
 export function EmojiPicker({ onSelect, isOpen, onClose, alignment = "left" }: EmojiPickerProps) {
-	const [activeCategory, setActiveCategory] = useState('Smileys');
+	const [activeCategory, setActiveCategory] = useState('Server');
 
 	const handleSelect = (emoji: string) => {
 		onSelect(emoji);
 		onClose();
 	};
+
+	const isServerCategory = activeCategory === 'Server';
 
 	return (
 		<AnimatePresence>
@@ -71,19 +75,25 @@ export function EmojiPicker({ onSelect, isOpen, onClose, alignment = "left" }: E
 							))}
 						</div>
 
-						{/* Emoji Grid */}
-						<div className="p-2 grid grid-cols-8 gap-1 max-h-60 overflow-y-auto scrollbar-thin">
-							{EMOJI_CATEGORIES[activeCategory as keyof typeof EMOJI_CATEGORIES].map((emoji, i) => (
-								<motion.button
-									key={`${emoji}-${i}`}
-									onClick={() => handleSelect(emoji)}
-									className="aspect-square flex items-center justify-center text-2xl rounded-lg hover:bg-white/10 transition-colors"
-									whileHover={{ scale: 1.2 }}
-									whileTap={{ scale: 0.9 }}
-								>
-									{emoji}
-								</motion.button>
-							))}
+						{/* Content */}
+						<div className="max-h-60 overflow-y-auto scrollbar-thin">
+							{isServerCategory ? (
+								<ServerEmojiCategory onSelect={handleSelect} />
+							) : (
+								<div className="p-2 grid grid-cols-8 gap-1">
+									{EMOJI_CATEGORIES[activeCategory as keyof typeof EMOJI_CATEGORIES].map((emoji, i) => (
+										<motion.button
+											key={`${emoji}-${i}`}
+											onClick={() => handleSelect(emoji)}
+											className="aspect-square flex items-center justify-center text-2xl rounded-lg hover:bg-white/10 transition-colors"
+											whileHover={{ scale: 1.2 }}
+											whileTap={{ scale: 0.9 }}
+										>
+											{emoji}
+										</motion.button>
+									))}
+								</div>
+							)}
 						</div>
 					</motion.div>
 				</>

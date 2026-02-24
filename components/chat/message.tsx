@@ -18,6 +18,7 @@ import { useServerStore } from '@/store/server.store';
 import { useSettingsStore } from '@/store/settings.store';
 import { useMemberStore } from '@/store/member.store';
 import type { MemberWithProfile } from '@/store/member.store';
+import { useServerEmojiStore } from '@/store/server-emoji.store';
 
 interface MessageProps {
 	message: Message;
@@ -39,6 +40,7 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 	const currentServerId = useServerStore((state) => state.currentServerId);
 	const showAvatars = useSettingsStore((state) => state.settings?.show_avatars ?? true);
 	const showTimestamps = useSettingsStore((state) => state.settings?.show_timestamps ?? true);
+	const timestampFormat = useSettingsStore((state) => state.settings?.timestamp_format ?? "relative");
 
 	// Presence-aware status: only re-renders when THIS author's status changes
 	const authorPresenceStatus = usePresenceStore(
@@ -51,6 +53,8 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 			return statusMap[presence.status] ?? undefined;
 		}, [message.author.id])
 	);
+
+	const getServerEmojis = useServerEmojiStore((s) => s.getServerEmojis);
 
 	const isOwnMessage = currentUser?.id === message.author.id;
 
@@ -99,18 +103,50 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 	};
 
 	const formatTimestamp = (date: Date) => {
-		const now = new Date();
-		const diff = now.getTime() - date.getTime();
-		const seconds = Math.floor(diff / 1000);
-		const minutes = Math.floor(seconds / 60);
-		const hours = Math.floor(minutes / 60);
-		const days = Math.floor(hours / 24);
+		switch (timestampFormat) {
+			case "12h":
+				return date.toLocaleTimeString('en-US', {
+					hour: 'numeric',
+					minute: '2-digit',
+					hour12: true,
+				});
+			case "24h":
+				return date.toLocaleTimeString('en-US', {
+					hour: '2-digit',
+					minute: '2-digit',
+					hour12: false,
+				});
+			case "full": {
+				const now = new Date();
+				const isToday = date.toDateString() === now.toDateString();
+				const yesterday = new Date(now);
+				yesterday.setDate(yesterday.getDate() - 1);
+				const isYesterday = date.toDateString() === yesterday.toDateString();
+				const time = date.toLocaleTimeString('en-US', {
+					hour: 'numeric',
+					minute: '2-digit',
+					hour12: true,
+				});
+				if (isToday) return `Today at ${time}`;
+				if (isYesterday) return `Yesterday at ${time}`;
+				return `${date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} ${time}`;
+			}
+			default: {
+				// "relative" format
+				const now = new Date();
+				const diff = now.getTime() - date.getTime();
+				const seconds = Math.floor(diff / 1000);
+				const minutes = Math.floor(seconds / 60);
+				const hours = Math.floor(minutes / 60);
+				const days = Math.floor(hours / 24);
 
-		if (seconds < 60) return 'just now';
-		if (minutes < 60) return `${minutes}m ago`;
-		if (hours < 24) return `${hours}h ago`;
-		if (days < 7) return `${days}d ago`;
-		return date.toLocaleDateString();
+				if (seconds < 60) return 'just now';
+				if (minutes < 60) return `${minutes}m ago`;
+				if (hours < 24) return `${hours}h ago`;
+				if (days < 7) return `${days}d ago`;
+				return date.toLocaleDateString();
+			}
+		}
 	};
 
 	const formatAbsoluteTime = (date: Date) => {
@@ -126,6 +162,19 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 
 	// Memoize markdown parsing to avoid re-parsing on every render (performance optimization)
 	const parsedContent = useMemo(() => parseMarkdown(message.content), [message.content]);
+
+	// Build custom emoji URL map for the current server
+	const emojiMap = useMemo(() => {
+		if (!currentServerId) return undefined;
+		const emojis = getServerEmojis(currentServerId);
+		if (emojis.length === 0) return undefined;
+		const map = new Map<string, string>();
+		for (const emoji of emojis) {
+			map.set(emoji.id, emoji.imageUrl);
+		}
+		return map;
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [currentServerId, getServerEmojis]);
 
 	return (
 		<motion.div
@@ -241,7 +290,7 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 					) : (
 						<>
 							<div className="message-content-wrapper text-white/90 wrap-break-word" style={{ fontSize: 'var(--message-font-size)', lineHeight: 'var(--message-line-height)' }}>
-								{renderMarkdown(parsedContent)}
+								{renderMarkdown(parsedContent, emojiMap)}
 							</div>
 
 							{/* Edit indicator */}

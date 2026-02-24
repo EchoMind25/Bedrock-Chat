@@ -15,6 +15,8 @@ import { uploadProfileImage } from "@/lib/upload-profile-image";
 import { getImageUrl, BANNER_TRANSFORM } from "@/lib/utils/image-url";
 import { toast } from "@/lib/stores/toast-store";
 import { usePointsStore } from "@/store/points.store";
+import { usePlatformRoleStore } from "@/store/platform-role.store";
+import { Badge } from "@/components/ui/badge/badge";
 
 const statusToAvatar: Record<UserStatus, AvatarStatus> = {
   online: "online",
@@ -38,6 +40,7 @@ export function ProfileTab() {
   const updateUser = useAuthStore((s) => s.updateUser);
   const setPresenceStatus = usePresenceStore((s) => s.setStatus);
   const activeProfileThemeId = useThemeStore((s) => s.activeProfileThemeId);
+  const platformRole = usePlatformRoleStore((s) => s.role);
 
   const profileTheme = useMemo(
     () => DEFAULT_PROFILE_THEMES.find((t) => t.id === activeProfileThemeId) ?? DEFAULT_PROFILE_THEMES[0],
@@ -301,6 +304,22 @@ export function ProfileTab() {
               <span className="text-sm text-slate-200">{option.label}</span>
             </button>
           ))}
+        </div>
+      </SettingsSection>
+
+      <SettingsSection title="Platform Role">
+        <div className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-white/5">
+          <div>
+            <p className="text-sm text-slate-200">Your platform role</p>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {platformRole === "user"
+                ? "Standard user account with no elevated access"
+                : "Granted by a platform administrator"}
+            </p>
+          </div>
+          <Badge variant={platformRole === "user" ? "default" : "primary"}>
+            {platformRole.replace("_", " ").toUpperCase()}
+          </Badge>
         </div>
       </SettingsSection>
     </div>

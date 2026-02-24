@@ -30,6 +30,12 @@ export enum Permission {
 
   // Advanced Permissions
   ADMINISTRATOR = 1 << 22, // 4194304
+
+  // Server Customization Permissions
+  MANAGE_SERVER_APPEARANCE = 1 << 23, // 8388608
+  MANAGE_EMOJIS = 1 << 24, // 16777216
+  MANAGE_EVENTS = 1 << 25, // 33554432
+  MANAGE_WEBHOOKS = 1 << 26, // 67108864
 }
 
 export type PermissionValue = "allow" | "neutral" | "deny";
@@ -145,6 +151,12 @@ export const PERMISSION_CATEGORIES = {
   ],
   ADVANCED: [
     { permission: Permission.ADMINISTRATOR, name: "Administrator", description: "Grants all permissions and bypasses all channel-specific permissions" },
+  ],
+  SERVER_CUSTOMIZATION: [
+    { permission: Permission.MANAGE_SERVER_APPEARANCE, name: "Manage Appearance", description: "Allows members to change server theme, colors, and visual identity" },
+    { permission: Permission.MANAGE_EMOJIS, name: "Manage Emojis & Stickers", description: "Allows members to upload, rename, and delete custom emojis and stickers" },
+    { permission: Permission.MANAGE_EVENTS, name: "Manage Events", description: "Allows members to create, edit, and cancel server events" },
+    { permission: Permission.MANAGE_WEBHOOKS, name: "Manage Webhooks", description: "Allows members to create, edit, and delete webhooks and bot integrations" },
   ],
 } as const;
 

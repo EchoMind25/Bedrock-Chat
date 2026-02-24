@@ -152,10 +152,16 @@ export function CreateServerModal() {
       const supabase = createClient();
       const template = TEMPLATES.find((t) => t.id === selectedTemplate)!;
 
+      // Generate UUID client-side to avoid dependency on .select() RETURNING,
+      // which can fail with 403 if the SELECT policy hasn't been satisfied yet
+      // (e.g., private servers where the owner isn't yet in server_members).
+      const serverId = crypto.randomUUID();
+
       // 1. Create server in Supabase
-      const { data: serverData, error: serverError } = await supabase
+      const { error: serverError } = await supabase
         .from("servers")
         .insert({
+          id: serverId,
           name: serverName.trim(),
           owner_id: user.id,
           icon_url: serverIcon,
@@ -163,13 +169,9 @@ export function CreateServerModal() {
           allow_discovery: isPublic ? true : allowDiscovery,
           require_approval: isPublic ? false : requireApproval,
           category,
-        })
-        .select()
-        .single();
+        });
 
       if (serverError) throw serverError;
-
-      const serverId = serverData.id;
 
       // 2. Add creator as owner member
       const { error: memberError } = await supabase.from("server_members").insert({
@@ -267,7 +269,7 @@ export function CreateServerModal() {
         categories,
         channels,
         unreadCount: 0,
-        createdAt: new Date(serverData.created_at),
+        createdAt: new Date(),
         themeColor: deriveThemeColor(serverName.trim()),
         roles: generateDefaultRoles(serverId),
         settings: {

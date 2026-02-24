@@ -6,9 +6,11 @@ import React from 'react';
  */
 
 export interface ParsedContent {
-	type: 'text' | 'bold' | 'italic' | 'code' | 'codeblock' | 'blockquote' | 'mention';
+	type: 'text' | 'bold' | 'italic' | 'code' | 'codeblock' | 'blockquote' | 'mention' | 'custom_emoji';
 	content: string;
 	language?: string; // for code blocks
+	emojiId?: string; // for custom emojis
+	emojiUrl?: string; // for custom emojis
 }
 
 export function parseMarkdown(text: string): ParsedContent[] {
@@ -54,6 +56,21 @@ export function parseMarkdown(text: string): ParsedContent[] {
 		let pos = 0;
 
 		while (pos < remaining.length) {
+			// Check for custom emoji (<:name:id>)
+			if (remaining[pos] === '<' && remaining[pos + 1] === ':') {
+				const emojiRegex = /^<:([a-zA-Z0-9_]+):([a-f0-9-]+)>/;
+				const emojiMatch = remaining.slice(pos).match(emojiRegex);
+				if (emojiMatch) {
+					tokens.push({
+						type: 'custom_emoji',
+						content: emojiMatch[1],
+						emojiId: emojiMatch[2],
+					});
+					pos += emojiMatch[0].length;
+					continue;
+				}
+			}
+
 			// Check for blockquote (> at start of line)
 			if (remaining[pos] === '>' && (pos === 0 || remaining[pos - 1] === '\n')) {
 				const lineEnd = remaining.indexOf('\n', pos);
@@ -125,7 +142,8 @@ export function parseMarkdown(text: string): ParsedContent[] {
 				remaining[textEnd] !== '*' &&
 				remaining[textEnd] !== '`' &&
 				remaining[textEnd] !== '@' &&
-				remaining[textEnd] !== '>'
+				remaining[textEnd] !== '>' &&
+				remaining[textEnd] !== '<'
 			) {
 				textEnd++;
 			}
@@ -143,7 +161,7 @@ export function parseMarkdown(text: string): ParsedContent[] {
 	return result;
 }
 
-export function renderMarkdown(parsed: ParsedContent[]): React.ReactNode {
+export function renderMarkdown(parsed: ParsedContent[], emojiMap?: Map<string, string>): React.ReactNode {
 	return parsed.map((token, i) => {
 		const key = `${token.type}-${i}`;
 
@@ -191,6 +209,28 @@ export function renderMarkdown(parsed: ParsedContent[]): React.ReactNode {
 						{token.content}
 					</blockquote>
 				);
+
+			case 'custom_emoji': {
+				const emojiUrl = token.emojiId && emojiMap?.get(token.emojiId);
+				if (emojiUrl) {
+					return (
+						<img
+							key={key}
+							src={emojiUrl}
+							alt={`:${token.content}:`}
+							title={`:${token.content}:`}
+							className="inline-block w-6 h-6 object-contain align-middle mx-0.5"
+							loading="lazy"
+						/>
+					);
+				}
+				// Fallback: render as text if emoji not found
+				return (
+					<span key={key} className="text-white/50">
+						:{token.content}:
+					</span>
+				);
+			}
 
 			case 'mention':
 				return (

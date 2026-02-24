@@ -9,7 +9,7 @@ import { createClient } from "../lib/supabase/client";
 
 const EMPTY_ARRAY: never[] = [];
 
-export type ServerSettingsTab = "overview" | "roles" | "channels" | "categories" | "moderation" | "invites";
+export type ServerSettingsTab = "overview" | "roles" | "channels" | "categories" | "moderation" | "invites" | "appearance" | "emojis" | "welcome" | "events" | "webhooks" | "bots";
 export type ChannelSettingsTab = "overview" | "permissions";
 
 export interface DiscoverableServer {

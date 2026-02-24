@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
 import { checkRateLimit } from "@/lib/utils/rate-limiter";
 
 /**
@@ -22,17 +22,6 @@ interface StatsResponse {
 // In-memory cache
 let cachedStats: StatsResponse | null = null;
 const CACHE_TTL_MS = 60_000; // 60 seconds
-
-function createServiceClient() {
-	const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-	const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-	if (!url || !serviceKey) {
-		throw new Error("Missing Supabase configuration");
-	}
-
-	return createClient(url, serviceKey);
-}
 
 async function fetchStats(): Promise<StatsResponse> {
 	// Return cached if still fresh
