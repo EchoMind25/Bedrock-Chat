@@ -433,7 +433,7 @@ export function RolesTab({
 
                     {/* Current members assigned to this role */}
                     {assignedMembers.length > 0 && (
-                      <div className="space-y-2 mb-3">
+                      <div className="space-y-2 mb-3 max-h-[180px] overflow-y-auto settings-scrollbar">
                         {assignedMembers.map((member) => (
                           <div
                             key={member.id}
@@ -466,25 +466,27 @@ export function RolesTab({
                     ) : availableMembers.length > 0 ? (
                       <div className="space-y-2">
                         <p className="text-xs text-slate-400">Add Members</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          {availableMembers.map((member) => (
-                            <button
-                              key={member.id}
-                              type="button"
-                              onClick={() => handleAddMemberToRole(member)}
-                              className="flex items-center gap-2 p-2 rounded-lg border border-slate-700/30 hover:border-slate-600/40 hover:bg-slate-800/30 transition-all text-left"
-                            >
-                              <Avatar
-                                src={member.avatar || undefined}
-                                fallback={member.displayName.slice(0, 2).toUpperCase()}
-                                size="sm"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs text-slate-200 truncate">{member.displayName}</p>
-                              </div>
-                              <UserPlus className="w-3.5 h-3.5 text-slate-500" />
-                            </button>
-                          ))}
+                        <div className="max-h-[200px] overflow-y-auto settings-scrollbar">
+                          <div className="grid grid-cols-2 gap-2">
+                            {availableMembers.map((member) => (
+                              <button
+                                key={member.id}
+                                type="button"
+                                onClick={() => handleAddMemberToRole(member)}
+                                className="flex items-center gap-2 p-2 rounded-lg border border-slate-700/30 hover:border-slate-600/40 hover:bg-slate-800/30 transition-all text-left"
+                              >
+                                <Avatar
+                                  src={member.avatar || undefined}
+                                  fallback={member.displayName.slice(0, 2).toUpperCase()}
+                                  size="sm"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs text-slate-200 truncate">{member.displayName}</p>
+                                </div>
+                                <UserPlus className="w-3.5 h-3.5 text-slate-500" />
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     ) : members.length === 0 ? (

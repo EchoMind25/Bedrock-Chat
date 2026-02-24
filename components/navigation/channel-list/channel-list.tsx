@@ -355,7 +355,6 @@ export function ChannelList() {
 					)}
 
 					{currentServer.categories
-						.filter((cat) => (channelsByCategory[cat.id] || []).length > 0)
 						.map((category) => {
 						const channels = channelsByCategory[category.id] || [];
 						const isCollapsed = category.collapsed ?? false;

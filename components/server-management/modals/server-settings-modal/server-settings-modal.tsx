@@ -173,6 +173,43 @@ export function ServerSettingsModal() {
             if (updateErr) throw updateErr;
           }
         }
+
+        // Persist role member assignments (role_members junction table)
+        const userId = (await supabase.auth.getUser()).data.user?.id;
+        for (const role of editedServer.roles) {
+          if (role.memberIds === undefined) continue;
+
+          // Get current members for this role from DB
+          const { data: currentRoleMembers } = await supabase
+            .from("role_members")
+            .select("user_id")
+            .eq("role_id", role.id);
+
+          const currentUserIds = new Set((currentRoleMembers || []).map((rm: { user_id: string }) => rm.user_id));
+          const desiredUserIds = new Set(role.memberIds);
+
+          // Add new members
+          const toAdd = role.memberIds.filter(uid => !currentUserIds.has(uid));
+          if (toAdd.length > 0) {
+            const { error: addErr } = await supabase.from("role_members").insert(
+              toAdd.map(uid => ({
+                role_id: role.id,
+                user_id: uid,
+                assigned_by: userId,
+              }))
+            );
+            if (addErr) console.error("Error adding role members:", addErr);
+          }
+
+          // Remove old members
+          const toRemove = [...currentUserIds].filter(uid => !desiredUserIds.has(uid));
+          for (const uid of toRemove) {
+            await supabase.from("role_members")
+              .delete()
+              .eq("role_id", role.id)
+              .eq("user_id", uid);
+          }
+        }
       } catch (err) {
         errors.push(`Role changes failed: ${err instanceof Error ? err.message : "Unknown error"}`);
       }

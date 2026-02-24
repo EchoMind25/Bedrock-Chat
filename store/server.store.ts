@@ -3,6 +3,7 @@ import { devtools, persist } from "zustand/middleware";
 import { conditionalDevtools } from "@/lib/utils/devtools-config";
 import type { Server, Channel, ChannelType, ChannelCategory } from "@/lib/types/server";
 import { generateDefaultRoles } from "@/lib/constants/roles";
+import type { Role } from "@/lib/types/permissions";
 import { DEFAULT_SERVER_SETTINGS } from "@/lib/types/server-settings";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/store/auth.store";
@@ -112,12 +113,13 @@ export const useServerStore = create<ServerState>()(
 								serverMap.set(serverId, srv);
 							}
 
-							// Batch fetch all categories and channels in parallel (2 queries total, not 2*N)
+							// Batch fetch all categories, channels, and roles in parallel
 							let allCategories: Record<string, unknown>[] = [];
 							let allChannels: Record<string, unknown>[] = [];
+							let allRoles: Record<string, unknown>[] = [];
 
 							if (serverIds.length > 0) {
-								const [catResult, chResult] = await Promise.all([
+								const [catResult, chResult, roleResult] = await Promise.all([
 									supabase
 										.from("channel_categories")
 										.select("*")
@@ -125,6 +127,11 @@ export const useServerStore = create<ServerState>()(
 										.order("position", { ascending: true }),
 									supabase
 										.from("channels")
+										.select("*")
+										.in("server_id", serverIds)
+										.order("position", { ascending: true }),
+									supabase
+										.from("server_roles")
 										.select("*")
 										.in("server_id", serverIds)
 										.order("position", { ascending: true }),
@@ -136,9 +143,35 @@ export const useServerStore = create<ServerState>()(
 								if (chResult.error) {
 									console.error("Error loading channels:", chResult.error);
 								}
+								if (roleResult.error) {
+									console.error("Error loading roles:", roleResult.error);
+								}
 
 								allCategories = (catResult.data || []) as Record<string, unknown>[];
 								allChannels = (chResult.data || []) as Record<string, unknown>[];
+								allRoles = (roleResult.data || []) as Record<string, unknown>[];
+							}
+
+							// Batch fetch role_members for all roles
+							let allRoleMembers: Record<string, unknown>[] = [];
+							const allRoleIds = allRoles.map(r => r.id as string);
+							if (allRoleIds.length > 0) {
+								const { data: rmData, error: rmError } = await supabase
+									.from("role_members")
+									.select("role_id, user_id")
+									.in("role_id", allRoleIds);
+								if (rmError) {
+									console.error("Error loading role members:", rmError);
+								}
+								allRoleMembers = (rmData || []) as Record<string, unknown>[];
+							}
+
+							// Group role_members by role_id
+							const membersByRole = new Map<string, string[]>();
+							for (const rm of allRoleMembers) {
+								const roleId = rm.role_id as string;
+								if (!membersByRole.has(roleId)) membersByRole.set(roleId, []);
+								membersByRole.get(roleId)!.push(rm.user_id as string);
 							}
 
 							// Group by server_id for O(1) lookups
@@ -156,10 +189,38 @@ export const useServerStore = create<ServerState>()(
 								channelsByServer.get(sid)!.push(ch);
 							}
 
+							const rolesByServer = new Map<string, Record<string, unknown>[]>();
+							for (const role of allRoles) {
+								const sid = role.server_id as string;
+								if (!rolesByServer.has(sid)) rolesByServer.set(sid, []);
+								rolesByServer.get(sid)!.push(role);
+							}
+
 							for (const serverId of serverIds) {
 								const srv = serverMap.get(serverId)!;
 								const categories = categoriesByServer.get(serverId) || [];
 								const channels = channelsByServer.get(serverId) || [];
+								const dbRoles = rolesByServer.get(serverId) || [];
+
+								// Map DB roles to frontend Role type, falling back to defaults if none in DB
+								const roles: Role[] = dbRoles.length > 0
+									? dbRoles.map(dbRole => {
+										const roleMembers = membersByRole.get(dbRole.id as string) || [];
+										return {
+											id: dbRole.id as string,
+											serverId: dbRole.server_id as string,
+											name: dbRole.name as string,
+											color: (dbRole.color as string) || "oklch(0.5 0 0)",
+											permissions: Number(dbRole.permissions),
+											position: dbRole.position as number,
+											mentionable: (dbRole.mentionable as boolean) ?? false,
+											memberCount: roleMembers.length,
+											memberIds: roleMembers,
+											isDefault: (dbRole.is_default as boolean) ?? false,
+											createdAt: new Date(dbRole.created_at as string),
+										};
+									})
+									: generateDefaultRoles(serverId);
 
 								servers.push({
 									id: serverId,
@@ -191,7 +252,7 @@ export const useServerStore = create<ServerState>()(
 									})),
 									unreadCount: 0,
 									createdAt: new Date(srv.created_at as string),
-									roles: generateDefaultRoles(serverId),
+									roles,
 									settings: {
 										...DEFAULT_SERVER_SETTINGS,
 										icon: (srv.icon_url as string) || null,

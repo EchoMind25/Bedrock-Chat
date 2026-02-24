@@ -47,7 +47,18 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ overrides: overrides || [] });
+    // Map DB column names to frontend format
+    const mapped = (overrides || []).map((o: Record<string, unknown>) => ({
+      id: o.id,
+      channelId: o.channel_id,
+      targetType: o.target_type,
+      targetId: o.target_id,
+      allow: o.allow_permissions,
+      deny: o.deny_permissions,
+      createdAt: o.created_at,
+      updatedAt: o.updated_at,
+    }));
+    return NextResponse.json({ overrides: mapped });
   } catch (error) {
     console.error("[API] Channel permissions GET error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -125,8 +136,8 @@ export async function POST(
           channel_id: channelId,
           target_type: targetType,
           target_id: targetId,
-          allow,
-          deny,
+          allow_permissions: allow,
+          deny_permissions: deny,
         },
         {
           onConflict: "channel_id,target_type,target_id",

@@ -12,6 +12,7 @@ import { useServerStore } from "@/store/server.store";
 import { useMemberStore } from "@/store/member.store";
 import type { MemberWithProfile } from "@/store/member.store";
 import { toast } from "@/lib/stores/toast-store";
+import { createClient } from "@/lib/supabase/client";
 
 interface UserProfileCardProps {
 	member: MemberWithProfile;
@@ -114,6 +115,57 @@ export function UserProfileCard({ member, serverId, onClose }: UserProfileCardPr
 		setIsUpdatingRole(true);
 		try {
 			await useMemberStore.getState().updateMemberRole(serverId, member.id, newRole);
+
+			// Sync with custom roles system (server_roles + role_members)
+			const serverRoles = server?.roles || [];
+			const roleNameMap: Record<string, string> = {
+				admin: "Admin",
+				moderator: "Moderator",
+			};
+			const targetRoleName = roleNameMap[newRole];
+			const targetRole = targetRoleName ? serverRoles.find(r => r.name === targetRoleName) : null;
+
+			// Update server store: remove from old non-default roles, add to target role
+			useServerStore.setState(state => ({
+				servers: state.servers.map(s => s.id !== serverId ? s : {
+					...s,
+					roles: s.roles?.map(r => {
+						// Add to target role
+						if (targetRole && r.id === targetRole.id && !r.memberIds?.includes(member.userId)) {
+							const newIds = [...(r.memberIds || []), member.userId];
+							return { ...r, memberIds: newIds, memberCount: newIds.length };
+						}
+						// Remove from other non-default roles (except the target)
+						if (!r.isDefault && r.id !== targetRole?.id && r.memberIds?.includes(member.userId)) {
+							const newIds = r.memberIds.filter(id => id !== member.userId);
+							return { ...r, memberIds: newIds, memberCount: newIds.length };
+						}
+						return r;
+					}),
+				}),
+			}));
+
+			// Persist role_members changes to DB
+			const supabase = createClient();
+			// Remove from all non-default, non-target roles
+			for (const role of serverRoles) {
+				if (role.isDefault || role.id === targetRole?.id) continue;
+				if (role.memberIds?.includes(member.userId)) {
+					await supabase.from("role_members")
+						.delete()
+						.eq("role_id", role.id)
+						.eq("user_id", member.userId);
+				}
+			}
+			// Add to target role if applicable
+			if (targetRole && !targetRole.memberIds?.includes(member.userId)) {
+				await supabase.from("role_members").upsert({
+					role_id: targetRole.id,
+					user_id: member.userId,
+					assigned_by: currentUserId,
+				}, { onConflict: "role_id,user_id" });
+			}
+
 			setShowRoleDropdown(false);
 			toast.success("Role Updated", `${member.displayName} is now ${newRole}`);
 		} catch {

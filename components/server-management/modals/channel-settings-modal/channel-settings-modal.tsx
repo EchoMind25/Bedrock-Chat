@@ -8,14 +8,12 @@ import { Button } from "../../../ui/button/button";
 import { Input, Textarea } from "../../../ui/input/input";
 import { Dropdown } from "../../../ui/dropdown/dropdown";
 import { Toggle } from "../../../ui/toggle/toggle";
-import { PermissionOverrideGrid } from "../../permission-grid/permission-grid";
 import { PermissionsTab } from "./permissions-tab";
 import { useServerManagementStore, type ChannelSettingsTab } from "../../../../store/server-management.store";
 import { useServerStore } from "../../../../store/server.store";
 import { toast } from "../../../../lib/stores/toast-store";
 import { createClient } from "../../../../lib/supabase/client";
 import type { Channel } from "../../../../lib/types/server";
-import type { Role, PermissionOverride } from "../../../../lib/types/permissions";
 
 const SLOWMODE_OPTIONS = [
   { id: "0", value: "0", label: "Off" },
@@ -276,7 +274,28 @@ export function ChannelSettingsModal() {
 
         {/* Permissions Tab */}
         {channelSettingsTab === "permissions" && displayChannel && (
-          <PermissionsTab channel={displayChannel} />
+          <PermissionsTab
+            channel={displayChannel}
+            onSave={async (overrides) => {
+              for (const override of overrides) {
+                await fetch(`/api/permissions/channel/${displayChannel.id}`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    targetType: override.targetType,
+                    targetId: override.targetId,
+                    allow: override.allow,
+                    deny: override.deny,
+                  }),
+                });
+              }
+            }}
+            onDelete={async (channelId, overrideId) => {
+              await fetch(`/api/permissions/channel/${channelId}?overrideId=${overrideId}`, {
+                method: "DELETE",
+              });
+            }}
+          />
         )}
       </div>
     </Modal>
