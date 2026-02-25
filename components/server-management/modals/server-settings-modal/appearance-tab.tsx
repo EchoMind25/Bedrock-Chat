@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useThemeStore } from "@/store/theme.store";
+import { toast } from "@/lib/stores/toast-store";
 import type { ThemeColors, ThemeEffects, ThemeLayout, ThemeEnvironment } from "@/lib/themes/types";
 
 interface AppearanceTabProps {
@@ -183,6 +184,12 @@ export function AppearanceTab({ serverId }: AppearanceTabProps) {
         layout,
         environment,
       });
+      toast.success("Appearance Saved", "Server appearance has been updated");
+    } catch (err) {
+      toast.error(
+        "Save Failed",
+        err instanceof Error ? err.message : "Could not save appearance. Please try again.",
+      );
     } finally {
       setIsSaving(false);
     }

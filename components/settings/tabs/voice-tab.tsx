@@ -5,7 +5,9 @@ import { motion } from "motion/react";
 import { Mic, Headphones, ChevronDown, Sparkles } from "lucide-react";
 import { useVoiceStore } from "@/store/voice.store";
 import { useSettingsStore } from "@/store/settings.store";
-import { supportsNoiseCancellation, getAudioEnhancementMethod, getBrowserName } from "@/lib/utils/browser";
+import { getLiveKitRoomRef } from "@/lib/voice/room-ref";
+import { ConnectionState } from "livekit-client";
+import { getAudioEnhancementMethod, getBrowserName } from "@/lib/utils/browser";
 import { Button } from "@/components/ui/button/button";
 import { Toggle } from "@/components/ui/toggle/toggle";
 import { SettingsSection } from "../settings-section";
@@ -57,8 +59,31 @@ export function VoiceTab() {
 	const inputVolume = settings?.input_volume ?? 100;
 	const outputVolume = settings?.output_volume ?? 100;
 
-	const setInputDevice = (id: string) => updateSettings({ input_device: id === "default" ? null : id });
-	const setOutputDevice = (id: string) => updateSettings({ output_device: id === "default" ? null : id });
+	const setInputDevice = async (id: string) => {
+		updateSettings({ input_device: id === "default" ? null : id });
+		// If in an active LiveKit session, switch device without republishing
+		const room = getLiveKitRoomRef();
+		if (room && room.state === ConnectionState.Connected) {
+			try {
+				await room.switchActiveDevice("audioinput", id);
+			} catch (err) {
+				console.warn("[Voice Tab] Failed to switch audio input device:", err);
+			}
+		}
+	};
+
+	const setOutputDevice = async (id: string) => {
+		updateSettings({ output_device: id === "default" ? null : id });
+		const room = getLiveKitRoomRef();
+		if (room && room.state === ConnectionState.Connected) {
+			try {
+				await room.switchActiveDevice("audiooutput", id);
+			} catch (err) {
+				console.warn("[Voice Tab] Failed to switch audio output device:", err);
+			}
+		}
+	};
+
 	const setInputVolume = (v: number) => updateSettings({ input_volume: v });
 	const setOutputVolume = (v: number) => updateSettings({ output_volume: v });
 
@@ -75,64 +100,84 @@ export function VoiceTab() {
 	const outputIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
 	// Enumerate audio devices with caching
-	useEffect(() => {
-		async function loadDevices() {
+	const enumerateAudioDevices = useCallback(async () => {
+		try {
+			const now = Date.now();
+			if (
+				cachedInputDevices &&
+				cachedOutputDevices &&
+				now - permissionCacheTimestamp < PERMISSION_CACHE_TTL
+			) {
+				setInputDevices(cachedInputDevices);
+				setOutputDevices(cachedOutputDevices);
+				return;
+			}
+
+			let hasPermission = false;
+
 			try {
-				const now = Date.now();
-				if (
-					cachedInputDevices &&
-					cachedOutputDevices &&
-					now - permissionCacheTimestamp < PERMISSION_CACHE_TTL
-				) {
-					setInputDevices(cachedInputDevices);
-					setOutputDevices(cachedOutputDevices);
+				const permStatus = await navigator.permissions.query({
+					name: "microphone" as PermissionName,
+				});
+				if (permStatus.state === "granted") {
+					hasPermission = true;
+				} else if (permStatus.state === "denied") {
 					return;
 				}
+			} catch {
+				// permissions.query not supported (Firefox)
+			}
 
-				let hasPermission = false;
-
-				try {
-					const permStatus = await navigator.permissions.query({
-						name: "microphone" as PermissionName,
-					});
-					if (permStatus.state === "granted") {
-						hasPermission = true;
-					} else if (permStatus.state === "denied") {
-						return;
-					}
-				} catch {
-					// permissions.query not supported
-				}
-
-				if (!hasPermission) {
-					const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+			// Privacy Audit: getUserMedia called solely for device label enumeration.
+			// Stream is immediately stopped — no audio data is captured or transmitted.
+			if (!hasPermission) {
+				const stream = await navigator.mediaDevices
+					.getUserMedia({ audio: true })
+					.catch(() => null);
+				if (stream) {
 					stream.getTracks().forEach((t) => t.stop());
 				}
-
-				const devices = await navigator.mediaDevices.enumerateDevices();
-				const inputs: AudioDevice[] = [{ id: "default", name: "Default" }];
-				const outputs: AudioDevice[] = [{ id: "default", name: "Default" }];
-
-				for (const device of devices) {
-					if (device.kind === "audioinput" && device.deviceId !== "default") {
-						inputs.push({ id: device.deviceId, name: device.label || `Microphone ${inputs.length}` });
-					} else if (device.kind === "audiooutput" && device.deviceId !== "default") {
-						outputs.push({ id: device.deviceId, name: device.label || `Speaker ${outputs.length}` });
-					}
-				}
-
-				cachedInputDevices = inputs;
-				cachedOutputDevices = outputs;
-				permissionCacheTimestamp = Date.now();
-				setInputDevices(inputs);
-				setOutputDevices(outputs);
-			} catch {
-				// Permission denied or no devices — keep defaults
 			}
+
+			const devices = await navigator.mediaDevices.enumerateDevices();
+			const inputs: AudioDevice[] = [{ id: "default", name: "Default" }];
+			const outputs: AudioDevice[] = [{ id: "default", name: "Default" }];
+
+			for (const device of devices) {
+				if (device.kind === "audioinput" && device.deviceId !== "default") {
+					inputs.push({ id: device.deviceId, name: device.label || `Microphone ${inputs.length}` });
+				} else if (device.kind === "audiooutput" && device.deviceId !== "default") {
+					outputs.push({ id: device.deviceId, name: device.label || `Speaker ${outputs.length}` });
+				}
+			}
+
+			cachedInputDevices = inputs;
+			cachedOutputDevices = outputs;
+			permissionCacheTimestamp = Date.now();
+			setInputDevices(inputs);
+			setOutputDevices(outputs);
+		} catch {
+			// Permission denied or no devices — keep defaults
 		}
-		loadDevices();
-	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
+
+	// Enumerate on mount + listen for devicechange (plug/unplug USB mic, etc.)
+	useEffect(() => {
+		enumerateAudioDevices();
+
+		const handleDeviceChange = () => {
+			// Invalidate cache on device change
+			cachedInputDevices = null;
+			cachedOutputDevices = null;
+			permissionCacheTimestamp = 0;
+			enumerateAudioDevices();
+		};
+
+		navigator.mediaDevices.addEventListener("devicechange", handleDeviceChange);
+		return () => {
+			navigator.mediaDevices.removeEventListener("devicechange", handleDeviceChange);
+		};
+	}, [enumerateAudioDevices]);
 
 	// Stop mic test — cleanup all audio resources
 	const stopMicTest = useCallback(() => {

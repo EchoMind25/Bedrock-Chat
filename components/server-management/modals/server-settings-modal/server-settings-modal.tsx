@@ -129,7 +129,9 @@ export function ServerSettingsModal() {
         const { error } = await supabase
           .from("servers")
           .update(dbUpdates)
-          .eq("id", currentServer.id);
+          .eq("id", currentServer.id)
+          .select()
+          .single();
 
         if (error) throw error;
       } catch (err) {

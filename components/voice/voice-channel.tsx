@@ -20,6 +20,8 @@ import { ScreenShareConsentModal } from "./screen-share-consent-modal";
 import { Button } from "../ui/button";
 import { useLiveKitCall } from "@/lib/hooks/use-livekit-call";
 import { useVoiceStore } from "@/store/voice.store";
+import { useSettingsStore } from "@/store/settings.store";
+import { setLiveKitRoomRef } from "@/lib/voice/room-ref";
 import { useVoicePresenceStore } from "@/store/voice-presence.store";
 import {
   getOrbitalPosition,
@@ -61,6 +63,9 @@ export function VoiceChannel({
   const participants = useVoiceStore((s) => s.participants);
   const voiceToken = useVoiceStore((s) => s.voiceToken);
   const voiceWsUrl = useVoiceStore((s) => s.voiceWsUrl);
+
+  // Preferred input device from user settings (for join with correct device)
+  const preferredInputDevice = useSettingsStore((s) => s.settings?.input_device);
 
   // LiveKit hook for join/leave
   const { joinVoiceChannel, leaveVoiceChannel } = useLiveKitCall();
@@ -357,7 +362,16 @@ export function VoiceChannel({
             serverUrl={voiceWsUrl}
             token={voiceToken}
             connect={true}
-            audio={true}
+            audio={
+              preferredInputDevice
+                ? {
+                    deviceId: preferredInputDevice,
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                  }
+                : true
+            }
             video={false}
             onDisconnected={handleDisconnected}
             onConnected={() => {
@@ -434,6 +448,15 @@ function LiveKitParticipantSync() {
   const participants = useParticipants();
   const { localParticipant } = useLocalParticipant();
   const room = useRoomContext();
+
+  // Store room ref for cross-component access (e.g., VoiceSettings device switching)
+  useEffect(() => {
+    setLiveKitRoomRef(room);
+    return () => {
+      setLiveKitRoomRef(null);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const store = useVoiceStore.getState();

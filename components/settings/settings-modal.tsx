@@ -70,12 +70,14 @@ export function SettingsModal() {
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [isOpen]);
 
-	// Body scroll lock
+	// Body scroll lock + pointer-events cleanup
 	useEffect(() => {
 		if (!isOpen) return;
 		document.body.style.overflow = "hidden";
 		return () => {
+			// CRITICAL: always clean up, even if component unmounts while open
 			document.body.style.overflow = "";
+			document.body.style.pointerEvents = "";
 		};
 	}, [isOpen]);
 
@@ -123,30 +125,36 @@ export function SettingsModal() {
 	}
 
 	return createPortal(
-		<AnimatePresence>
+		<AnimatePresence onExitComplete={() => {
+			// Guaranteed cleanup after exit animation completes
+			document.body.style.overflow = "";
+			document.body.style.pointerEvents = "";
+		}}>
 			{isOpen && (
 				<>
-					{/* Backdrop */}
+					{/* Backdrop — pointer-events disabled during exit to prevent click blocking */}
 					<motion.div
 						key="settings-backdrop"
-						initial={{ opacity: 0 }}
-						animate={{ opacity: 1 }}
-						exit={{ opacity: 0 }}
+						initial={{ opacity: 0, pointerEvents: "none" as const }}
+						animate={{ opacity: 1, pointerEvents: "auto" as const }}
+						exit={{ opacity: 0, pointerEvents: "none" as const }}
 						transition={{ duration: 0.2 }}
 						className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs"
 						onClick={closeSettings}
 					/>
 
-					{/* Settings container */}
+					{/* Settings container — pointer-events disabled during exit to prevent
+					    the full-screen overlay from blocking clicks on underlying elements
+					    (e.g., channel list buttons) during the spring exit animation */}
 					<motion.div
 						key="settings-content"
-						initial={{ opacity: 0, scale: 0.98 }}
-						animate={{ opacity: 1, scale: 1 }}
-						exit={{ opacity: 0, scale: 0.98 }}
+						initial={{ opacity: 0, scale: 0.98, pointerEvents: "none" as const }}
+						animate={{ opacity: 1, scale: 1, pointerEvents: "auto" as const }}
+						exit={{ opacity: 0, scale: 0.98, pointerEvents: "none" as const }}
 						transition={{ type: "spring", stiffness: 260, damping: 20 }}
-						className="fixed inset-0 z-50 flex pointer-events-none"
+						className="fixed inset-0 z-50 flex"
 					>
-						<div className="flex w-full h-full pointer-events-auto">
+						<div className="flex w-full h-full">
 							{/* Sidebar */}
 							<div className="w-[240px] shrink-0 bg-[oklch(0.11_0.02_250)] overflow-y-auto scrollbar-thin flex flex-col">
 								<div className="flex-1 py-6 px-3">
@@ -191,31 +199,33 @@ export function SettingsModal() {
 								</div>
 							</div>
 
-							{/* Content area */}
-							<div className="flex-1 bg-[oklch(0.14_0.02_250)] overflow-y-auto settings-scrollbar relative">
-								{/* Close button */}
+							{/* Content area — close button is outside the scroll container so it never scrolls away */}
+							<div className="flex-1 bg-[oklch(0.14_0.02_250)] relative">
+								{/* Close button — always visible, positioned over scroll content */}
 								<button
 									type="button"
 									onClick={closeSettings}
-									className="absolute top-4 right-4 z-10 p-2 rounded-full border border-white/10 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+									className="absolute top-4 right-4 z-10 p-2 rounded-full border border-white/10 bg-[oklch(0.14_0.02_250)]/80 backdrop-blur-sm text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-hidden focus:ring-2 focus:ring-primary"
 									aria-label="Close settings"
 								>
 									<X className="w-5 h-5" />
 								</button>
 
-								{/* Tab content with transitions */}
-								<div className="max-w-[740px] mx-auto px-10 py-8">
-									<AnimatePresence mode="wait">
-										<motion.div
-											key={activeTab}
-											initial={{ opacity: 0, y: 8 }}
-											animate={{ opacity: 1, y: 0 }}
-											exit={{ opacity: 0, y: -8 }}
-											transition={{ duration: 0.15 }}
-										>
-											{renderTabContent()}
-										</motion.div>
-									</AnimatePresence>
+								{/* Scrollable tab content */}
+								<div className="h-full overflow-y-auto settings-scrollbar">
+									<div className="max-w-[740px] mx-auto px-10 py-8">
+										<AnimatePresence mode="wait">
+											<motion.div
+												key={activeTab}
+												initial={{ opacity: 0, y: 8 }}
+												animate={{ opacity: 1, y: 0 }}
+												exit={{ opacity: 0, y: -8 }}
+												transition={{ duration: 0.15 }}
+											>
+												{renderTabContent()}
+											</motion.div>
+										</AnimatePresence>
+									</div>
 								</div>
 							</div>
 						</div>

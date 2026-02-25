@@ -117,8 +117,9 @@ export function Modal({
       // Restore focus to previous element
       previousActiveElement.current?.focus();
 
-      // Restore body scroll
+      // CRITICAL: always clean up, even if component unmounts while open
       document.body.style.overflow = "";
+      document.body.style.pointerEvents = "";
     };
   }, [isOpen]);
 

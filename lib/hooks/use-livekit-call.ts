@@ -62,7 +62,12 @@ export function useLiveKitCall() {
         body: JSON.stringify({ channelId, hadVideo, hadScreenShare }),
       }).catch(() => {});
 
+      // Full state reset
       useVoiceStore.getState().reset();
+
+      // Remove any body style artifacts left by voice settings or call modals
+      document.body.style.overflow = "";
+      document.body.style.pointerEvents = "";
     },
     [],
   );

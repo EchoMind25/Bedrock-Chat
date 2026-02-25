@@ -82,7 +82,9 @@ export function ChannelSettingsModal() {
         const { error } = await supabase
           .from("channels")
           .update(dbUpdates)
-          .eq("id", currentChannel.id);
+          .eq("id", currentChannel.id)
+          .select()
+          .single();
 
         if (error) throw error;
       }

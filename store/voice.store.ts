@@ -298,7 +298,15 @@ export const useVoiceStore = create<VoiceState>()(
           }),
 
         // Full reset on leave/disconnect
-        reset: () => set(initialState),
+        reset: () => {
+          set(initialState);
+
+          // Remove any body style artifacts left by voice/call modals
+          if (typeof document !== "undefined") {
+            document.body.style.overflow = "";
+            document.body.style.pointerEvents = "";
+          }
+        },
       }),
       {
         name: "bedrock-voice-settings",

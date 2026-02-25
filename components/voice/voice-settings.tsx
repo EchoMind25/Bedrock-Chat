@@ -3,10 +3,13 @@
 import { Modal } from "../ui/modal/modal";
 import { Button } from "../ui/button";
 import { motion } from "motion/react";
-import { Volume2, Mic, Headphones, ChevronDown, Sparkles } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Mic, Headphones, ChevronDown, Sparkles } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
 import { useVoiceStore } from "@/store/voice.store";
-import { supportsNoiseCancellation, getAudioEnhancementMethod, getBrowserName } from "@/lib/utils/browser";
+import { useSettingsStore } from "@/store/settings.store";
+import { getLiveKitRoomRef } from "@/lib/voice/room-ref";
+import { ConnectionState } from "livekit-client";
+import { getAudioEnhancementMethod, getBrowserName } from "@/lib/utils/browser";
 
 interface VoiceSettingsProps {
   isOpen: boolean;
@@ -31,6 +34,13 @@ let cachedInputDevices: AudioDevice[] | null = null;
 let cachedOutputDevices: AudioDevice[] | null = null;
 const PERMISSION_CACHE_TTL = 30000; // 30 seconds
 
+/** Invalidate the device cache (called on devicechange events). */
+function invalidateDeviceCache() {
+  cachedInputDevices = null;
+  cachedOutputDevices = null;
+  permissionCacheTimestamp = 0;
+}
+
 export function VoiceSettings({ isOpen, onClose }: VoiceSettingsProps) {
   const [inputDevices, setInputDevices] = useState<AudioDevice[]>([
     { id: "default", name: "Default" },
@@ -38,104 +48,174 @@ export function VoiceSettings({ isOpen, onClose }: VoiceSettingsProps) {
   const [outputDevices, setOutputDevices] = useState<AudioDevice[]>([
     { id: "default", name: "Default" },
   ]);
-  const [inputDevice, setInputDevice] = useState("default");
-  const [outputDevice, setOutputDevice] = useState("default");
-  const [inputVolume, setInputVolume] = useState(80);
-  const [outputVolume, setOutputVolume] = useState(70);
   const [inputMeterLevel, setInputMeterLevel] = useState(0);
   const [outputMeterLevel, setOutputMeterLevel] = useState(0);
   const [isTesting, setIsTesting] = useState(false);
-  const [permissionGranted, setPermissionGranted] = useState(false);
+
+  // DB-backed settings for device persistence
+  const settings = useSettingsStore((s) => s.settings);
+  const updateSettings = useSettingsStore((s) => s.updateSettings);
+
+  // Derive selected devices from settings store (with defaults)
+  const inputDevice = settings?.input_device ?? "default";
+  const outputDevice = settings?.output_device ?? "default";
+  const inputVolume = settings?.input_volume ?? 100;
+  const outputVolume = settings?.output_volume ?? 100;
 
   // Audio enhancement state from voice store
   const noiseCancellationEnabled = useVoiceStore((s) => s.noiseCancellationEnabled);
   const setNoiseCancellation = useVoiceStore((s) => s.setNoiseCancellation);
 
-  // Enumerate real audio devices from the browser with caching
+  // ── Device enumeration ──────────────────────────────────
+  const enumerateDevices = useCallback(async () => {
+    try {
+      const now = Date.now();
+
+      // Check cache first (reduces getUserMedia calls by 90%+)
+      if (
+        cachedInputDevices &&
+        cachedOutputDevices &&
+        now - permissionCacheTimestamp < PERMISSION_CACHE_TTL
+      ) {
+        setInputDevices(cachedInputDevices);
+        setOutputDevices(cachedOutputDevices);
+        return;
+      }
+
+      // Check permission state before requesting
+      let hasPermission = false;
+      try {
+        const permStatus = await navigator.permissions.query({
+          name: "microphone" as PermissionName,
+        });
+        if (permStatus.state === "granted") {
+          hasPermission = true;
+        } else if (permStatus.state === "denied") {
+          console.warn("[Voice Settings] Microphone permission denied");
+          return;
+        }
+      } catch {
+        // permissions.query not supported (Firefox) — continue to getUserMedia
+      }
+
+      // Privacy Audit: getUserMedia called solely for device label enumeration.
+      // Stream is immediately stopped — no audio data is captured or transmitted.
+      if (!hasPermission) {
+        const stream = await navigator.mediaDevices
+          .getUserMedia({ audio: true })
+          .catch(() => null);
+        if (stream) {
+          stream.getTracks().forEach((t) => t.stop());
+        }
+      }
+
+      const devices = await navigator.mediaDevices.enumerateDevices();
+
+      const inputs: AudioDevice[] = [{ id: "default", name: "Default" }];
+      const outputs: AudioDevice[] = [{ id: "default", name: "Default" }];
+
+      for (const device of devices) {
+        if (device.kind === "audioinput" && device.deviceId !== "default") {
+          inputs.push({
+            id: device.deviceId,
+            name: device.label || `Microphone ${inputs.length}`,
+          });
+        } else if (device.kind === "audiooutput" && device.deviceId !== "default") {
+          outputs.push({
+            id: device.deviceId,
+            name: device.label || `Speaker ${outputs.length}`,
+          });
+        }
+      }
+
+      // Cache results
+      cachedInputDevices = inputs;
+      cachedOutputDevices = outputs;
+      permissionCacheTimestamp = Date.now();
+
+      setInputDevices(inputs);
+      setOutputDevices(outputs);
+
+      console.info(
+        `[Privacy Audit] Voice settings accessed at ${new Date().toISOString()}`
+      );
+    } catch (err) {
+      console.warn("[Voice Settings] Failed to load devices:", err);
+    }
+  }, []);
+
+  // Enumerate devices when modal opens + listen for devicechange (plug/unplug)
   useEffect(() => {
     if (!isOpen) return;
 
-    async function loadDevices() {
-      try {
-        const now = Date.now();
+    enumerateDevices();
 
-        // Check cache first (reduces getUserMedia calls by 90%+)
-        if (
-          cachedInputDevices &&
-          cachedOutputDevices &&
-          now - permissionCacheTimestamp < PERMISSION_CACHE_TTL
-        ) {
-          console.info("[Voice Settings] Using cached device list");
-          setInputDevices(cachedInputDevices);
-          setOutputDevices(cachedOutputDevices);
-          setPermissionGranted(true);
-          return;
-        }
+    // Re-enumerate on device change (plug/unplug USB mic, etc.)
+    const handleDeviceChange = () => {
+      invalidateDeviceCache();
+      enumerateDevices();
+    };
 
-        // Check permission state before requesting
+    navigator.mediaDevices.addEventListener("devicechange", handleDeviceChange);
+    return () => {
+      navigator.mediaDevices.removeEventListener("devicechange", handleDeviceChange);
+    };
+  }, [isOpen, enumerateDevices]);
+
+  // ── Device switch handlers ──────────────────────────────
+  const handleInputDeviceChange = useCallback(
+    async (deviceId: string) => {
+      // Persist to settings store (DB + localStorage)
+      updateSettings({ input_device: deviceId === "default" ? null : deviceId });
+
+      // If in an active LiveKit session, switch device without republishing
+      const room = getLiveKitRoomRef();
+      if (room && room.state === ConnectionState.Connected) {
         try {
-          const permStatus = await navigator.permissions.query({
-            name: "microphone" as PermissionName,
-          });
-
-          if (permStatus.state === "granted") {
-            setPermissionGranted(true);
-          } else if (permStatus.state === "denied") {
-            console.warn("[Voice Settings] Microphone permission denied");
-            return;
-          }
-        } catch {
-          // permissions.query not supported - continue to getUserMedia
+          await room.switchActiveDevice("audioinput", deviceId);
+          console.info(
+            `[Privacy Audit] Audio input device switched at ${new Date().toISOString()}`
+          );
+        } catch (err) {
+          console.warn("[Voice Settings] Failed to switch audio input device:", err);
         }
-
-        // Only request if needed
-        if (!permissionGranted) {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            audio: true
-          });
-          // Immediately stop - we only need permission
-          stream.getTracks().forEach((t) => t.stop());
-          setPermissionGranted(true);
-        }
-
-        const devices = await navigator.mediaDevices.enumerateDevices();
-
-        const inputs: AudioDevice[] = [{ id: "default", name: "Default" }];
-        const outputs: AudioDevice[] = [{ id: "default", name: "Default" }];
-
-        for (const device of devices) {
-          if (device.kind === "audioinput" && device.deviceId !== "default") {
-            inputs.push({
-              id: device.deviceId,
-              name: device.label || `Microphone ${inputs.length}`
-            });
-          } else if (device.kind === "audiooutput" && device.deviceId !== "default") {
-            outputs.push({
-              id: device.deviceId,
-              name: device.label || `Speaker ${outputs.length}`
-            });
-          }
-        }
-
-        // Cache results
-        cachedInputDevices = inputs;
-        cachedOutputDevices = outputs;
-        permissionCacheTimestamp = Date.now();
-
-        setInputDevices(inputs);
-        setOutputDevices(outputs);
-
-        console.info(
-          `[Privacy Audit] Voice settings accessed at ${new Date().toISOString()}`
-        );
-      } catch (err) {
-        console.warn("[Voice Settings] Failed to load devices:", err);
-        // Permission denied or no devices available - keep defaults
       }
-    }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
-    loadDevices();
-  }, [isOpen, permissionGranted]);
+  const handleOutputDeviceChange = useCallback(
+    async (deviceId: string) => {
+      updateSettings({ output_device: deviceId === "default" ? null : deviceId });
+
+      const room = getLiveKitRoomRef();
+      if (room && room.state === ConnectionState.Connected) {
+        try {
+          await room.switchActiveDevice("audiooutput", deviceId);
+          console.info(
+            `[Privacy Audit] Audio output device switched at ${new Date().toISOString()}`
+          );
+        } catch (err) {
+          console.warn("[Voice Settings] Failed to switch audio output device:", err);
+        }
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  const handleInputVolumeChange = useCallback(
+    (v: number) => updateSettings({ input_volume: v }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  const handleOutputVolumeChange = useCallback(
+    (v: number) => updateSettings({ output_volume: v }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   // Simulate microphone input level
   useEffect(() => {
@@ -189,7 +269,7 @@ export function VoiceSettings({ isOpen, onClose }: VoiceSettingsProps) {
           <DeviceDropdown
             devices={inputDevices}
             value={inputDevice}
-            onChange={setInputDevice}
+            onChange={handleInputDeviceChange}
           />
         </div>
 
@@ -201,7 +281,7 @@ export function VoiceSettings({ isOpen, onClose }: VoiceSettingsProps) {
           </div>
           <VolumeSlider
             value={inputVolume}
-            onChange={setInputVolume}
+            onChange={handleInputVolumeChange}
             meterLevel={inputMeterLevel}
           />
         </div>
@@ -218,7 +298,7 @@ export function VoiceSettings({ isOpen, onClose }: VoiceSettingsProps) {
           <DeviceDropdown
             devices={outputDevices}
             value={outputDevice}
-            onChange={setOutputDevice}
+            onChange={handleOutputDeviceChange}
           />
         </div>
 
@@ -230,7 +310,7 @@ export function VoiceSettings({ isOpen, onClose }: VoiceSettingsProps) {
           </div>
           <VolumeSlider
             value={outputVolume}
-            onChange={setOutputVolume}
+            onChange={handleOutputVolumeChange}
             meterLevel={outputMeterLevel}
           />
           <Button
@@ -283,7 +363,7 @@ export function VoiceSettings({ isOpen, onClose }: VoiceSettingsProps) {
           </label>
 
           <div className="flex items-start gap-2 p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
-            <div className="flex-shrink-0 mt-0.5">
+            <div className="shrink-0 mt-0.5">
               <svg className="w-4 h-4 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
               </svg>
@@ -323,7 +403,9 @@ function DeviceDropdown({ devices, value, onChange }: DeviceDropdownProps) {
         onClick={() => setIsOpen(!isOpen)}
         className="w-full px-4 py-3 bg-muted/50 border border-border/50 rounded-xl text-left flex items-center justify-between hover:bg-muted/70 transition-colors"
       >
-        <span className="text-sm text-foreground">{selectedDevice?.name}</span>
+        <span className="text-sm text-foreground">
+          {selectedDevice?.name ?? "Default"}
+        </span>
         <ChevronDown
           className={`w-4 h-4 text-slate-400 transition-transform ${
             isOpen ? "rotate-180" : ""

@@ -367,29 +367,35 @@ export const useThemeStore = create<ThemeState>()(
 					const supabase = createClient();
 					const dbData = toDbServerTheme(config);
 
+					// Use upsert so a row is created if none exists for this server
 					const { error } = await supabase
 						.from("server_themes")
-						.update(dbData)
-						.eq("server_id", serverId);
+						.upsert(
+							{ server_id: serverId, ...dbData },
+							{ onConflict: "server_id" },
+						);
 
 					if (error) throw error;
 
 					// Update cache
 					const existing = get().serverThemeConfigs.get(serverId);
-					if (existing) {
-						const updated = {
-							...existing,
-							...config,
-							colors: config.colors ? { ...existing.colors, ...config.colors } : existing.colors,
-							effects: config.effects ? { ...existing.effects, ...config.effects } : existing.effects,
-							updatedAt: new Date(),
-						};
-						set((s) => {
-							const configs = new Map(s.serverThemeConfigs);
-							configs.set(serverId, updated);
-							return { serverThemeConfigs: configs };
-						});
-					}
+					const updated = {
+						...(existing || {} as ServerThemeConfig),
+						...config,
+						serverId,
+						colors: config.colors
+							? { ...(existing?.colors || {}), ...config.colors }
+							: existing?.colors,
+						effects: config.effects
+							? { ...(existing?.effects || {}), ...config.effects }
+							: existing?.effects,
+						updatedAt: new Date(),
+					} as ServerThemeConfig;
+					set((s) => {
+						const configs = new Map(s.serverThemeConfigs);
+						configs.set(serverId, updated);
+						return { serverThemeConfigs: configs };
+					});
 				},
 
 				getServerThemeConfig: (serverId) => {

@@ -80,7 +80,14 @@ export const useUIStore = create<UIState>()(
 				openSettings: (tab = "profile") =>
 					set({ isSettingsOpen: true, settingsTab: tab }),
 
-				closeSettings: () => set({ isSettingsOpen: false }),
+				closeSettings: () => {
+					set({ isSettingsOpen: false });
+					// Defensive cleanup — remove any body style artifacts
+					if (typeof document !== "undefined") {
+						document.body.style.overflow = "";
+						document.body.style.pointerEvents = "";
+					}
+				},
 
 				setSettingsTab: (tab) => set({ settingsTab: tab }),
 

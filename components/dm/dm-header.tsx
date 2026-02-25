@@ -1,7 +1,11 @@
 "use client";
 
+import { useCallback } from "react";
 import { Avatar } from "@/components/ui/avatar/avatar";
 import { Badge } from "@/components/ui/badge/badge";
+import { useAuthStore } from "@/store/auth.store";
+import { useVoiceStore } from "@/store/voice.store";
+import { toast } from "@/lib/stores/toast-store";
 import type { DirectMessage } from "@/lib/types/dm";
 
 interface DMHeaderProps {
@@ -9,8 +13,13 @@ interface DMHeaderProps {
 }
 
 export function DMHeader({ dm }: DMHeaderProps) {
+	const currentUserId = useAuthStore((s) => s.user?.id);
+	const callState = useVoiceStore((s) => s.callState);
+
 	// Get the other participant (not the current user)
-	const otherParticipant = dm.participants.find((p) => p.userId !== "current-user-id");
+	const otherParticipant = dm.participants.find(
+		(p) => p.userId !== (currentUserId || "current-user-id"),
+	);
 	if (!otherParticipant) return null;
 
 	const statusText =
@@ -21,6 +30,8 @@ export function DMHeader({ dm }: DMHeaderProps) {
 				: otherParticipant.status === "dnd"
 					? "Do Not Disturb"
 					: "Offline";
+
+	const isInCall = callState !== "idle";
 
 	return (
 		<div className="h-12 px-4 flex items-center justify-between border-b border-white/10 bg-[oklch(0.14_0.02_250)]">
@@ -48,7 +59,7 @@ export function DMHeader({ dm }: DMHeaderProps) {
 				</div>
 			</div>
 
-			{/* E2E Encryption Badge */}
+			{/* E2E Encryption Badge + Call Buttons */}
 			<div className="flex items-center gap-2">
 				<Badge variant="success" className="flex items-center gap-1.5">
 					<svg
@@ -68,53 +79,117 @@ export function DMHeader({ dm }: DMHeaderProps) {
 					<span className="text-[10px]">E2E Encrypted</span>
 				</Badge>
 
-				{/* Actions */}
-				<button
-					type="button"
-					className="p-2 rounded-sm hover:bg-white/5 transition-colors text-white/60 hover:text-white"
-					onClick={() => {
-						// TODO: Implement voice call
-					}}
-				>
-					<svg
-						className="w-5 h-5"
-						fill="none"
-						stroke="currentColor"
-						viewBox="0 0 24 24"
-					>
-						<title>Voice Call</title>
-						<path
-							strokeLinecap="round"
-							strokeLinejoin="round"
-							strokeWidth={2}
-							d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-						/>
-					</svg>
-				</button>
+				{/* Voice call */}
+				<DirectCallButton
+					recipientId={otherParticipant.userId}
+					recipientName={otherParticipant.displayName}
+					recipientAvatar={otherParticipant.avatar}
+					callType="voice"
+					disabled={isInCall}
+				/>
 
-				<button
-					type="button"
-					className="p-2 rounded-sm hover:bg-white/5 transition-colors text-white/60 hover:text-white"
-					onClick={() => {
-						// TODO: Implement video call
-					}}
-				>
-					<svg
-						className="w-5 h-5"
-						fill="none"
-						stroke="currentColor"
-						viewBox="0 0 24 24"
-					>
-						<title>Video Call</title>
-						<path
-							strokeLinecap="round"
-							strokeLinejoin="round"
-							strokeWidth={2}
-							d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-						/>
-					</svg>
-				</button>
+				{/* Video call */}
+				<DirectCallButton
+					recipientId={otherParticipant.userId}
+					recipientName={otherParticipant.displayName}
+					recipientAvatar={otherParticipant.avatar}
+					callType="video"
+					disabled={isInCall}
+				/>
 			</div>
 		</div>
+	);
+}
+
+interface DirectCallButtonProps {
+	recipientId: string;
+	recipientName: string;
+	recipientAvatar?: string;
+	callType: "voice" | "video";
+	disabled?: boolean;
+}
+
+function DirectCallButton({
+	recipientId,
+	recipientName,
+	recipientAvatar,
+	callType,
+	disabled,
+}: DirectCallButtonProps) {
+	const handleCall = useCallback(async () => {
+		if (disabled) return;
+
+		try {
+			const res = await fetch("/api/voice/direct/initiate", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ calleeId: recipientId, callType }),
+			});
+
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({}));
+				toast.error(
+					"Call Failed",
+					err.error || "Could not start call. Check your connection.",
+				);
+				return;
+			}
+
+			const { callId, token, wsUrl, roomName } = await res.json();
+			const store = useVoiceStore.getState();
+			store.setActiveDirectCall({
+				id: callId,
+				callerId: "",
+				calleeId: recipientId,
+				callerName: "",
+				calleeName: recipientName,
+				calleeAvatar: recipientAvatar,
+				roomName,
+				callType,
+				status: "ringing",
+			});
+			store.setDirectCallConnection(token, wsUrl);
+			store.setCallState("outgoing_ringing");
+		} catch {
+			toast.error("Call Failed", "Could not start call. Check your connection.");
+		}
+	}, [recipientId, recipientName, recipientAvatar, callType, disabled]);
+
+	const label =
+		callType === "voice"
+			? `Start voice call with ${recipientName}`
+			: `Start video call with ${recipientName}`;
+
+	return (
+		<button
+			type="button"
+			className="p-2 rounded-sm hover:bg-white/5 transition-colors text-white/60 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+			onClick={handleCall}
+			disabled={disabled}
+			aria-label={label}
+			title={callType === "voice" ? "Voice Call" : "Video Call"}
+		>
+			{callType === "voice" ? (
+				<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<title>Voice Call</title>
+					<path
+						strokeLinecap="round"
+						strokeLinejoin="round"
+						strokeWidth={2}
+						d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+					/>
+				</svg>
+			) : (
+				<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<title>Video Call</title>
+					<path
+						strokeLinecap="round"
+						strokeLinejoin="round"
+						strokeWidth={2}
+						d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+					/>
+				</svg>
+			)}
+		</button>
 	);
 }
