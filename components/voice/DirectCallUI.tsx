@@ -11,6 +11,7 @@ import {
 } from "@livekit/components-react";
 import { Avatar } from "../ui/avatar";
 import { useVoiceStore } from "@/store/voice.store";
+import { voiceRoomOptions, voiceConnectOptions } from "@/lib/voice/livekit-options";
 
 const springConfig = {
   type: "spring" as const,
@@ -285,6 +286,8 @@ function ActiveCallOverlay({ call, token, wsUrl }: ActiveCallOverlayProps) {
         serverUrl={wsUrl}
         token={token}
         connect={true}
+        options={voiceRoomOptions}
+        connectOptions={voiceConnectOptions}
         audio={true}
         video={false}
         onDisconnected={handleDisconnected}

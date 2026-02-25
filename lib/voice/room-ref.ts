@@ -20,3 +20,17 @@ export function setLiveKitRoomRef(room: Room | null): void {
 export function getLiveKitRoomRef(): Room | null {
   return _roomRef;
 }
+
+// Pre-warmed Room for ICE pre-warming via prepareConnection().
+// Set before LiveKitRoom mounts, consumed once during first render.
+let _prewarmedRoom: Room | null = null;
+
+export function setPrewarmedRoom(room: Room | null): void {
+  _prewarmedRoom = room;
+}
+
+export function consumePrewarmedRoom(): Room | null {
+  const room = _prewarmedRoom;
+  _prewarmedRoom = null;
+  return room;
+}

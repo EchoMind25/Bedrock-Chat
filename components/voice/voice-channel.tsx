@@ -10,7 +10,7 @@ import {
   useLocalParticipant,
   useRoomContext,
 } from "@livekit/components-react";
-import { Track, RoomEvent, ConnectionState } from "livekit-client";
+import { Track, RoomEvent, ConnectionState, type Room } from "livekit-client";
 import { OrbitalAvatar } from "./orbital-avatar";
 import { ControlsBar } from "./controls-bar";
 import { VoiceSettings } from "./voice-settings";
@@ -21,7 +21,8 @@ import { Button } from "../ui/button";
 import { useLiveKitCall } from "@/lib/hooks/use-livekit-call";
 import { useVoiceStore } from "@/store/voice.store";
 import { useSettingsStore } from "@/store/settings.store";
-import { setLiveKitRoomRef } from "@/lib/voice/room-ref";
+import { setLiveKitRoomRef, consumePrewarmedRoom } from "@/lib/voice/room-ref";
+import { voiceRoomOptions, voiceConnectOptions, getAudioCaptureWithDevice } from "@/lib/voice/livekit-options";
 import { useVoicePresenceStore } from "@/store/voice-presence.store";
 import {
   getOrbitalPosition,
@@ -55,6 +56,7 @@ export function VoiceChannel({
   const [linkCopied, setLinkCopied] = useState(false);
   const leavingRef = useRef(false);
   const joinTimeRef = useRef<number>(Date.now());
+  const prewarmedRoomRef = useRef<Room | null>(null);
 
   // Voice store selectors
   const connectionStatus = useVoiceStore((s) => s.connectionStatus);
@@ -66,6 +68,12 @@ export function VoiceChannel({
 
   // Preferred input device from user settings (for join with correct device)
   const preferredInputDevice = useSettingsStore((s) => s.settings?.input_device);
+
+  // Consume pre-warmed Room (created by useLiveKitCall with ICE pre-warming)
+  // Read synchronously during render so it's available for the LiveKitRoom mount
+  if (voiceToken && voiceWsUrl && !prewarmedRoomRef.current) {
+    prewarmedRoomRef.current = consumePrewarmedRoom();
+  }
 
   // LiveKit hook for join/leave
   const { joinVoiceChannel, leaveVoiceChannel } = useLiveKitCall();
@@ -205,6 +213,7 @@ export function VoiceChannel({
   const handleLeave = useCallback(() => {
     if (leavingRef.current) return;
     leavingRef.current = true;
+    prewarmedRoomRef.current = null;
 
     // Award voice points based on call duration
     try {
@@ -362,14 +371,12 @@ export function VoiceChannel({
             serverUrl={voiceWsUrl}
             token={voiceToken}
             connect={true}
+            room={prewarmedRoomRef.current ?? undefined}
+            options={voiceRoomOptions}
+            connectOptions={voiceConnectOptions}
             audio={
               preferredInputDevice
-                ? {
-                    deviceId: preferredInputDevice,
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true,
-                  }
+                ? getAudioCaptureWithDevice(preferredInputDevice)
                 : true
             }
             video={false}
