@@ -453,7 +453,7 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 						<>
 							<div
 								className={cn(
-									"message-content-wrapper text-white/90 wrap-break-word",
+									"message-content-wrapper text-white/90 break-words whitespace-pre-wrap",
 									isOwnMessage && "own-message",
 									isBubble && "rounded-2xl px-3.5 py-2",
 									isMinimal && "py-0.5",

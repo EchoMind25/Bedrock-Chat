@@ -34,6 +34,7 @@ export default function DMPage({ params }: PageProps) {
 	const currentUser = useAuthStore((s) => s.user);
 	const showAvatars = useSettingsStore((s) => s.settings?.show_avatars ?? true);
 	const showTimestamps = useSettingsStore((s) => s.settings?.show_timestamps ?? true);
+	const messageStyle = useSettingsStore((s) => s.settings?.message_style ?? "flat");
 
 	const messagesRaw = useDMStore((s) => s.dmMessages[otherUserId]);
 	const messages = messagesRaw ?? EMPTY_MESSAGES;
@@ -150,6 +151,7 @@ export default function DMPage({ params }: PageProps) {
 								isOwn={msg.author.id === currentUser?.id}
 								showAvatars={showAvatars}
 								showTimestamps={showTimestamps}
+								messageStyle={messageStyle}
 								onProfileClick={handleProfileClick}
 							/>
 						);
@@ -339,6 +341,7 @@ function DMMessageBubble({
 	isOwn,
 	showAvatars,
 	showTimestamps,
+	messageStyle,
 	onProfileClick,
 }: {
 	message: Message;
@@ -346,23 +349,91 @@ function DMMessageBubble({
 	isOwn: boolean;
 	showAvatars: boolean;
 	showTimestamps: boolean;
+	messageStyle: "flat" | "bubble" | "minimal";
 	onProfileClick?: () => void;
 }) {
 	const formatTime = (date: Date) =>
 		date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
 	const clickable = !isOwn && onProfileClick;
+	const isBubble = messageStyle === "bubble";
+	const isMinimal = messageStyle === "minimal";
 
-	if (isGrouped) {
+	// ── Bubble mode: grouped message ──
+	if (isBubble && isGrouped) {
 		return (
-			<div className={`${showAvatars ? "pl-14" : "pl-0"} py-0.5 hover:bg-white/[0.02] rounded-sm`}>
-				<p className="text-sm text-white/90">{message.content}</p>
+			<div className={`flex py-0.5 ${isOwn ? "justify-end" : "justify-start"} px-3`}>
+				<div
+					className="rounded-2xl px-3.5 py-1.5 max-w-[75%] break-words whitespace-pre-wrap"
+					style={{
+						backgroundColor: isOwn ? "var(--color-primary)" : "oklch(0.18 0.02 250 / 0.6)",
+						color: isOwn ? "white" : "oklch(0.90 0.01 250)",
+						fontSize: "var(--message-font-size)",
+						lineHeight: "var(--message-line-height)",
+					}}
+				>
+					<p className="text-sm">{message.content}</p>
+				</div>
 			</div>
 		);
 	}
 
+	// ── Bubble mode: full message ──
+	if (isBubble) {
+		return (
+			<div className={`flex pt-2 pb-0.5 ${isOwn ? "justify-end" : "justify-start"} px-3`}>
+				<div className="flex flex-col max-w-[75%]">
+					{/* Sender name for non-own messages */}
+					{!isOwn && (
+						<span
+							className={`text-xs font-semibold mb-0.5 ml-1 ${clickable ? "cursor-pointer hover:underline" : ""}`}
+							style={{ color: message.author.roleColor || "oklch(0.7 0.15 250)" }}
+							role={clickable ? "button" : undefined}
+							tabIndex={clickable ? 0 : undefined}
+							onClick={clickable ? onProfileClick : undefined}
+							onKeyDown={clickable ? (e) => {
+								if (e.key === "Enter" || e.key === " ") {
+									e.preventDefault();
+									onProfileClick!();
+								}
+							} : undefined}
+						>
+							{message.author.displayName}
+						</span>
+					)}
+					<div
+						className="rounded-2xl px-3.5 py-2 break-words whitespace-pre-wrap"
+						style={{
+							backgroundColor: isOwn ? "var(--color-primary)" : "oklch(0.18 0.02 250 / 0.6)",
+							color: isOwn ? "white" : "oklch(0.90 0.01 250)",
+							fontSize: "var(--message-font-size)",
+							lineHeight: "var(--message-line-height)",
+						}}
+					>
+						<p className="text-sm">{message.content}</p>
+					</div>
+					{showTimestamps && (
+						<span className={`text-[10px] text-white/40 mt-0.5 ${isOwn ? "text-right mr-1" : "ml-1"}`}>
+							{formatTime(message.timestamp)}
+						</span>
+					)}
+				</div>
+			</div>
+		);
+	}
+
+	// ── Flat / Minimal mode: grouped message ──
+	if (isGrouped) {
+		return (
+			<div className={`${showAvatars ? "pl-14" : "pl-0"} ${isMinimal ? "py-0" : "py-0.5"} hover:bg-white/[0.02] rounded-sm`}>
+				<p className="text-sm text-white/90" style={{ fontSize: "var(--message-font-size)", lineHeight: "var(--message-line-height)" }}>{message.content}</p>
+			</div>
+		);
+	}
+
+	// ── Flat / Minimal mode: full message ──
 	return (
-		<div className="flex gap-3 pt-2 pb-0.5 hover:bg-white/[0.02] rounded-sm">
+		<div className={`flex gap-3 ${isMinimal ? "pt-1 pb-0.5" : "pt-2 pb-0.5"} hover:bg-white/[0.02] rounded-sm`}>
 			{showAvatars && (
 				<div
 					className={clickable ? "cursor-pointer rounded-full hover:opacity-80 transition-opacity focus-visible:ring-2 focus-visible:ring-[oklch(0.5_0.12_250)] focus-visible:outline-hidden" : ""}
@@ -403,7 +474,7 @@ function DMMessageBubble({
 						<span className="text-[10px] text-white/40">{formatTime(message.timestamp)}</span>
 					)}
 				</div>
-				<p className="text-sm text-white/90">{message.content}</p>
+				<p className="text-sm text-white/90" style={{ fontSize: "var(--message-font-size)", lineHeight: "var(--message-line-height)" }}>{message.content}</p>
 			</div>
 		</div>
 	);
