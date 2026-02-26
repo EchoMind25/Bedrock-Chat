@@ -58,6 +58,24 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 
 	const isOwnMessage = currentUser?.id === message.author.id;
 
+	// Check if user has moderation privileges (server role or platform role)
+	const currentUserPlatformRole = useAuthStore((s) => s.user?.platformRole);
+	const currentUserServerRole = useMemberStore(
+		useCallback((s) => {
+			if (!currentServerId) return undefined;
+			const members = s.membersByServer[currentServerId];
+			if (!members || !currentUser) return undefined;
+			const member = members.find((m) => m.userId === currentUser.id);
+			return member?.role;
+		}, [currentServerId, currentUser])
+	);
+
+	const canDelete = isOwnMessage
+		|| currentUserServerRole === "owner"
+		|| currentUserServerRole === "admin"
+		|| currentUserServerRole === "moderator"
+		|| currentUserPlatformRole === "super_admin";
+
 	const handleAuthorClick = async () => {
 		if (message.author.isBot || !currentServerId) return;
 
@@ -97,7 +115,10 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 	};
 
 	const handleDelete = () => {
-		if (confirm('Delete this message?')) {
+		const prompt = isOwnMessage
+			? 'Delete this message?'
+			: `Delete this message from ${message.author.displayName}?`;
+		if (confirm(prompt)) {
 			deleteMessage(channelId, message.id);
 		}
 	};
@@ -405,26 +426,26 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 							</button>
 						)}
 						{isOwnMessage && (
-							<>
-								<button
-									onClick={handleEdit}
-									className="p-2 rounded-lg bg-[oklch(0.2_0.02_250)] hover:bg-border-dark transition-colors"
-									title="Edit message"
-								>
-									<svg className="w-5 h-5 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-									</svg>
-								</button>
-								<button
-									onClick={handleDelete}
-									className="p-2 rounded-lg bg-[oklch(0.2_0.02_250)] hover:bg-[oklch(0.3_0.05_0)] transition-colors"
-									title="Delete message"
-								>
-									<svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-									</svg>
-								</button>
-							</>
+							<button
+								onClick={handleEdit}
+								className="p-2 rounded-lg bg-[oklch(0.2_0.02_250)] hover:bg-border-dark transition-colors"
+								title="Edit message"
+							>
+								<svg className="w-5 h-5 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+								</svg>
+							</button>
+						)}
+						{canDelete && (
+							<button
+								onClick={handleDelete}
+								className="p-2 rounded-lg bg-[oklch(0.2_0.02_250)] hover:bg-[oklch(0.3_0.05_0)] transition-colors"
+								title="Delete message"
+							>
+								<svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+								</svg>
+							</button>
 						)}
 					</motion.div>
 				)}

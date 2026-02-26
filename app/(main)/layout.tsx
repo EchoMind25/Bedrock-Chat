@@ -25,6 +25,7 @@ export default async function MainLayout({
 
 	if (
 		profile?.platform_role !== "super_admin" &&
+		profile?.platform_role !== "beta_tester" &&
 		profile?.waitlist_status !== "approved" &&
 		profile?.waitlist_status !== "bypassed"
 	) {

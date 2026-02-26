@@ -18,6 +18,7 @@ export interface User {
 	bio?: string;
 	status: UserStatus;
 	accountType: "standard" | "parent" | "teen";
+	platformRole?: "user" | "developer" | "moderator" | "admin" | "super_admin";
 	hasEmail: boolean;
 	createdAt: Date;
 	settings: UserSettings;
@@ -76,6 +77,7 @@ function profileToUser(profile: Record<string, unknown>, email: string): User {
 		bio: (profile.bio as string) || "",
 		status: (profile.status as UserStatus) || "online",
 		accountType: (profile.account_type as User["accountType"]) || "standard",
+		platformRole: (profile.platform_role as User["platformRole"]) || "user",
 		hasEmail: profile.has_email !== false && !email.endsWith("@anonymous.bedrock.local"),
 		createdAt: new Date(profile.created_at as string),
 		settings: {

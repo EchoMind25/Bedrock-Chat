@@ -1,4 +1,4 @@
-export type PlatformRole = "user" | "developer" | "moderator" | "admin" | "super_admin";
+export type PlatformRole = "user" | "beta_tester" | "developer" | "moderator" | "admin" | "super_admin";
 
 export interface PlatformPermissions {
 	// Developer permissions
@@ -67,10 +67,11 @@ export interface PlatformAuditEntry {
 
 export const PLATFORM_ROLE_HIERARCHY: Record<PlatformRole, number> = {
 	user: 0,
-	developer: 1,
-	moderator: 2,
-	admin: 3,
-	super_admin: 4,
+	beta_tester: 1,
+	developer: 2,
+	moderator: 3,
+	admin: 4,
+	super_admin: 5,
 };
 
 export const DEFAULT_PERMISSIONS: PlatformPermissions = {

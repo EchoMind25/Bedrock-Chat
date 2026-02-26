@@ -137,6 +137,17 @@ export const useMessageStore = create<MessageState>()(
               filter: `channel_id=eq.${channelId}`,
             },
             (payload) => {
+              // Handle soft-delete: remove message from local state
+              if (payload.new.is_deleted) {
+                set((state) => ({
+                  messages: {
+                    ...state.messages,
+                    [channelId]: state.messages[channelId]?.filter((msg) => msg.id !== payload.new.id) || [],
+                  },
+                }));
+                return;
+              }
+
               set((state) => ({
                 messages: {
                   ...state.messages,
@@ -479,22 +490,23 @@ export const useMessageStore = create<MessageState>()(
       },
 
       deleteMessage: async (channelId, messageId) => {
-        try {
-          const supabase = createClient();
-          await supabase.from('messages')
-            .update({ is_deleted: true })
-            .eq('id', messageId);
-        } catch (err) {
-          console.error('Error deleting message:', err);
-          return;
-        }
-
+        // Optimistic removal from local state
         set((state) => ({
           messages: {
             ...state.messages,
             [channelId]: state.messages[channelId]?.filter(msg => msg.id !== messageId) || [],
           },
         }));
+
+        try {
+          const res = await fetch(`/api/messages/${messageId}`, { method: 'DELETE' });
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            console.error('Error deleting message:', body.error || res.statusText);
+          }
+        } catch (err) {
+          console.error('Error deleting message:', err);
+        }
       },
 
     }),

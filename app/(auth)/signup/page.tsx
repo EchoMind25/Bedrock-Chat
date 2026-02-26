@@ -353,8 +353,9 @@ export default function SignupPage() {
 								<div className="bg-white/5 rounded-lg p-5 mb-6 text-left">
 									<p className="text-blue-200/70 text-sm leading-relaxed">
 										Click the link in the email to verify your account and
-										get started. The link will redirect you back here
-										automatically.
+										reserve your spot on the waitlist. Your username and
+										password are secured — we&apos;ll notify you when
+										you&apos;re approved for access.
 									</p>
 								</div>
 
