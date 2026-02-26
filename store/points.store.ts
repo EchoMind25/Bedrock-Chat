@@ -17,6 +17,7 @@ import {
 	calculateVoicePoints,
 	isSpamMessage,
 } from "@/lib/anti-gaming";
+import { createClient } from "@/lib/supabase/client";
 import type {
 	PointTransaction,
 	Achievement,
@@ -104,6 +105,9 @@ interface PointsState {
 	// Parent control
 	setEnabled: (enabled: boolean) => void;
 
+	// DB sync
+	loadFromDB: () => Promise<void>;
+
 	// Helpers
 	getPointsToday: () => number;
 	canEarnMore: () => boolean;
@@ -128,6 +132,82 @@ function ensureTodayCaps(caps: DailyCaps): DailyCaps {
 		};
 	}
 	return caps;
+}
+
+// ── DB sync helpers (fire-and-forget) ───────────────────────
+
+async function syncAchievementToDB(achievement: Achievement): Promise<void> {
+	try {
+		const supabase = createClient();
+		const { data: { user } } = await supabase.auth.getUser();
+		if (!user) return;
+
+		await supabase.from("user_achievements").upsert(
+			{
+				user_id: user.id,
+				achievement_id: achievement.id,
+				category: achievement.category,
+				progress: achievement.progress,
+				requirement: achievement.requirement,
+				unlocked_at: achievement.unlockedAt
+					? achievement.unlockedAt instanceof Date
+						? achievement.unlockedAt.toISOString()
+						: String(achievement.unlockedAt)
+					: null,
+			},
+			{ onConflict: "user_id,achievement_id" },
+		);
+	} catch {
+		// Silent — localStorage has the data
+	}
+}
+
+async function syncTransactionToDB(tx: PointTransaction): Promise<void> {
+	try {
+		const supabase = createClient();
+		const { data: { user } } = await supabase.auth.getUser();
+		if (!user) return;
+
+		await supabase.from("points_transactions").insert({
+			user_id: user.id,
+			action: tx.action,
+			points: tx.points,
+			metadata: tx.metadata || {},
+		});
+	} catch {
+		// Silent — localStorage has the data
+	}
+}
+
+async function pushAllAchievementsToDB(achievements: Achievement[]): Promise<void> {
+	try {
+		const supabase = createClient();
+		const { data: { user } } = await supabase.auth.getUser();
+		if (!user) return;
+
+		const rows = achievements
+			.filter((a) => a.progress > 0 || a.unlockedAt)
+			.map((a) => ({
+				user_id: user.id,
+				achievement_id: a.id,
+				category: a.category,
+				progress: a.progress,
+				requirement: a.requirement,
+				unlocked_at: a.unlockedAt
+					? a.unlockedAt instanceof Date
+						? a.unlockedAt.toISOString()
+						: String(a.unlockedAt)
+					: null,
+			}));
+
+		if (rows.length > 0) {
+			await supabase
+				.from("user_achievements")
+				.upsert(rows, { onConflict: "user_id,achievement_id" });
+		}
+	} catch {
+		// Silent
+	}
 }
 
 // ── Store ───────────────────────────────────────────────────
@@ -165,6 +245,65 @@ export const usePointsStore = create<PointsState>()(
 				showOnLeaderboard: false,
 				showActivityToFriends: false,
 				milestonesReached: [],
+
+				// ── DB Sync ──
+
+				loadFromDB: async () => {
+					try {
+						const supabase = createClient();
+						const { data: { user } } = await supabase.auth.getUser();
+						if (!user) return;
+
+						const [achievementsResult, profileResult] = await Promise.all([
+							supabase
+								.from("user_achievements")
+								.select("achievement_id, progress, unlocked_at")
+								.eq("user_id", user.id),
+							supabase
+								.from("profiles")
+								.select("total_points")
+								.eq("id", user.id)
+								.single(),
+						]);
+
+						const state = get();
+
+						// Merge DB achievements with local state
+						if (achievementsResult.data && achievementsResult.data.length > 0) {
+							const dbMap = new Map(
+								achievementsResult.data.map((a: { achievement_id: string; progress: number; unlocked_at: string | null }) => [
+									a.achievement_id,
+									a,
+								]),
+							);
+
+							const merged = state.achievements.map((local) => {
+								const db = dbMap.get(local.id);
+								if (!db) return local;
+								return {
+									...local,
+									progress: Math.max(db.progress ?? 0, local.progress),
+									unlockedAt: db.unlocked_at
+										? new Date(db.unlocked_at)
+										: local.unlockedAt,
+								};
+							});
+
+							set({ achievements: merged });
+						} else if (state.achievements.some((a) => a.progress > 0 || a.unlockedAt)) {
+							// localStorage has data but DB doesn't — push to DB
+							pushAllAchievementsToDB(state.achievements);
+						}
+
+						// Use DB total if higher than local
+						const dbTotal = profileResult.data?.total_points ?? 0;
+						if (dbTotal > state.totalPoints) {
+							set({ totalPoints: dbTotal });
+						}
+					} catch {
+						// DB unavailable — localStorage data is still used
+					}
+				},
 
 				// ── Award Points (internal helper via set) ──
 
@@ -790,6 +929,30 @@ export const usePointsStore = create<PointsState>()(
 		{ name: "PointsStore" },
 	),
 );
+
+// ── Auto-sync to DB on state changes ────────────────────────
+
+usePointsStore.subscribe((state, prevState) => {
+	if (!state.achievements || !prevState.achievements) return;
+
+	// Sync new transactions to DB
+	if (
+		state.transactions.length > 0 &&
+		state.transactions[0] !== prevState.transactions[0]
+	) {
+		syncTransactionToDB(state.transactions[0]);
+	}
+
+	// Sync changed achievements to DB
+	for (let i = 0; i < state.achievements.length; i++) {
+		const curr = state.achievements[i];
+		const prev = prevState.achievements[i];
+		if (!prev) continue;
+		if (curr.progress !== prev.progress || curr.unlockedAt !== prev.unlockedAt) {
+			syncAchievementToDB(curr);
+		}
+	}
+});
 
 // ── Helpers (hoisted above store usage) ─────────────────────
 

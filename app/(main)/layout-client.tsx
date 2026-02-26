@@ -171,8 +171,10 @@ export function MainLayoutClient({
 						.then(({ usePlatformRoleStore }) => usePlatformRoleStore.getState().loadPermissions())
 						.catch(() => {});
 
-					// Step 2.8: Auto-collect daily login bonus (fire-and-forget)
-					try { usePointsStore.getState().collectDailyLogin(); } catch { /* ignore */ }
+					// Step 2.8: Load points/achievements from DB, then collect daily login
+					usePointsStore.getState().loadFromDB()
+						.then(() => { try { usePointsStore.getState().collectDailyLogin(); } catch { /* ignore */ } })
+						.catch(() => { try { usePointsStore.getState().collectDailyLogin(); } catch { /* ignore */ } });
 
 					// Step 2.9: Request notification permission and subscribe to Web Push
 					if (typeof Notification !== "undefined") {
