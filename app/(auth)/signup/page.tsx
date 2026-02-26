@@ -44,7 +44,12 @@ export default function SignupPage() {
 		e.preventDefault();
 		clearError();
 
-		if (!formData.email || !formData.username || !formData.password) {
+		if (!formData.username || !formData.password) {
+			return;
+		}
+
+		// Parent/teen accounts require email
+		if (formData.accountType !== "standard" && !formData.email) {
 			return;
 		}
 
@@ -59,8 +64,14 @@ export default function SignupPage() {
 
 		const success = await signUpWithEmail(formData as SignupData);
 		if (success) {
-			setEmailSent(true);
-			setStep(3);
+			if (formData.email) {
+				// Email signup: show confirmation step
+				setEmailSent(true);
+				setStep(3);
+			} else {
+				// Anonymous signup: auto-signed-in, go to waitlist
+				router.push("/waitlist-pending");
+			}
 		}
 	};
 
@@ -219,17 +230,18 @@ export default function SignupPage() {
 									/>
 
 									<Input
-										type="email"
-										label="Email"
+										type="text"
+										label={formData.accountType === "standard" ? "Email (optional)" : "Email"}
 										labelClassName="text-blue-400"
 										value={formData.email || ""}
 										onChange={(e) =>
 											setFormData({ ...formData, email: e.target.value })
 										}
 										placeholder="you@example.com"
-										required
+										required={formData.accountType !== "standard"}
 										autoComplete="email"
 										id="email"
+										helperText={formData.accountType === "standard" ? "Skip for full anonymity. Add one later for password recovery." : undefined}
 									/>
 
 									<Input

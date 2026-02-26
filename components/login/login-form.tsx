@@ -30,19 +30,22 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 	const introPreference = useOnboardingStore((s) => s.introPreference);
 	const setIntroPreference = useOnboardingStore((s) => s.setIntroPreference);
 
-	const [email, setEmail] = useState("");
+	const [identifier, setIdentifier] = useState("");
 	const [password, setPassword] = useState("");
 	const [showPassword, setShowPassword] = useState(false);
 	const [rememberMe, setRememberMe] = useState(false);
 	const [showResetFlow, setShowResetFlow] = useState(false);
 	const [resetEmail, setResetEmail] = useState("");
 	const [resetSent, setResetSent] = useState(false);
-	const emailRef = useRef<HTMLInputElement>(null);
+	const identifierRef = useRef<HTMLInputElement>(null);
 
-	// Auto-focus email input on mount
+	// Whether the identifier looks like a username (no @)
+	const isUsername = identifier.length > 0 && !identifier.includes("@");
+
+	// Auto-focus identifier input on mount
 	useEffect(() => {
 		const timer = setTimeout(() => {
-			emailRef.current?.focus();
+			identifierRef.current?.focus();
 		}, 300);
 		return () => clearTimeout(timer);
 	}, []);
@@ -51,7 +54,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 		e.preventDefault();
 		clearError();
 
-		const success = await login(email, password, rememberMe);
+		const success = await login(identifier, password, rememberMe);
 		if (success) {
 			onSuccess();
 		}
@@ -175,7 +178,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 						</div>
 						<div className="relative flex justify-center text-sm">
 							<span className="px-4 text-blue-300/40 bg-transparent">
-								or sign in with email
+								or sign in with credentials
 							</span>
 						</div>
 					</motion.div>
@@ -203,16 +206,16 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 						transition={{ delay: 0.35 }}
 					>
 						<Input
-							ref={emailRef}
-							type="email"
-							label="Email"
+							ref={identifierRef}
+							type="text"
+							label="Username or Email"
 							labelClassName="text-blue-400"
-							value={email}
-							onChange={(e) => setEmail(e.target.value)}
-							placeholder="you@example.com"
+							value={identifier}
+							onChange={(e) => setIdentifier(e.target.value)}
+							placeholder="username or email"
 							required
-							autoComplete="email"
-							id="email"
+							autoComplete="username"
+							id="identifier"
 						/>
 
 						<div>
@@ -245,18 +248,20 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
 								label="Remember me"
 								className="text-blue-300/80"
 							/>
-							<button
-								type="button"
-								className="text-sm text-blue-400 hover:text-blue-300"
-								onClick={() => {
-									clearError();
-									setResetSent(false);
-									setShowResetFlow(true);
-									setResetEmail(email);
-								}}
-							>
-								Forgot password?
-							</button>
+							{!isUsername && (
+								<button
+									type="button"
+									className="text-sm text-blue-400 hover:text-blue-300"
+									onClick={() => {
+										clearError();
+										setResetSent(false);
+										setShowResetFlow(true);
+										setResetEmail(identifier);
+									}}
+								>
+									Forgot password?
+								</button>
+							)}
 						</div>
 
 						<Button

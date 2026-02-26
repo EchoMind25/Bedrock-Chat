@@ -18,6 +18,7 @@ export interface User {
 	bio?: string;
 	status: UserStatus;
 	accountType: "standard" | "parent" | "teen";
+	hasEmail: boolean;
 	createdAt: Date;
 	settings: UserSettings;
 }
@@ -41,7 +42,7 @@ interface AuthState {
 	pendingSignup: SignupData | null;
 
 	// Actions
-	login: (email: string, password: string, rememberMe?: boolean) => Promise<boolean>;
+	login: (identifier: string, password: string, rememberMe?: boolean) => Promise<boolean>;
 	signUpWithEmail: (data: SignupData) => Promise<boolean>;
 	resendConfirmationEmail: (email: string) => Promise<boolean>;
 	completeSignup: () => Promise<boolean>;
@@ -57,7 +58,7 @@ interface AuthState {
 }
 
 interface SignupData {
-	email: string;
+	email?: string;
 	username: string;
 	password: string;
 	accountType: "standard" | "parent" | "teen";
@@ -75,6 +76,7 @@ function profileToUser(profile: Record<string, unknown>, email: string): User {
 		bio: (profile.bio as string) || "",
 		status: (profile.status as UserStatus) || "online",
 		accountType: (profile.account_type as User["accountType"]) || "standard",
+		hasEmail: profile.has_email !== false && !email.endsWith("@anonymous.bedrock.local"),
 		createdAt: new Date(profile.created_at as string),
 		settings: {
 			theme: "dark",
@@ -97,7 +99,7 @@ export const useAuthStore = create<AuthState>()(
 				lockoutUntil: null,
 				pendingSignup: null,
 
-				login: async (email, password, rememberMe = false) => {
+				login: async (identifier, password, rememberMe = false) => {
 					set({ isLoading: true, error: null });
 
 					const { failedLoginAttempts, lockoutUntil } = get();
@@ -119,6 +121,27 @@ export const useAuthStore = create<AuthState>()(
 					}
 
 					try {
+						// Resolve username to email if the identifier doesn't contain @
+						let email = identifier;
+						if (!identifier.includes("@")) {
+							try {
+								const lookupRes = await fetch("/api/auth/lookup-username", {
+									method: "POST",
+									headers: { "Content-Type": "application/json" },
+									body: JSON.stringify({ username: identifier }),
+								});
+								if (!lookupRes.ok) {
+									set({ isLoading: false, error: "Invalid username or password" });
+									return false;
+								}
+								const lookupData = await lookupRes.json();
+								email = lookupData.email;
+							} catch {
+								set({ isLoading: false, error: "Unable to verify username. Please try again." });
+								return false;
+							}
+						}
+
 						// CRITICAL: Set rememberMe flag BEFORE creating Supabase client
 						// This ensures the client uses the correct storage (localStorage vs sessionStorage)
 						if (rememberMe) {
@@ -193,6 +216,7 @@ export const useAuthStore = create<AuthState>()(
 								metadata?.account_type ||
 								"standard";
 
+							const emailIsAnonymous = email.endsWith("@anonymous.bedrock.local");
 							const { error: insertError } = await supabase
 								.from("profiles")
 								.insert({
@@ -200,6 +224,8 @@ export const useAuthStore = create<AuthState>()(
 									username,
 									display_name: username,
 									account_type: accountType,
+									has_email: !emailIsAnonymous,
+									waitlist_status: "pending",
 								});
 
 							if (insertError && !insertError.message.includes("duplicate")) {
@@ -259,7 +285,7 @@ export const useAuthStore = create<AuthState>()(
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
 						body: JSON.stringify({
-							email: data.email,
+							email: data.email || undefined,
 							password: data.password,
 							username: data.username,
 							accountType: data.accountType,
@@ -278,6 +304,44 @@ export const useAuthStore = create<AuthState>()(
 									: (result.error as string | undefined) || "Signup failed";
 						set({ isLoading: false, error: message });
 						return false;
+					}
+
+					// Anonymous signup: account is auto-confirmed, sign in immediately
+					if (result.anonymous) {
+						const placeholderEmail = `${data.username.toLowerCase()}@anonymous.bedrock.local`;
+						const supabase = createClient();
+						const { error: signInError } = await supabase.auth.signInWithPassword({
+							email: placeholderEmail,
+							password: data.password,
+						});
+
+						if (signInError) {
+							set({ isLoading: false, error: "Account created but sign-in failed. Try logging in." });
+							return false;
+						}
+
+						const { data: { user } } = await supabase.auth.getUser();
+						if (user) {
+							const { data: profile } = await supabase
+								.from("profiles")
+								.select("*")
+								.eq("id", user.id)
+								.single();
+
+							if (profile) {
+								set({
+									user: profileToUser(profile, placeholderEmail),
+									isAuthenticated: true,
+									isLoading: false,
+									isInitializing: false,
+									pendingSignup: null,
+								});
+								return true;
+							}
+						}
+
+						set({ isLoading: false });
+						return true;
 					}
 
 					// Store pending signup data for the "check your email" screen.
@@ -393,6 +457,8 @@ export const useAuthStore = create<AuthState>()(
 							user.user_metadata?.account_type ||
 							"standard";
 
+						const completeEmail = user.email || "";
+						const completeHasEmail = !completeEmail.endsWith("@anonymous.bedrock.local");
 						const { error: profileError } = await supabase
 							.from("profiles")
 							.insert({
@@ -400,6 +466,8 @@ export const useAuthStore = create<AuthState>()(
 								username,
 								display_name: username,
 								account_type: accountType,
+								has_email: completeHasEmail,
+								waitlist_status: "pending",
 							});
 
 						if (profileError && !profileError.message.includes("duplicate")) {
@@ -410,13 +478,14 @@ export const useAuthStore = create<AuthState>()(
 						set({
 							user: {
 								id: user.id,
-								email: user.email || "",
+								email: completeEmail,
 								username,
 								displayName: username,
 								avatar: "",
 								banner: "",
 								status: "online",
 								accountType: accountType as User["accountType"],
+								hasEmail: completeHasEmail,
 								createdAt: new Date(),
 								settings: {
 									theme: "dark",
@@ -650,6 +719,7 @@ export const useAuthStore = create<AuthState>()(
 								`user_${user.id.slice(0, 8)}`;
 							const username = rawUsername.replace(/[^a-zA-Z0-9_]/g, "_");
 
+							const checkAuthEmail = user.email || "";
 							const { error: insertError } = await supabase
 								.from("profiles")
 								.insert({
@@ -657,6 +727,8 @@ export const useAuthStore = create<AuthState>()(
 									username,
 									display_name: username,
 									account_type: metadata?.account_type || "standard",
+									has_email: !checkAuthEmail.endsWith("@anonymous.bedrock.local"),
+									waitlist_status: "pending",
 								});
 
 							if (!insertError || insertError.message.includes("duplicate")) {

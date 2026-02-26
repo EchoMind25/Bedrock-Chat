@@ -96,7 +96,7 @@ export function HeroSection() {
               size="lg"
               className="text-lg px-10 py-5 min-w-[240px] shadow-2xl shadow-primary/30 hover:shadow-primary/50 transition-shadow"
             >
-              Start Your Private Server
+              Join the Beta
             </Button>
           </Link>
           <Button

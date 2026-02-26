@@ -29,7 +29,7 @@ import {
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface SignupBody {
-	email: string;
+	email?: string;
 	password: string;
 	username: string;
 	accountType: "standard" | "parent" | "teen";
@@ -52,11 +52,9 @@ function parseBody(raw: unknown): SignupBody | null {
 	if (typeof raw !== "object" || raw === null) return null;
 	const b = raw as Record<string, unknown>;
 
-	if (
-		typeof b.email !== "string" ||
-		typeof b.password !== "string" ||
-		typeof b.username !== "string"
-	) {
+	// email is now optional — only validate if provided
+	if (b.email !== undefined && typeof b.email !== "string") return null;
+	if (typeof b.password !== "string" || typeof b.username !== "string") {
 		return null;
 	}
 
@@ -70,7 +68,10 @@ function parseBody(raw: unknown): SignupBody | null {
 	}
 
 	return {
-		email: (b.email as string).toLowerCase().trim(),
+		email:
+			typeof b.email === "string" && b.email.trim()
+				? (b.email as string).toLowerCase().trim()
+				: undefined,
 		password: b.password as string,
 		username: (b.username as string).trim(),
 		accountType,
@@ -123,6 +124,14 @@ export async function POST(request: NextRequest) {
 		);
 	}
 
+	// Parent and teen accounts require a real email for safety/communication
+	if (body.accountType !== "standard" && !body.email) {
+		return NextResponse.json(
+			{ error: "Email is required for family accounts" },
+			{ status: 400 },
+		);
+	}
+
 	// ── 3. Config Guards ─────────────────────────────────────────────────────
 	const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 	const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -168,7 +177,12 @@ export async function POST(request: NextRequest) {
 		request.headers.get("origin") ||
 		"http://localhost:3000";
 
-	// ── 6. Branch: PKCE mode vs Standard mode ───────────────────────────────
+	// ── 6. Branch: Anonymous (no email) vs Email signup ─────────────────────
+	if (!body.email) {
+		return signupAnonymous(body, adminClient);
+	}
+
+	// ── 7. Branch: PKCE mode vs Standard mode ───────────────────────────────
 	if (usePkce) {
 		return signupWithPkce(body, supabaseUrl, anonKey, encryptionKey, appUrl);
 	}
@@ -197,7 +211,7 @@ async function signupWithPkce(
 				apikey: anonKey,
 			},
 			body: JSON.stringify({
-				email: body.email,
+				email: body.email as string,
 				password: body.password,
 				data: {
 					username: body.username,
@@ -267,7 +281,7 @@ async function signupStandard(body: SignupBody, appUrl: string) {
 
 	const { data: signupData, error: signupError } =
 		await supabase.auth.signUp({
-			email: body.email,
+			email: body.email as string,
 			password: body.password,
 			options: {
 				emailRedirectTo: redirectTo,
@@ -315,4 +329,54 @@ async function signupStandard(body: SignupBody, appUrl: string) {
 		{ success: true, message: "Check your email to confirm your account" },
 		{ status: 200 },
 	);
+}
+
+// ── Anonymous Mode: No email, admin-created user with auto-confirmation ─────
+// For users who want maximum privacy — no email required.
+// Uses a placeholder email ({username}@anonymous.bedrock.local) since Supabase
+// Auth requires an email. The admin API auto-confirms the user so they can
+// sign in immediately without email verification.
+// biome-ignore lint/suspicious/noExplicitAny: Service role client lacks generated DB types
+async function signupAnonymous(
+	body: SignupBody,
+	adminClient: ReturnType<typeof createAdminClient<any>>,
+) {
+	const placeholderEmail = `${body.username.toLowerCase()}@anonymous.bedrock.local`;
+
+	// Create user via admin API with auto-confirmation (skip email verification)
+	const { data, error } = await adminClient.auth.admin.createUser({
+		email: placeholderEmail,
+		password: body.password,
+		email_confirm: true,
+		user_metadata: {
+			username: body.username,
+			account_type: body.accountType,
+			has_email: false,
+		},
+	});
+
+	if (error) {
+		console.error("[SIGNUP] Anonymous signup error:", error.message);
+		return NextResponse.json({ error: "Signup failed" }, { status: 500 });
+	}
+
+	// Create profile immediately (no email confirmation flow for anonymous users)
+	const { error: profileError } = await adminClient.from("profiles").insert({
+		id: data.user.id,
+		username: body.username,
+		display_name: body.username,
+		account_type: body.accountType,
+		has_email: false,
+		waitlist_status: "pending",
+	});
+
+	if (profileError && !profileError.message.includes("duplicate")) {
+		console.error("[SIGNUP] Profile creation error:", profileError.message);
+	}
+
+	return NextResponse.json({
+		success: true,
+		anonymous: true,
+		message: "Account created successfully",
+	});
 }

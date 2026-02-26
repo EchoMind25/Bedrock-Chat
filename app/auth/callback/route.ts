@@ -39,11 +39,14 @@ async function ensureProfile(
 	// Sanitize to satisfy CHECK (username ~ '^[a-zA-Z0-9_]+$')
 	const username = rawUsername.replace(/[^a-zA-Z0-9_]/g, "_");
 
+	const userEmail = user.email || "";
 	const { error } = await supabase.from("profiles").insert({
 		id: user.id,
 		username,
 		display_name: rawUsername,
 		account_type: metadata?.account_type || "standard",
+		has_email: !userEmail.endsWith("@anonymous.bedrock.local"),
+		waitlist_status: "pending",
 	});
 
 	if (error && !error.message.includes("duplicate")) {
