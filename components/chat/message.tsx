@@ -3,12 +3,15 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { cn } from '@/lib/utils/cn';
 import { Avatar } from '@/components/ui/avatar/avatar';
 import type { AvatarStatus } from '@/components/ui/avatar/avatar';
 import { ReactionBar } from './reaction-bar';
 import { EmojiPicker } from './emoji-picker';
 import { ReportDialog } from './report-dialog';
 import { UserProfileCard } from '@/components/user-profile-card';
+import { ContextMenu } from '@/components/ui/context-menu/context-menu';
+import type { ContextMenuEntry } from '@/components/ui/context-menu/context-menu';
 import type { Message } from '@/lib/types/message';
 import { parseMarkdown, renderMarkdown } from '@/lib/utils/markdown';
 import { useMessageStore } from '@/store/message.store';
@@ -33,6 +36,7 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 	const [editContent, setEditContent] = useState(message.content);
 	const [isReportOpen, setIsReportOpen] = useState(false);
 	const [selectedMember, setSelectedMember] = useState<MemberWithProfile | null>(null);
+	const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 	const addReaction = useMessageStore((state) => state.addReaction);
 	const editMessage = useMessageStore((state) => state.editMessage);
 	const deleteMessage = useMessageStore((state) => state.deleteMessage);
@@ -41,6 +45,9 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 	const showAvatars = useSettingsStore((state) => state.settings?.show_avatars ?? true);
 	const showTimestamps = useSettingsStore((state) => state.settings?.show_timestamps ?? true);
 	const timestampFormat = useSettingsStore((state) => state.settings?.timestamp_format ?? "relative");
+	const messageStyle = useSettingsStore((state) => state.settings?.message_style ?? "flat");
+	const isBubble = messageStyle === "bubble";
+	const isMinimal = messageStyle === "minimal";
 
 	// Presence-aware status: only re-renders when THIS author's status changes
 	const authorPresenceStatus = usePresenceStore(
@@ -123,6 +130,105 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 		}
 	};
 
+	const handleContextMenu = useCallback((e: React.MouseEvent) => {
+		e.preventDefault();
+		setContextMenu({ x: e.clientX, y: e.clientY });
+	}, []);
+
+	const handleCloseContextMenu = useCallback(() => {
+		setContextMenu(null);
+	}, []);
+
+	// Build context menu items (cheap to compute, no useMemo needed)
+	const contextMenuItems: ContextMenuEntry[] = [];
+
+	contextMenuItems.push({
+		id: "add-reaction",
+		label: "Add Reaction",
+		icon: (
+			<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+			</svg>
+		),
+		onClick: () => setIsEmojiPickerOpen(true),
+	});
+
+	if (isOwnMessage) {
+		contextMenuItems.push({
+			id: "edit",
+			label: "Edit Message",
+			icon: (
+				<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+				</svg>
+			),
+			onClick: handleEdit,
+		});
+	}
+
+	contextMenuItems.push(
+		{ id: "divider-1", type: "divider" },
+		{
+			id: "copy-text",
+			label: "Copy Text",
+			icon: (
+				<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+				</svg>
+			),
+			onClick: () => {
+				navigator.clipboard.writeText(message.content);
+			},
+		},
+		{
+			id: "copy-id",
+			label: "Copy Message ID",
+			icon: (
+				<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+				</svg>
+			),
+			onClick: () => {
+				navigator.clipboard.writeText(message.id);
+			},
+		},
+	);
+
+	if (!isOwnMessage) {
+		contextMenuItems.push(
+			{ id: "divider-2", type: "divider" },
+			{
+				id: "report",
+				label: "Report Message",
+				icon: (
+					<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2z" />
+					</svg>
+				),
+				variant: "danger" as const,
+				onClick: () => setIsReportOpen(true),
+			},
+		);
+	}
+
+	if (canDelete) {
+		// Add divider before delete if we haven't added one via report
+		if (isOwnMessage) {
+			contextMenuItems.push({ id: "divider-3", type: "divider" });
+		}
+		contextMenuItems.push({
+			id: "delete",
+			label: "Delete Message",
+			icon: (
+				<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+				</svg>
+			),
+			variant: "danger" as const,
+			onClick: handleDelete,
+		});
+	}
+
 	const formatTimestamp = (date: Date) => {
 		switch (timestampFormat) {
 			case "12h":
@@ -199,15 +305,25 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 
 	return (
 		<motion.div
-			className={`group px-4 hover:bg-white/5 transition-colors ${isGrouped ? 'py-0.5' : 'py-3 mt-3'}`}
+			className={cn(
+				"group hover:bg-white/5 transition-colors",
+				isGrouped ? "py-0.5" : "py-3 mt-3",
+				isBubble ? "px-3" : "px-4",
+				isMinimal && !isGrouped && "py-1.5 mt-1",
+				isMinimal && isGrouped && "py-0",
+			)}
 			onMouseEnter={() => setIsHovered(true)}
 			onMouseLeave={() => setIsHovered(false)}
+			onContextMenu={handleContextMenu}
 			initial={{ opacity: 0 }}
 			animate={{ opacity: 1 }}
 		>
-			<div className="flex gap-3">
-				{/* Avatar (hidden when grouped or when showAvatars is off) */}
-				{showAvatars && (
+			<div className={cn(
+				"flex gap-3",
+				isBubble && isOwnMessage && "justify-end",
+			)}>
+				{/* Avatar (hidden when grouped, when showAvatars is off, or in bubble mode) */}
+				{showAvatars && !isBubble && (
 					<div className="w-10 shrink-0">
 						{!isGrouped && (
 							<div
@@ -235,9 +351,12 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 				)}
 
 				{/* Content */}
-				<div className="flex-1 min-w-0">
-					{/* Header (hidden when grouped) */}
-					{!isGrouped && (
+				<div className={cn(
+					"min-w-0",
+					isBubble ? "max-w-[80%]" : "flex-1",
+				)}>
+					{/* Header (hidden when grouped; in bubble mode only show username for others) */}
+					{!isGrouped && !isBubble && (
 						<div className="flex items-baseline gap-2 mb-1">
 							<span
 								className="font-semibold cursor-pointer hover:underline"
@@ -270,6 +389,24 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 								</span>
 							)}
 						</div>
+					)}
+					{/* Bubble mode: show sender name for non-own, non-grouped messages */}
+					{!isGrouped && isBubble && !isOwnMessage && (
+						<span
+							className="text-xs font-semibold mb-0.5 block cursor-pointer hover:underline"
+							role="button"
+							tabIndex={0}
+							onClick={handleAuthorClick}
+							onKeyDown={(e) => {
+								if (e.key === "Enter" || e.key === " ") {
+									e.preventDefault();
+									handleAuthorClick();
+								}
+							}}
+							style={{ color: message.author.roleColor || 'oklch(0.7 0.15 250)' }}
+						>
+							{message.author.displayName}
+						</span>
 					)}
 
 					{/* Reply reference */}
@@ -310,13 +447,33 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 						</div>
 					) : (
 						<>
-							<div className="message-content-wrapper text-white/90 wrap-break-word" style={{ fontSize: 'var(--message-font-size)', lineHeight: 'var(--message-line-height)' }}>
+							<div
+								className={cn(
+									"message-content-wrapper text-white/90 wrap-break-word",
+									isOwnMessage && "own-message",
+									isBubble && "rounded-2xl px-3.5 py-2",
+									isMinimal && "py-0.5",
+								)}
+								style={{
+									fontSize: 'var(--message-font-size)',
+									lineHeight: 'var(--message-line-height)',
+									...(isBubble ? {
+										backgroundColor: isOwnMessage
+											? 'var(--color-primary)'
+											: 'oklch(0.18 0.02 250 / 0.6)',
+										color: isOwnMessage ? 'white' : undefined,
+									} : {}),
+								}}
+							>
 								{renderMarkdown(parsedContent, emojiMap)}
 							</div>
 
 							{/* Edit indicator */}
 							{message.editedAt && (
-								<span className="text-xs text-white/40 ml-1">(edited)</span>
+								<span className={cn(
+									"text-xs text-white/40 ml-1",
+									isBubble && isOwnMessage && "text-right block mr-1",
+								)}>(edited)</span>
 							)}
 
 							{/* Attachments */}
@@ -394,11 +551,24 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 								messageId={message.id}
 								channelId={channelId}
 							/>
+
+							{/* Bubble mode: timestamp below the message */}
+							{isBubble && showTimestamps && !isGrouped && (
+								<span
+									className={cn(
+										"text-xs text-white/40 mt-0.5 block",
+										isOwnMessage && "text-right",
+									)}
+									title={formatAbsoluteTime(message.timestamp)}
+								>
+									{formatTimestamp(message.timestamp)}
+								</span>
+							)}
 						</>
 					)}
 				</div>
 
-				{/* Hover actions */}
+				{/* Hover quick action: emoji reaction */}
 				{isHovered && !isEditing && (
 					<motion.div
 						initial={{ opacity: 0, scale: 0.9 }}
@@ -414,42 +584,19 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
 							</svg>
 						</button>
-						{!isOwnMessage && (
-							<button
-								onClick={() => setIsReportOpen(true)}
-								className="p-2 rounded-lg bg-[oklch(0.2_0.02_250)] hover:bg-[oklch(0.3_0.05_0)] transition-colors"
-								title="Report message"
-							>
-								<svg className="w-5 h-5 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2z" />
-								</svg>
-							</button>
-						)}
-						{isOwnMessage && (
-							<button
-								onClick={handleEdit}
-								className="p-2 rounded-lg bg-[oklch(0.2_0.02_250)] hover:bg-border-dark transition-colors"
-								title="Edit message"
-							>
-								<svg className="w-5 h-5 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-								</svg>
-							</button>
-						)}
-						{canDelete && (
-							<button
-								onClick={handleDelete}
-								className="p-2 rounded-lg bg-[oklch(0.2_0.02_250)] hover:bg-[oklch(0.3_0.05_0)] transition-colors"
-								title="Delete message"
-							>
-								<svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-								</svg>
-							</button>
-						)}
 					</motion.div>
 				)}
 			</div>
+
+			{/* Right-click context menu */}
+			{contextMenu && (
+				<ContextMenu
+					items={contextMenuItems}
+					position={contextMenu}
+					isOpen={true}
+					onClose={handleCloseContextMenu}
+				/>
+			)}
 
 			{/* Emoji picker */}
 			{isEmojiPickerOpen && (

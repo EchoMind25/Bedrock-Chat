@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useServerStore } from "@/store/server.store";
 import { useAuthStore } from "@/store/auth.store";
 import { useMemberStore } from "@/store/member.store";
+import { useThemeStore } from "@/store/theme.store";
 import { hasAcceptedNsfw } from "@/lib/utils/nsfw-gate";
 import { usePointsStore } from "@/store/points.store";
 
@@ -20,6 +21,9 @@ const MessageInput = lazy(() =>
 );
 const NsfwAgeGate = lazy(() =>
 	import("@/components/nsfw/nsfw-age-gate").then(m => ({ default: m.NsfwAgeGate }))
+);
+const ServerThemePrompt = lazy(() =>
+	import("@/components/themes/server-theme-prompt").then(m => ({ default: m.ServerThemePrompt }))
 );
 
 interface PageProps {
@@ -39,6 +43,7 @@ export default function ChannelPage({ params }: PageProps) {
 	useEffect(() => {
 		mountedRef.current = true;
 		hasRedirectedRef.current = false;
+		setShowThemePrompt(false);
 		return () => {
 			mountedRef.current = false;
 		};
@@ -53,6 +58,7 @@ export default function ChannelPage({ params }: PageProps) {
 
 	// NSFW acceptance state - initialized from sessionStorage (function initializer, no useEffect needed)
 	const [nsfwAccepted, setNsfwAccepted] = useState(() => hasAcceptedNsfw());
+	const [showThemePrompt, setShowThemePrompt] = useState(false);
 
 	const handleNsfwAccept = useCallback(() => {
 		setNsfwAccepted(true);
@@ -85,10 +91,22 @@ export default function ChannelPage({ params }: PageProps) {
 		if (state.currentChannelId !== channelId) {
 			setCurrentChannel(channelId);
 		}
+
+		// Ensure members are loaded for permission checks (e.g. message deletion)
+		if (serverId !== "home") {
+			useMemberStore.getState().loadMembers(serverId);
+		}
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [serverId, channelId]); // Exclude store actions - stable Zustand actions
 
+	// Apply the server's theme when navigating to a new server
+	useEffect(() => {
+		if (!serverId || serverId === "home") return;
+		useThemeStore.getState().applyThemeForServer(serverId);
+	}, [serverId]);
+
 	// Easter egg: server tour — track visited channels per server
+	// Also triggers server theme prompt after visiting 3+ channels
 	useEffect(() => {
 		if (!server || !channelId) return;
 		try {
@@ -100,6 +118,16 @@ export default function ChannelPage({ params }: PageProps) {
 			}
 			if (server.channels.length > 1 && server.channels.every((c) => visited.includes(c.id))) {
 				usePointsStore.getState().discoverEasterEgg("server-tour");
+			}
+
+			// Show theme prompt after 3 unique channel visits
+			const THEME_PROMPT_THRESHOLD = 3;
+			if (
+				visited.length >= THEME_PROMPT_THRESHOLD &&
+				!useThemeStore.getState().hasServerThemeDecision(serverId) &&
+				serverId !== "home"
+			) {
+				setShowThemePrompt(true);
 			}
 		} catch { /* ignore */ }
 	}, [serverId, channelId, server]);
@@ -168,7 +196,7 @@ export default function ChannelPage({ params }: PageProps) {
 	}
 
 	return (
-		<div className="flex-1 flex flex-col bg-[oklch(0.14_0.02_250)] chat-area-background">
+		<div className="relative flex-1 flex flex-col bg-[oklch(0.14_0.02_250)] chat-area-background">
 			<Suspense fallback={<ChannelLoadingSkeleton />}>
 				{/* Channel Header */}
 				<ChannelHeader channel={channel} memberCount={liveMemberCount} />
@@ -179,6 +207,18 @@ export default function ChannelPage({ params }: PageProps) {
 				{/* Message Input */}
 				<MessageInput channelId={channelId} channelName={channel.name} />
 			</Suspense>
+
+			{/* Server theme preference prompt */}
+			{showThemePrompt && server && (
+				<Suspense fallback={null}>
+					<ServerThemePrompt
+						serverId={serverId}
+						serverName={server.name}
+						isOpen={showThemePrompt}
+						onClose={() => setShowThemePrompt(false)}
+					/>
+				</Suspense>
+			)}
 		</div>
 	);
 }

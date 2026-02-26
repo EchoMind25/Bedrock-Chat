@@ -47,6 +47,13 @@ interface ThemeState {
 	// User preferences
 	preferences: UserThemePreferences;
 
+	// Per-server theme acceptance decisions
+	serverThemeDecisions: Record<string, "accepted" | "rejected">;
+
+	// Actions: Server theme decisions
+	setServerThemeDecision: (serverId: string, decision: "accepted" | "rejected") => void;
+	hasServerThemeDecision: (serverId: string) => boolean;
+
 	// Actions: Server themes
 	setServerTheme: (serverId: string, themeId: string) => void;
 	applyThemeForServer: (serverId: string) => void;
@@ -113,6 +120,37 @@ export const useThemeStore = create<ThemeState>()(
 					fontSize: "medium",
 					showAvatars: true,
 					showTimestamps: true,
+				},
+				serverThemeDecisions: {},
+
+				// ── Server Theme Decision Actions ──────
+
+				setServerThemeDecision: (serverId, decision) => {
+					set((s) => ({
+						serverThemeDecisions: {
+							...s.serverThemeDecisions,
+							[serverId]: decision,
+						},
+					}));
+
+					// If rejected, switch to force_personal for this server
+					if (decision === "rejected") {
+						const state = get();
+						const personalId = state.preferences.personalThemeId;
+						if (personalId) {
+							const personal = state.getThemeById(personalId);
+							if (personal) {
+								set({ activeTheme: personal });
+								return;
+							}
+						}
+						// Fallback: apply default theme
+						set({ activeTheme: NEON_STREET });
+					}
+				},
+
+				hasServerThemeDecision: (serverId) => {
+					return serverId in get().serverThemeDecisions;
 				},
 
 				// ── Server Theme Actions ───────────────
@@ -435,6 +473,7 @@ export const useThemeStore = create<ThemeState>()(
 				partialize: (state) => ({
 					serverThemes: state.serverThemes,
 					customThemes: state.customThemes,
+					serverThemeDecisions: state.serverThemeDecisions,
 					activeProfileThemeId: state.activeProfileThemeId,
 					unlockedProfileThemeIds: state.unlockedProfileThemeIds,
 					unlockedStatusEffectIds: state.unlockedStatusEffectIds,
