@@ -156,6 +156,19 @@ export function SettingsEffects() {
 		document.documentElement.dataset.messageStyle = settings?.message_style ?? "flat";
 	}, [settings?.message_style]);
 
+	// ── Bubble colors ────────────────────────────────────────
+	useEffect(() => {
+		const root = document.documentElement;
+		root.style.setProperty(
+			"--bubble-color-sent",
+			settings?.bubble_color_sent || "oklch(0.55 0.20 265)",
+		);
+		root.style.setProperty(
+			"--bubble-color-received",
+			settings?.bubble_color_received || "oklch(0.30 0.04 250)",
+		);
+	}, [settings?.bubble_color_sent, settings?.bubble_color_received]);
+
 	// ── Chat background ──────────────────────────────────────
 	useEffect(() => {
 		document.documentElement.style.setProperty(

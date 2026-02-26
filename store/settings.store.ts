@@ -56,6 +56,8 @@ export interface UserSettings {
 	compact_mode: boolean;
 	chat_background: string | null;
 	timestamp_format: "relative" | "12h" | "24h" | "full";
+	bubble_color_sent: string;
+	bubble_color_received: string;
 
 	// Display
 	show_avatars: boolean;
@@ -118,6 +120,8 @@ const DEFAULT_SETTINGS: Omit<UserSettings, "user_id"> = {
 	compact_mode: false,
 	chat_background: null,
 	timestamp_format: "relative",
+	bubble_color_sent: "oklch(0.55 0.20 265)",
+	bubble_color_received: "oklch(0.30 0.04 250)",
 	show_avatars: true,
 	show_timestamps: true,
 	show_online_status: true,

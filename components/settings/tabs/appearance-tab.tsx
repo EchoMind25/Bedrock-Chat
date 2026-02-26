@@ -59,18 +59,54 @@ const FOCUS_OPTIONS: Array<{ value: UserSettings["focus_indicator"]; label: stri
 
 const CHAT_BACKGROUNDS: Array<{ label: string; value: string | null }> = [
 	{ label: "None", value: null },
-	{ label: "Deep Space", value: "radial-gradient(ellipse at 50% 0%, oklch(0.18 0.06 265), oklch(0.06 0.02 280))" },
-	{ label: "Aurora", value: "linear-gradient(135deg, oklch(0.12 0.08 170), oklch(0.08 0.06 265), oklch(0.10 0.07 310))" },
-	{ label: "Sunset", value: "linear-gradient(180deg, oklch(0.18 0.10 40), oklch(0.10 0.06 25), oklch(0.06 0.03 350))" },
-	{ label: "Forest", value: "linear-gradient(160deg, oklch(0.10 0.06 155), oklch(0.06 0.04 130), oklch(0.08 0.03 110))" },
-	{ label: "Ocean", value: "radial-gradient(ellipse at 30% 80%, oklch(0.14 0.08 220), oklch(0.06 0.04 250))" },
-	{ label: "Ember", value: "radial-gradient(ellipse at 50% 100%, oklch(0.16 0.08 30), oklch(0.06 0.02 15))" },
-	{ label: "Nebula", value: "linear-gradient(135deg, oklch(0.10 0.08 290), oklch(0.06 0.05 320), oklch(0.12 0.07 250))" },
-	{ label: "Arctic", value: "linear-gradient(180deg, oklch(0.14 0.04 220), oklch(0.08 0.02 210), oklch(0.04 0.01 200))" },
-	{ label: "Lava", value: "radial-gradient(circle at 50% 50%, oklch(0.14 0.10 40), oklch(0.06 0.05 15), oklch(0.04 0.02 0))" },
-	{ label: "Grid", value: "repeating-linear-gradient(0deg, oklch(0.18 0.02 265 / 0.15) 0px, transparent 1px, transparent 40px), repeating-linear-gradient(90deg, oklch(0.18 0.02 265 / 0.15) 0px, transparent 1px, transparent 40px), oklch(0.10 0.02 265)" },
-	{ label: "Dots", value: "radial-gradient(circle, oklch(0.25 0.03 265 / 0.3) 1px, transparent 1px), oklch(0.10 0.02 265)" },
-	{ label: "Spotlight", value: "radial-gradient(circle at 50% 30%, oklch(0.20 0.06 265 / 0.5), transparent 60%), oklch(0.08 0.02 265)" },
+	{
+		label: "Deep Space",
+		value: "radial-gradient(ellipse at 15% 60%, oklch(0.22 0.15 275 / 0.8) 0%, transparent 50%), radial-gradient(ellipse at 85% 25%, oklch(0.20 0.18 250 / 0.6) 0%, transparent 40%), radial-gradient(ellipse at 50% 10%, oklch(0.28 0.16 270) 0%, oklch(0.04 0.03 280) 100%)",
+	},
+	{
+		label: "Aurora",
+		value: "radial-gradient(ellipse at 70% 0%, oklch(0.32 0.20 165 / 0.8) 0%, transparent 45%), radial-gradient(ellipse at 20% 40%, oklch(0.25 0.18 290 / 0.6) 0%, transparent 50%), linear-gradient(180deg, oklch(0.18 0.14 170) 0%, oklch(0.08 0.10 265) 50%, oklch(0.14 0.12 310) 100%)",
+	},
+	{
+		label: "Sunset",
+		value: "radial-gradient(ellipse at 50% 0%, oklch(0.40 0.22 55 / 0.7) 0%, transparent 45%), radial-gradient(ellipse at 80% 30%, oklch(0.30 0.20 30 / 0.5) 0%, transparent 40%), linear-gradient(180deg, oklch(0.35 0.20 55) 0%, oklch(0.20 0.18 30) 40%, oklch(0.08 0.12 340) 100%)",
+	},
+	{
+		label: "Forest",
+		value: "radial-gradient(ellipse at 40% 0%, oklch(0.28 0.16 150 / 0.5) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, oklch(0.20 0.14 135 / 0.6) 0%, transparent 45%), linear-gradient(170deg, oklch(0.18 0.14 155) 0%, oklch(0.10 0.12 140) 50%, oklch(0.05 0.08 115) 100%)",
+	},
+	{
+		label: "Ocean",
+		value: "radial-gradient(ellipse at 50% 0%, oklch(0.28 0.12 210 / 0.5) 0%, transparent 50%), radial-gradient(ellipse at 20% 70%, oklch(0.24 0.16 220 / 0.6) 0%, transparent 45%), radial-gradient(ellipse at 80% 50%, oklch(0.20 0.18 240 / 0.5) 0%, transparent 40%), oklch(0.05 0.08 235)",
+	},
+	{
+		label: "Ember",
+		value: "radial-gradient(ellipse at 50% 85%, oklch(0.38 0.22 40 / 0.8) 0%, transparent 50%), radial-gradient(ellipse at 30% 65%, oklch(0.28 0.20 30 / 0.5) 0%, transparent 40%), radial-gradient(ellipse at 70% 75%, oklch(0.25 0.18 55 / 0.4) 0%, transparent 35%), oklch(0.04 0.04 15)",
+	},
+	{
+		label: "Nebula",
+		value: "radial-gradient(ellipse at 25% 25%, oklch(0.28 0.22 320 / 0.7) 0%, transparent 40%), radial-gradient(ellipse at 75% 65%, oklch(0.24 0.20 265 / 0.6) 0%, transparent 45%), radial-gradient(ellipse at 50% 45%, oklch(0.20 0.18 290 / 0.5) 0%, transparent 50%), oklch(0.04 0.05 285)",
+	},
+	{
+		label: "Arctic",
+		value: "radial-gradient(ellipse at 50% 0%, oklch(0.35 0.10 210 / 0.6) 0%, transparent 45%), radial-gradient(ellipse at 25% 60%, oklch(0.28 0.12 215 / 0.5) 0%, transparent 40%), linear-gradient(180deg, oklch(0.25 0.10 215) 0%, oklch(0.14 0.06 210) 50%, oklch(0.06 0.04 205) 100%)",
+	},
+	{
+		label: "Lava",
+		value: "radial-gradient(ellipse at 50% 65%, oklch(0.40 0.25 35 / 0.7) 0%, transparent 40%), radial-gradient(ellipse at 25% 45%, oklch(0.32 0.22 50 / 0.5) 0%, transparent 35%), radial-gradient(ellipse at 75% 40%, oklch(0.28 0.20 20 / 0.4) 0%, transparent 30%), oklch(0.04 0.05 10)",
+	},
+	{
+		label: "Grid",
+		value: "repeating-linear-gradient(0deg, oklch(0.35 0.12 265 / 0.3) 0px, transparent 1px, transparent 30px), repeating-linear-gradient(90deg, oklch(0.35 0.12 265 / 0.3) 0px, transparent 1px, transparent 30px), radial-gradient(ellipse at 50% 50%, oklch(0.14 0.08 265) 0%, oklch(0.04 0.03 265) 100%)",
+	},
+	{
+		label: "Dots",
+		value: "radial-gradient(circle, oklch(0.45 0.10 265 / 0.4) 1.5px, transparent 1.5px) 0 0 / 22px 22px, radial-gradient(ellipse at 50% 50%, oklch(0.13 0.06 265) 0%, oklch(0.05 0.03 265) 100%)",
+	},
+	{
+		label: "Spotlight",
+		value: "radial-gradient(circle at 50% 20%, oklch(0.40 0.14 265 / 0.6) 0%, transparent 40%), radial-gradient(circle at 50% 20%, oklch(0.28 0.10 265 / 0.3) 0%, transparent 60%), oklch(0.04 0.02 265)",
+	},
 ];
 
 // ── Component ────────────────────────────────────────────────
@@ -285,6 +321,45 @@ export function AppearanceTab() {
 								onChange={(v) => updateSettings({ message_style: v })}
 							/>
 						</div>
+
+						{/* Bubble color pickers — only visible when bubble style is selected */}
+						{(settings?.message_style ?? "flat") === "bubble" && (
+							<div className="mt-3 space-y-3 p-3 rounded-lg bg-white/[0.03] border border-white/5">
+								<label className="text-xs text-slate-400 font-medium block">Bubble Colors</label>
+								<div className="flex gap-4">
+									<div className="flex-1 space-y-1.5">
+										<label className="text-[11px] text-slate-500 block">Sent</label>
+										<div className="flex items-center gap-2">
+											<div
+												className="w-8 h-8 rounded-lg border border-white/10 shrink-0 cursor-pointer"
+												style={{ backgroundColor: settings?.bubble_color_sent ?? "oklch(0.55 0.20 265)" }}
+												title={settings?.bubble_color_sent ?? "oklch(0.55 0.20 265)"}
+											/>
+											<OklchColorPicker
+												value={settings?.bubble_color_sent ?? "oklch(0.55 0.20 265)"}
+												onChange={(color) => updateSettings({ bubble_color_sent: color })}
+												className="flex-1"
+											/>
+										</div>
+									</div>
+									<div className="flex-1 space-y-1.5">
+										<label className="text-[11px] text-slate-500 block">Received</label>
+										<div className="flex items-center gap-2">
+											<div
+												className="w-8 h-8 rounded-lg border border-white/10 shrink-0 cursor-pointer"
+												style={{ backgroundColor: settings?.bubble_color_received ?? "oklch(0.30 0.04 250)" }}
+												title={settings?.bubble_color_received ?? "oklch(0.30 0.04 250)"}
+											/>
+											<OklchColorPicker
+												value={settings?.bubble_color_received ?? "oklch(0.30 0.04 250)"}
+												onChange={(color) => updateSettings({ bubble_color_received: color })}
+												className="flex-1"
+											/>
+										</div>
+									</div>
+								</div>
+							</div>
+						)}
 
 						<div className="mt-3">
 							<label className="text-xs text-slate-400 font-medium mb-1.5 block">Chat Background</label>

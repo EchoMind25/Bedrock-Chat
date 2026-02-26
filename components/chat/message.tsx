@@ -463,9 +463,9 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 									lineHeight: 'var(--message-line-height)',
 									...(isBubble ? {
 										backgroundColor: isOwnMessage
-											? 'var(--color-primary)'
-											: 'oklch(0.22 0.03 250)',
-										color: isOwnMessage ? 'white' : 'oklch(0.90 0.01 250)',
+											? 'var(--bubble-color-sent, oklch(0.55 0.20 265))'
+											: 'var(--bubble-color-received, oklch(0.30 0.04 250))',
+										color: isOwnMessage ? 'white' : 'oklch(0.92 0.01 250)',
 									} : {}),
 								}}
 							>
