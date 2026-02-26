@@ -364,9 +364,9 @@ function DMMessageBubble({
 		return (
 			<div className={`flex py-0.5 ${isOwn ? "justify-end" : "justify-start"} px-3`}>
 				<div
-					className="rounded-2xl px-3.5 py-1.5 max-w-[75%] break-words whitespace-pre-wrap"
+					className="rounded-2xl px-3.5 py-1.5 max-w-[75%] w-fit break-words whitespace-pre-wrap"
 					style={{
-						backgroundColor: isOwn ? "var(--color-primary)" : "oklch(0.18 0.02 250 / 0.6)",
+						backgroundColor: isOwn ? "var(--color-primary)" : "oklch(0.22 0.03 250)",
 						color: isOwn ? "white" : "oklch(0.90 0.01 250)",
 						fontSize: "var(--message-font-size)",
 						lineHeight: "var(--message-line-height)",
@@ -402,9 +402,9 @@ function DMMessageBubble({
 						</span>
 					)}
 					<div
-						className="rounded-2xl px-3.5 py-2 break-words whitespace-pre-wrap"
+						className="rounded-2xl px-3.5 py-2 w-fit break-words whitespace-pre-wrap"
 						style={{
-							backgroundColor: isOwn ? "var(--color-primary)" : "oklch(0.18 0.02 250 / 0.6)",
+							backgroundColor: isOwn ? "var(--color-primary)" : "oklch(0.22 0.03 250)",
 							color: isOwn ? "white" : "oklch(0.90 0.01 250)",
 							fontSize: "var(--message-font-size)",
 							lineHeight: "var(--message-line-height)",

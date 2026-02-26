@@ -455,7 +455,7 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 								className={cn(
 									"message-content-wrapper text-white/90 break-words whitespace-pre-wrap",
 									isOwnMessage && "own-message",
-									isBubble && "rounded-2xl px-3.5 py-2",
+									isBubble && "rounded-2xl px-3.5 py-2 w-fit",
 									isMinimal && "py-0.5",
 								)}
 								style={{
@@ -464,8 +464,8 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 									...(isBubble ? {
 										backgroundColor: isOwnMessage
 											? 'var(--color-primary)'
-											: 'oklch(0.18 0.02 250 / 0.6)',
-										color: isOwnMessage ? 'white' : undefined,
+											: 'oklch(0.22 0.03 250)',
+										color: isOwnMessage ? 'white' : 'oklch(0.90 0.01 250)',
 									} : {}),
 								}}
 							>
