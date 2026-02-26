@@ -1,0 +1,14 @@
+---
+interface Props {
+  feature?: string;
+}
+
+const { feature } = Astro.props;
+---
+
+<aside class="coming-soon" role="note" aria-label={feature ? `Coming soon: ${feature}` : 'Coming soon'}>
+  <div class="coming-soon-label">{feature ? `Coming soon: ${feature}` : 'Coming soon'}</div>
+  <div class="coming-soon-content">
+    <slot />
+  </div>
+</aside>

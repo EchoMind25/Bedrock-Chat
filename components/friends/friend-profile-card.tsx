@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
-import { MessageSquare, UserMinus, Ban, X } from "lucide-react";
+import { MessageSquare, UserMinus, Ban, X, Phone, Video } from "lucide-react";
 import { Avatar, type AvatarStatus } from "@/components/ui/avatar/avatar";
 import { Button } from "@/components/ui/button/button";
 import { useFriendsStore } from "@/store/friends.store";
 import { useDMStore } from "@/store/dm.store";
 import { usePresenceStore } from "@/store/presence.store";
+import { useVoiceStore } from "@/store/voice.store";
+import { toast } from "@/lib/stores/toast-store";
 import type { Friend } from "@/lib/types/friend";
 
 interface FriendProfileCardProps {
@@ -97,6 +99,47 @@ export function FriendProfileCard({ friend, onClose }: FriendProfileCardProps) {
 		onClose();
 	};
 
+	const handleCall = useCallback(async (callType: "voice" | "video") => {
+		const currentCallState = useVoiceStore.getState().callState;
+		if (currentCallState !== "idle") {
+			toast.error("Already in Call", "End your current call before starting a new one.");
+			return;
+		}
+
+		try {
+			const res = await fetch("/api/voice/direct/initiate", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ calleeId: friend.userId, callType }),
+			});
+
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({}));
+				toast.error("Call Failed", err.error || "Could not start call.");
+				return;
+			}
+
+			const { callId, token, wsUrl, roomName } = await res.json();
+			const store = useVoiceStore.getState();
+			store.setActiveDirectCall({
+				id: callId,
+				callerId: "",
+				calleeId: friend.userId,
+				callerName: "",
+				calleeName: friend.displayName,
+				calleeAvatar: friend.avatar,
+				roomName,
+				callType,
+				status: "ringing",
+			});
+			store.setDirectCallConnection(token, wsUrl);
+			store.setCallState("outgoing_ringing");
+			onClose();
+		} catch {
+			toast.error("Call Failed", "Could not start call. Check your connection.");
+		}
+	}, [friend.userId, friend.displayName, friend.avatar, onClose]);
+
 	const friendSince = friend.createdAt instanceof Date
 		? friend.createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
 		: "Unknown";
@@ -177,6 +220,27 @@ export function FriendProfileCard({ friend, onClose }: FriendProfileCardProps) {
 						<MessageSquare className="w-3.5 h-3.5" />
 						Send Message
 					</Button>
+
+					<div className="flex gap-2">
+						<Button
+							size="sm"
+							variant="ghost"
+							onClick={() => handleCall("voice")}
+							className="flex-1 gap-1.5 h-8 text-xs text-green-400 hover:text-green-300"
+						>
+							<Phone className="w-3.5 h-3.5" />
+							Call
+						</Button>
+						<Button
+							size="sm"
+							variant="ghost"
+							onClick={() => handleCall("video")}
+							className="flex-1 gap-1.5 h-8 text-xs text-blue-400 hover:text-blue-300"
+						>
+							<Video className="w-3.5 h-3.5" />
+							Video
+						</Button>
+					</div>
 
 					<div className="flex gap-2">
 						<Button

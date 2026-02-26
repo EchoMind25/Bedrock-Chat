@@ -1,0 +1,210 @@
+---
+title: "Build a Welcome Bot"
+description: "Build a bot that greets new members when they join your server."
+---
+
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+import StepByStep from '../../../components/StepByStep.astro';
+import TryIt from '../../../components/TryIt.astro';
+import CodeExplainer from '../../../components/CodeExplainer.astro';
+
+A bot that posts a greeting in your #welcome channel whenever a new member joins.
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org) installed
+- A text editor ([VS Code](https://code.visualstudio.com) works well)
+- A Bedrock Chat account with a test server
+- A webhook in your test server's #welcome channel
+
+## Build the bot
+
+<StepByStep title="Step 1: Create your project folder">
+
+```bash
+mkdir welcome-bot
+cd welcome-bot
+npm init -y
+```
+
+</StepByStep>
+
+<StepByStep title="Step 2: Install dependencies">
+
+```bash
+npm install express dotenv
+```
+
+</StepByStep>
+
+<StepByStep title="Step 3: Create your webhook">
+
+1. Open your server settings.
+2. Click **Webhooks** > **Create Webhook**.
+3. Select the **#welcome** channel.
+4. Name it "Welcome Bot."
+5. Copy the **Webhook ID** and **Token**.
+
+<PrivacyNote>
+Your webhook token is like a password. Do not share it or commit it to version control.
+</PrivacyNote>
+
+</StepByStep>
+
+<StepByStep title="Step 4: Create your environment file">
+
+Create a `.env` file in your project root.
+
+```bash
+WEBHOOK_ID=your-webhook-id-here
+WEBHOOK_TOKEN=your-webhook-token-here
+PORT=3000
+```
+
+Replace the placeholder values with your actual webhook ID and token.
+
+</StepByStep>
+
+<StepByStep title="Step 5: Write your bot code">
+
+Create `index.js` with the following code.
+
+```javascript
+require('dotenv').config();
+const express = require('express');
+
+const app = express();
+app.use(express.json());
+
+const WEBHOOK_ID = process.env.WEBHOOK_ID;
+const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN;
+const PORT = process.env.PORT || 3000;
+
+const WEBHOOK_URL = `https://bedrockchat.app/api/webhooks/${WEBHOOK_ID}?token=${WEBHOOK_TOKEN}`;
+
+async function sendWelcomeMessage(memberName) {
+  const message = {
+    content: `Welcome to the server, **${memberName}**! We are so glad you are here. Feel free to introduce yourself and say hi!`,
+    username: 'Greeter Bot',
+    avatar_url: 'https://bedrockchat.app/images/welcome-bot.png'
+  };
+
+  const response = await fetch(WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(message)
+  });
+
+  return response.json();
+}
+
+app.post('/welcome', async (req, res) => {
+  const memberName = req.body.memberName || 'New Friend';
+
+  try {
+    const result = await sendWelcomeMessage(memberName);
+    res.json({
+      success: true,
+      messageId: result.messageId,
+      note: `Welcomed ${memberName} to the server!`
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Welcome bot is running on port ${PORT}`);
+});
+```
+
+</StepByStep>
+
+<CodeExplainer title="How the welcome message works">
+<Fragment slot="code">
+```javascript
+const message = {
+  content: `Welcome to the server, **${memberName}**!`,
+  username: 'Greeter Bot',
+  avatar_url: 'https://bedrockchat.app/images/welcome-bot.png'
+};
+```
+</Fragment>
+<Fragment slot="explanation">
+The `content` field is the text that appears in chat. Double stars (`**`) render the name in **bold**. The `username` and `avatar_url` fields override the bot's display name and picture for this message.
+</Fragment>
+</CodeExplainer>
+
+<StepByStep title="Step 6: Start your bot">
+
+```bash
+node index.js
+```
+
+You should see:
+
+```
+Welcome bot is running on port 3000
+```
+
+</StepByStep>
+
+<StepByStep title="Step 7: Test your bot">
+
+Open a second terminal and send a test request.
+
+```bash
+curl -X POST http://localhost:3000/welcome \
+  -H "Content-Type: application/json" \
+  -d '{"memberName": "Alex"}'
+```
+
+Verify this works by checking the #welcome channel in Bedrock Chat for Alex's greeting.
+
+</StepByStep>
+
+<TryIt>
+Verify the bot handles different names by replacing `"Alex"` with your own name and sending the request again.
+</TryIt>
+
+## Customization
+
+### Change the welcome message
+
+Edit the `content` string in `index.js`.
+
+```javascript
+content: `Hey **${memberName}**, welcome aboard! Check out #rules first. Then head to #general to say hi!`,
+```
+
+### Add random greetings
+
+Make the bot pick a different greeting each time.
+
+```javascript
+const greetings = [
+  `Welcome, **${memberName}**! So glad you joined us.`,
+  `Hey **${memberName}**! You made it. Welcome to the crew.`,
+  `**${memberName}** just arrived. Everyone say hi!`,
+  `A wild **${memberName}** appeared! Welcome, friend.`
+];
+
+const content = greetings[Math.floor(Math.random() * greetings.length)];
+```
+
+### Change the bot's name and avatar
+
+```javascript
+username: 'Server Guardian',
+avatar_url: 'https://example.com/my-cool-avatar.png'
+```
+
+## Next steps
+
+- Add more greeting variants to reduce repetition.
+- Include a server rules summary in the welcome message.
+- [Deploy your bot](/recommended-tools/free-hosting-options) so it runs 24/7.
+- [Submit your bot for review](/publishing/submitting-for-review) to publish it.

@@ -1,0 +1,134 @@
+---
+title: "What Your Bot Can Access"
+description: "Bot scopes, permissions, and accessible data on Bedrock Chat."
+---
+
+import WhatThisMeans from '../../../components/WhatThisMeans.astro';
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+
+## Access Model
+
+When you build a bot, you declare exactly what data it needs. Each capability is gated behind a scope. Your bot only receives the scopes it requests, and only after the server owner approves them.
+
+<WhatThisMeans term="scope">
+A **scope** is a specific capability your bot can request. Each scope grants access to one category of data or actions. Your bot only receives the scopes it explicitly requests and that the server owner approves.
+</WhatThisMeans>
+
+## The Six Bot Scopes
+
+Your bot can request up to six scopes. Most bots need two or three. Only request what your bot actually uses.
+
+### 1. Read Messages
+
+**Scope:** `messages.read`
+
+Allows your bot to read messages in channels where it is installed. This is the most common scope.
+
+**Use cases:** moderation bots, trivia bots, command-driven bots.
+
+<PrivacyNote>
+Your bot can only read messages in **public channels** where it is installed. It cannot read direct messages or messages in channels it was not added to.
+</PrivacyNote>
+
+### 2. Send Messages
+
+**Scope:** `messages.write`
+
+Allows your bot to send messages to channels where it is installed.
+
+**Use cases:** welcome bots, notification bots, daily update bots.
+
+### 3. Add Reactions
+
+**Scope:** `reactions.write`
+
+Allows your bot to add emoji reactions to messages.
+
+**Use cases:** poll bots, feedback bots, acknowledgment bots.
+
+### 4. Read Member List
+
+**Scope:** `members.read`
+
+Allows your bot to see server members, including usernames, display names, profile pictures, and online status.
+
+<PrivacyNote>
+Your bot can see **usernames, display names, profile pictures, and status** only. Email addresses, phone numbers, and dates of birth are never exposed.
+</PrivacyNote>
+
+**Use cases:** leaderboard bots, team picker bots, birthday bots (self-reported only).
+
+### 5. Read Channel Information
+
+**Scope:** `channels.read`
+
+Allows your bot to see channel names, types, and topics for channels it has access to.
+
+**Use cases:** directory bots, channel organization bots, activity bots.
+
+### 6. Read Presence
+
+**Scope:** `presence.read`
+
+Allows your bot to see whether members are online, idle, or offline. Does not reveal what members are doing.
+
+<WhatThisMeans term="presence">
+**Presence** indicates a user's current availability: online, idle, do not disturb, or offline. It does not reveal their activity.
+</WhatThisMeans>
+
+**Use cases:** availability bots, notification routing bots.
+
+## Scope Reference
+
+| Scope | Access Granted | Example Use |
+|---|---|---|
+| `messages.read` | Read messages in installed channels | Trivia bot reads player answers |
+| `messages.write` | Send messages to installed channels | Welcome bot greets new members |
+| `reactions.write` | Add reactions to messages | Poll bot adds vote options |
+| `members.read` | View member profiles and status | Leaderboard bot tracks contributors |
+| `channels.read` | View channel metadata | Directory bot lists channels |
+| `presence.read` | View online/offline status | Notification bot waits for user to come online |
+
+## How Permissions Work
+
+Scopes are what your bot requests. Permissions are what the server owner grants. Both are required.
+
+### Requesting Scopes
+
+During bot registration, you select the scopes your bot needs. Explain why you need each one in your submission. Requesting only necessary scopes improves approval speed and user trust.
+
+### Server Owner Approval
+
+When a server owner installs your bot, they see the full list of requested scopes. They can approve all, some, or none. Your bot must function with whatever subset is granted.
+
+### Channel-Level Overrides
+
+Server owners can restrict your bot's access per channel. A bot with `messages.read` at the server level may still be blocked from specific channels. Your bot respects these restrictions automatically.
+
+<PrivacyNote>
+Server owners control your bot's permissions at all times. They can modify or revoke access without notice.
+</PrivacyNote>
+
+## Scope Selection Guidelines
+
+**Request the minimum.** Only ask for scopes your bot actively uses. You can add more later.
+
+**Document your reasoning.** Your submission should explain why each scope is needed. This speeds up review.
+
+**Fewer scopes build trust.** Users are more likely to install a bot that requests one or two scopes than one that requests all six.
+
+### Example: Trivia Bot
+
+| Scope | Reason |
+|---|---|
+| `messages.read` | Read player answers |
+| `messages.write` | Ask questions and display scores |
+| `reactions.write` | Mark correct answers with a checkmark |
+
+This bot does not need `members.read`, `channels.read`, or `presence.read`, so it does not request them.
+
+## What's Next
+
+Learn what data is off-limits to bots, regardless of scopes.
+
+**Next up:** [What Your Bot Cannot Do](/privacy-and-rules/what-your-bot-cannot-do)

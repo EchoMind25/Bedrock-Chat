@@ -1,0 +1,14 @@
+---
+interface Props {
+  title?: string;
+}
+
+const { title = 'Try it yourself!' } = Astro.props;
+---
+
+<aside class="try-it" role="note" aria-label={title}>
+  <div class="try-it-label">{title}</div>
+  <div class="try-it-content">
+    <slot />
+  </div>
+</aside>

@@ -1,0 +1,14 @@
+---
+interface Props {
+  term?: string;
+}
+
+const { term } = Astro.props;
+---
+
+<aside class="what-this-means" role="note" aria-label={term ? `What "${term}" means` : 'What this means'}>
+  <div class="what-this-means-label">{term ? `What "${term}" means` : 'What this means'}</div>
+  <div class="what-this-means-content">
+    <slot />
+  </div>
+</aside>

@@ -1,0 +1,217 @@
+---
+title: "Glossary"
+description: "Definitions of technical terms used in these docs."
+---
+
+This glossary defines the technical terms used throughout these docs, listed in alphabetical order.
+
+---
+
+## A
+
+### API (Application Programming Interface)
+
+A set of endpoints that your bot uses to communicate with Bedrock Chat. Your bot sends HTTP requests to the API, and the API returns JSON responses. Every bot interaction — sending messages, reading channel data, registering webhooks — goes through the API.
+
+### Authentication
+
+The process of proving your bot's identity to the API. Bedrock Chat uses bearer tokens: your bot includes its secret token in the `Authorization` header of every request. Without valid authentication, the API rejects the request with a `401 Unauthorized` error.
+
+### Authorization
+
+The process of determining what actions an authenticated bot is allowed to perform. A bot may authenticate successfully but still lack permission to access certain endpoints or resources. Authorization is controlled through scopes assigned during bot registration.
+
+---
+
+## B
+
+### Bearer Token
+
+A credential included in the `Authorization` header to authenticate API requests. The format is `Authorization: Bearer YOUR_TOKEN_HERE`. "Bearer" means whoever possesses the token can act as the associated bot. If a token is compromised, an attacker can impersonate your bot — treat tokens like private keys.
+
+### Bot
+
+A program that connects to Bedrock Chat through the API. Bots can send messages, respond to commands, and automate tasks within servers they have been added to. A bot runs as its own identity, separate from user accounts.
+
+---
+
+## C
+
+### CCPA (California Consumer Privacy Act)
+
+A California state law that gives residents the right to know what personal data companies collect, request its deletion, and opt out of its sale. Many platforms apply CCPA protections to all users regardless of location.
+
+### Channel
+
+A distinct conversation space within a server. Channels are scoped to a single topic or purpose (e.g., `#general`, `#deployments`). Text channels hold message history; voice channels support real-time audio. Your bot interacts with channels by their unique ID.
+
+### COPPA (Children's Online Privacy Protection Act)
+
+A US federal law that requires verifiable parental consent before collecting personal information from children under 13. Bots must not collect personal data from users without their knowledge, and platforms must enforce age-appropriate data handling.
+
+---
+
+## D
+
+### DPA (Data Processing Agreement)
+
+A legally binding contract between a data controller and a data processor that defines how user data will be handled, stored, and protected. When Bedrock Chat uses third-party infrastructure providers, DPAs ensure those providers meet the same data protection standards.
+
+---
+
+## E
+
+### Embed
+
+A structured message format with a title, description, fields, color, and optional images. Bots use embeds to display rich content instead of plain text. Embeds are defined as JSON objects within the message payload.
+
+### Endpoint
+
+A specific URL path that handles a specific operation. For example, `POST /api/v1/messages` creates a new message, while `GET /api/v1/channels/{id}` retrieves channel data. Each endpoint accepts defined HTTP methods and parameters.
+
+### Environment Variable
+
+A key-value pair set in the operating system or hosting platform, outside your source code. Store secrets like bot tokens as environment variables to keep them out of version control. Your code reads them at runtime (e.g., `process.env.BOT_TOKEN`).
+
+---
+
+## G
+
+### GDPR (General Data Protection Regulation)
+
+An EU regulation governing the collection, processing, and storage of personal data. It grants individuals rights including data access, deletion, and portability. Many platforms apply GDPR-level protections globally rather than segmenting by region.
+
+---
+
+## H
+
+### HMAC (Hash-based Message Authentication Code)
+
+A cryptographic signature used to verify both the integrity and authenticity of a message. Bedrock Chat signs outgoing webhook payloads with HMAC-SHA256. Your server recomputes the signature using your webhook secret and compares it to the one in the request header. A mismatch means the payload was tampered with or did not originate from Bedrock Chat.
+
+### HTTP/HTTPS (HyperText Transfer Protocol / Secure)
+
+HTTP is the protocol used for communication between clients and servers on the web. HTTPS adds TLS encryption, ensuring data cannot be read or modified in transit. Bedrock Chat requires HTTPS for all API requests and webhook URLs.
+
+---
+
+## J
+
+### JSON (JavaScript Object Notation)
+
+A lightweight data interchange format using key-value pairs and arrays. Example:
+
+```json
+{
+  "name": "My Bot",
+  "version": "1.0",
+  "active": true
+}
+```
+
+All Bedrock Chat API requests and responses use JSON. It is human-readable and supported by every major programming language.
+
+---
+
+## P
+
+### Payload
+
+The body of an HTTP request or response — the actual data being transmitted. When your bot sends a message, the payload is the JSON object containing the message content, channel ID, and any optional fields like embeds.
+
+---
+
+## R
+
+### Rate Limit
+
+A cap on the number of API requests allowed within a time window. Rate limits protect the platform from abuse and ensure fair resource allocation. Exceeding the limit returns a `429 Too Many Requests` response. The `Retry-After` header indicates how many seconds to wait before retrying.
+
+### REST API (Representational State Transfer)
+
+An architectural style for APIs that uses standard HTTP methods to perform operations on resources identified by URLs:
+
+- **GET** — Read a resource
+- **POST** — Create a resource
+- **PUT / PATCH** — Update a resource
+- **DELETE** — Remove a resource
+
+The Bedrock Chat API follows REST conventions.
+
+---
+
+## S
+
+### Scope
+
+A granular permission that defines what your bot can access or do. Scopes are assigned during bot registration. Examples: `messages.send` allows sending messages, `channels.read` allows viewing channel metadata. A bot can only perform actions covered by its assigned scopes.
+
+### Server
+
+This term has two meanings depending on context:
+
+1. **Bedrock Chat server** — A community workspace containing channels, members, and roles. Users join servers to communicate, and bots are added to servers to provide functionality.
+2. **Compute server** — A machine or process that listens for and responds to network requests. When you deploy your bot to Railway or Render, it runs on a compute server.
+
+Context makes the meaning clear: channels and members refer to a Bedrock Chat server; hosting and deployment refer to a compute server.
+
+### Status Code
+
+A three-digit integer in an HTTP response indicating the result of the request:
+
+- **200** — Success
+- **201** — Resource created
+- **400** — Bad request (malformed input)
+- **401** — Unauthorized (invalid or missing token)
+- **403** — Forbidden (insufficient permissions)
+- **404** — Resource not found
+- **429** — Rate limited
+- **500** — Internal server error
+
+See [Error Messages](/troubleshooting/error-messages/) for details on each code.
+
+---
+
+## T
+
+### Token
+
+A secret string that authenticates your bot with the API. Tokens follow the format `brc_a1b2c3d4e5f6...` and must be included in the `Authorization` header of every request.
+
+**Token security rules:**
+- Never commit tokens to version control.
+- Never share tokens in public channels or documentation.
+- Store tokens in environment variables.
+- Regenerate immediately if a token is exposed.
+
+---
+
+## U
+
+### UUID (Universally Unique Identifier)
+
+A 128-bit identifier formatted as `550e8400-e29b-41d4-a716-446655440000`. UUIDs are generated to be globally unique without coordination between systems. Bedrock Chat uses UUIDs as primary identifiers for users, channels, servers, messages, and bots.
+
+---
+
+## W
+
+### Webhook
+
+An HTTP callback triggered by an event. Instead of polling the API for updates, you register a webhook URL with Bedrock Chat. When a relevant event occurs (e.g., a new message in a watched channel), Bedrock Chat sends a POST request with the event payload to your URL. Your server processes it and responds with a `200` status.
+
+### WebSocket
+
+A persistent, full-duplex connection between a client and server. Unlike HTTP request-response cycles, a WebSocket keeps the connection open so either side can send data at any time. Bedrock Chat uses WebSockets for real-time features: live message delivery, typing indicators, and presence updates.
+
+---
+
+## Numbers and Symbols
+
+### 200, 201, 400, 401, 403, 404, 429, 500
+
+HTTP status codes. See the **Status Code** entry above, or visit [Error Messages](/troubleshooting/error-messages/) for detailed explanations.
+
+### HTTPS://
+
+The `https://` URL scheme indicates an encrypted connection using TLS. Bedrock Chat requires HTTPS for all API and webhook communication. See the **HTTP/HTTPS** entry above.

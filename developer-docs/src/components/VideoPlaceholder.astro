@@ -1,0 +1,13 @@
+---
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<div class="video-placeholder" role="img" aria-label={`Video placeholder: ${title}`}>
+  <div class="video-placeholder-icon">&#127909;</div>
+  <p class="video-placeholder-title">{title}</p>
+  <p class="video-placeholder-badge">Video tutorial coming soon</p>
+</div>

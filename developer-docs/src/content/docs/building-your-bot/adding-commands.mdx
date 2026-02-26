@@ -1,0 +1,318 @@
+---
+title: "Adding Commands"
+description: "Give your bot commands that users can trigger."
+---
+
+import CodeExplainer from '../../../components/CodeExplainer.astro';
+import TryIt from '../../../components/TryIt.astro';
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+
+## Commands
+
+A command is a keyword that triggers a specific bot action. Users type the command in chat (e.g., `!hello`), and the bot executes the corresponding logic and sends a response.
+
+Commands give users a predictable interface for interacting with your bot.
+
+---
+
+## Command Structure
+
+Every command has three parts:
+
+1. **Trigger** -- the keyword that activates the command (e.g., `!hello`)
+2. **Response type** -- text, embed, or action
+3. **Logic** -- what the bot does when the command fires
+
+---
+
+## Trigger Types
+
+### Prefix triggers
+
+A prefix trigger starts with a special character, typically `!`:
+
+- `!hello` -- greets the user
+- `!help` -- lists available commands
+- `!joke` -- returns a random joke
+
+### Exact match triggers
+
+An exact match only fires when the entire message matches:
+
+- Trigger: `good morning` -- only matches the exact string "good morning"
+- Does not match "say good morning" or "good morning everyone"
+
+Prefix triggers are more common and more intuitive for users.
+
+---
+
+## Response Types
+
+### 1. Text
+
+A plain text message. The simplest response type.
+
+```
+User: !hello
+Bot: Hi there! Welcome to the server.
+```
+
+### 2. Embed
+
+An embed is a rich formatted message with structured fields -- title, description, color, and data. Useful for displaying organized information like stats, leaderboards, or help menus.
+
+### 3. Action
+
+An action response performs an operation instead of sending text. Examples: assigning a role, starting a timer, or logging an event. Actions are the most advanced response type.
+
+---
+
+## Building the Command Registry
+
+Define your commands in a central object:
+
+```javascript
+const commands = {
+  '!hello': { name: 'hello', description: 'Says hi to you' },
+  '!help': { name: 'help', description: 'Shows all commands' },
+  '!joke': { name: 'joke', description: 'Tells a random joke' },
+  '!remind': { name: 'remind', description: 'Reminds you about something' }
+};
+```
+
+Each entry maps a trigger string to its metadata. Commands with dynamic responses (like `!help` and `!joke`) generate their output in the handler function.
+
+---
+
+## The Command Handler
+
+This function parses the first word of a message and dispatches to the correct logic:
+
+<CodeExplainer>
+```javascript
+function handleCommand(messageContent, username) {
+  // Parse the first word as command trigger
+  const firstWord = messageContent.trim().split(' ')[0].toLowerCase();
+
+  if (!commands[firstWord]) return null;
+
+  switch (firstWord) {
+    case '!hello':
+      return `Hi there, ${username}! Welcome to the server.`;
+
+    case '!help':
+      return buildHelpMessage();
+
+    case '!joke':
+      return getRandomJoke();
+
+    case '!remind':
+      const reminder = messageContent.slice(8).trim();
+      if (!reminder) {
+        return 'Usage: !remind drink water';
+      }
+      return `Got it, ${username}! I will remind you: "${reminder}"`;
+
+    default:
+      return null;
+  }
+}
+```
+`trim().split(' ')[0]` extracts the first word. `toLowerCase()` normalizes casing so `!Hello` and `!hello` both match. The `switch` dispatches to the appropriate handler. Returning `null` means the message was not a command.
+</CodeExplainer>
+
+---
+
+## The Help Command
+
+Generates a command list dynamically from the registry:
+
+```javascript
+function buildHelpMessage() {
+  let text = 'Here are my commands:\n\n';
+  for (const [trigger, cmd] of Object.entries(commands)) {
+    text += `**${trigger}** -- ${cmd.description}\n`;
+  }
+  return text;
+}
+```
+
+Output:
+
+```
+Here are my commands:
+
+**!hello** -- Says hi to you
+**!help** -- Shows all commands
+**!joke** -- Tells a random joke
+**!remind** -- Reminds you about something
+```
+
+---
+
+## The Joke Command
+
+```javascript
+const jokes = [
+  'Why do programmers prefer dark mode? Because light attracts bugs!',
+  'What do you call a computer that sings? A-Dell!',
+  'Why was the computer cold? It left its Windows open!',
+  'What is a computer\'s favorite snack? Microchips!',
+  'Why did the bot go to school? To improve its language skills!'
+];
+
+function getRandomJoke() {
+  return jokes[Math.floor(Math.random() * jokes.length)];
+}
+```
+
+---
+
+## Connecting Commands to Your Webhook
+
+Update the webhook handler to route messages through the command system:
+
+```javascript
+app.post('/webhook', async (req, res) => {
+  const message = req.body;
+
+  if (message.type === 'verification') {
+    res.json({ challenge: message.challenge });
+    return;
+  }
+
+  // Route through command handler
+  if (message.content) {
+    const reply = handleCommand(message.content, message.username);
+    if (reply) {
+      await sendResponse(message.channelId, reply, message.username);
+    }
+  }
+
+  res.json({ success: true });
+});
+```
+
+If `handleCommand` returns a string, the bot sends it. If it returns `null`, the message is ignored.
+
+---
+
+## Command Limits
+
+- Maximum **50 commands** per bot
+- Command names should be short and memorable
+- Each command requires a description (displayed by `!help`)
+- Commands are case-insensitive
+
+---
+
+## Design Guidelines
+
+**Keep names short.** `!help` is better than `!show-me-all-commands`.
+
+**Follow conventions.** Most bots use `!help` for help. Users expect it.
+
+**Always respond.** Every command should produce a reply, even on error. Silent failures confuse users.
+
+**Write clear descriptions.** The `!help` output is your bot's documentation. A new user should understand each command from the description alone.
+
+---
+
+## Complete Bot with Commands
+
+<TryIt>
+Copy this into your `index.js`, replace `YOUR_BOT_ID` and `YOUR_BOT_TOKEN` with your credentials, and run `node index.js`. Test each command by sending curl requests to `http://localhost:3000/webhook`.
+
+```javascript
+const express = require('express');
+const app = express();
+app.use(express.json());
+
+const BOT_ID = 'YOUR_BOT_ID';
+const BOT_TOKEN = 'YOUR_BOT_TOKEN';
+
+const jokes = [
+  'Why do programmers prefer dark mode? Because light attracts bugs!',
+  'What do you call a computer that sings? A-Dell!',
+  'Why was the computer cold? It left its Windows open!'
+];
+
+const commands = {
+  '!hello': { name: 'hello', description: 'Says hi to you' },
+  '!help': { name: 'help', description: 'Shows all commands' },
+  '!joke': { name: 'joke', description: 'Tells a random joke' },
+  '!remind': { name: 'remind', description: 'Reminds you about something' }
+};
+
+function buildHelpMessage() {
+  let text = 'Here are my commands:\n\n';
+  for (const [trigger, cmd] of Object.entries(commands)) {
+    text += `**${trigger}** -- ${cmd.description}\n`;
+  }
+  return text;
+}
+
+function handleCommand(content, username) {
+  const firstWord = content.trim().split(' ')[0].toLowerCase();
+  if (!commands[firstWord]) return null;
+
+  switch (firstWord) {
+    case '!hello':
+      return `Hi there, ${username}!`;
+    case '!help':
+      return buildHelpMessage();
+    case '!joke':
+      return jokes[Math.floor(Math.random() * jokes.length)];
+    case '!remind':
+      const reminder = content.slice(8).trim();
+      if (!reminder) return 'Usage: !remind drink water';
+      return `Got it! I will remind you: "${reminder}"`;
+    default:
+      return null;
+  }
+}
+
+async function sendResponse(channelId, messageContent, triggeredBy) {
+  try {
+    const response = await fetch(
+      `https://bedrock.chat/api/bots/${BOT_ID}/respond`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${BOT_TOKEN}`
+        },
+        body: JSON.stringify({ channelId, messageContent, triggeredBy })
+      }
+    );
+    if (!response.ok) console.log('Error:', response.status);
+    return await response.json();
+  } catch (error) {
+    console.log('Network error:', error.message);
+    return null;
+  }
+}
+
+app.post('/webhook', async (req, res) => {
+  const message = req.body;
+  if (message.type === 'verification') {
+    res.json({ challenge: message.challenge });
+    return;
+  }
+  if (message.content) {
+    const reply = handleCommand(message.content, message.username);
+    if (reply) await sendResponse(message.channelId, reply, message.username);
+  }
+  res.json({ success: true });
+});
+
+app.get('/', (req, res) => res.send('Bot is running!'));
+app.listen(3000, () => console.log('Bot is running on port 3000'));
+```
+</TryIt>
+
+---
+
+## Next Step
+
+Your bot has a working command system. Proceed to [Testing Your Bot](/building-your-bot/testing-your-bot) to validate everything before going live.

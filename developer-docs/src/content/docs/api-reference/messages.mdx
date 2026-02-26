@@ -1,0 +1,273 @@
+---
+title: "Messages"
+description: "How to send messages through the Bedrock Chat API using webhooks and bot responses."
+---
+
+import WhatThisMeans from '../../../components/WhatThisMeans.astro';
+import ComingSoon from '../../../components/ComingSoon.astro';
+import CodeExplainer from '../../../components/CodeExplainer.astro';
+import TryIt from '../../../components/TryIt.astro';
+
+Sending messages is the most fundamental thing your bot does. Bedrock Chat gives you two endpoints for this — **webhooks** (the primary method) and **bot responses** (a secondary method that is still being built out). This page covers both in detail.
+
+---
+
+## POST /api/webhooks/[webhookId] — Send a Message via Webhook
+
+This is the **main way** your bot sends messages to a channel. You create a webhook in your server settings, and then your bot posts messages to that webhook URL.
+
+### Authentication
+
+You can authenticate webhook requests in two ways. Use whichever is easier for your setup:
+
+**Option A — Bearer header:**
+```bash
+# Include the token in the Authorization header
+# The word "Bearer" must come before your token
+curl -X POST https://bedrockchat.com/api/webhooks/wh_abc123 \
+  -H "Authorization: Bearer YOUR_WEBHOOK_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"content": "Hello from my bot!"}'
+```
+
+**Option B — Query parameter:**
+```bash
+# Append the token to the URL as ?token=
+curl -X POST "https://bedrockchat.com/api/webhooks/wh_abc123?token=YOUR_WEBHOOK_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"content": "Hello from my bot!"}'
+```
+
+### Request Body
+
+Here is every field you can include in your request:
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `content` | string | Yes | The message text. Must be between 1 and 4,000 characters. |
+| `username` | string | No | Override the bot's display name for this message. |
+| `avatar_url` | string | No | Override the bot's avatar image for this message. Must be a valid URL. |
+| `embeds` | array | No | Rich embedded content (cards with titles, descriptions, and colors). |
+
+<WhatThisMeans term="Embeds">
+Embeds are rich message cards — similar to how a link preview looks when you paste a URL. They can have a title, description, color, and more. They appear below your message text and stand out visually from plain text.
+</WhatThisMeans>
+
+### Full Request Example
+
+<CodeExplainer title="Sending a message with all fields">
+<Fragment slot="code">
+```js
+// The webhook URL — replace with your actual webhook ID
+const webhookUrl = 'https://bedrockchat.com/api/webhooks/wh_abc123';
+
+// The webhook token — keep this secret!
+const token = 'YOUR_WEBHOOK_TOKEN';
+
+// Build the request
+const response = await fetch(webhookUrl, {
+  method: 'POST',                              // POST = sending new data
+  headers: {
+    'Authorization': `Bearer ${token}`,        // Authenticate with your token
+    'Content-Type': 'application/json',        // Tell the server we are sending JSON
+  },
+  body: JSON.stringify({
+    content: 'Server maintenance in 30 minutes!', // The actual message text (required)
+    username: 'Maintenance Bot',                  // Override display name (optional)
+    avatar_url: 'https://example.com/wrench.png', // Override avatar (optional)
+    embeds: [                                      // Rich embed cards (optional)
+      {
+        title: 'Scheduled Maintenance',            // Bold title at the top of the card
+        description: 'We will be updating the server software. Expected downtime: 15 minutes.',
+        color: '#ff9900',                          // Accent color on the side of the card
+      }
+    ],
+  }),
+});
+
+// Parse the response
+const data = await response.json();             // Convert the response to a JS object
+console.log(data.messageId);                    // The unique ID of the created message
+```
+</Fragment>
+<Fragment slot="explanation">
+This example sends a message with a custom username, a custom avatar, and a rich embed card. In practice, most messages only need the `content` field. The `username` and `avatar_url` overrides are useful if your single webhook serves multiple purposes — like posting alerts with different names depending on severity.
+</Fragment>
+</CodeExplainer>
+
+### Success Response
+
+When your message is sent successfully, you get back:
+
+```json
+{
+  "success": true,      // Confirms the message was delivered
+  "messageId": "a1b2c3" // Unique ID for this message — save it if you need to reference it later
+}
+```
+
+The HTTP status code will be **200** (OK).
+
+### How the Message is Stored
+
+When Bedrock Chat receives your webhook message, it stores it with metadata so the platform knows it came from a webhook. Internally, the message record includes:
+
+```json
+{
+  "webhook_id": "wh_abc123",               // Which webhook sent it
+  "webhook_username": "Maintenance Bot",    // The display name override (if provided)
+  "webhook_avatar_url": "https://...",      // The avatar override (if provided)
+  "embeds": [...]                           // Any embed data you included
+}
+```
+
+You do not need to worry about this metadata in most cases. It is just helpful to know that Bedrock Chat tracks where each message came from.
+
+### Rate Limiting
+
+Webhooks are limited to **1 request per second per webhook**. If you need to send messages faster than that, create multiple webhooks in your server.
+
+If you exceed the limit, you will get a **429** status code. See the [API Overview](/api-reference/overview/) for details on handling rate limits.
+
+<TryIt title="Test your webhook">
+Before writing any code, you can test your webhook using `curl` from your terminal:
+
+```bash
+# Replace the webhook ID and token with your real values
+curl -X POST "https://bedrockchat.com/api/webhooks/YOUR_WEBHOOK_ID" \
+  -H "Authorization: Bearer YOUR_WEBHOOK_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"content": "Testing, testing, 1-2-3!"}'
+```
+
+If you see `{"success": true, "messageId": "..."}` in the response, your webhook is working.
+</TryIt>
+
+---
+
+## POST /api/bots/[botId]/respond — Bot Response Endpoint
+
+This is a secondary way for your bot to send messages. Instead of using a webhook, your bot sends a response through its own registered bot identity.
+
+### Authentication
+
+This endpoint uses your **bot token** (not a webhook token):
+
+```bash
+# Use the bot token from your bot's settings page
+curl -X POST https://bedrockchat.com/api/bots/bot_xyz789/respond \
+  -H "Authorization: Bearer YOUR_BOT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"channelId": "channel-1", "messageContent": "Hello!"}'
+```
+
+### Request Body
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `channelId` | string | Yes | The ID of the channel to send the message to. |
+| `messageContent` | string | Yes | The text content of the message. |
+| `triggeredBy` | string | No | The ID of the message or event that triggered this response. Useful for debugging. |
+
+<CodeExplainer title="Sending a bot response">
+<Fragment slot="code">
+```js
+// Your bot's ID and token — from the developer dashboard
+const botId = 'bot_xyz789';
+const botToken = 'YOUR_BOT_TOKEN';
+
+// The endpoint URL includes your bot's ID
+const url = `https://bedrockchat.com/api/bots/${botId}/respond`;
+
+// Send the response
+const response = await fetch(url, {
+  method: 'POST',                              // POST = sending new data
+  headers: {
+    'Authorization': `Bearer ${botToken}`,     // Authenticate with your bot token
+    'Content-Type': 'application/json',        // Tell the server we are sending JSON
+  },
+  body: JSON.stringify({
+    channelId: 'channel-general',              // Which channel to post in (required)
+    messageContent: 'Here is the info you asked for!', // The message text (required)
+    triggeredBy: 'msg_abc123',                 // What triggered this response (optional)
+  }),
+});
+
+const data = await response.json();           // Parse the JSON response
+console.log(data.response);                   // Currently returns placeholder text
+```
+</Fragment>
+<Fragment slot="explanation">
+The `triggeredBy` field is optional but helpful. If your bot is replying to a user's message, pass that message's ID here. This creates a paper trail that makes debugging easier — you can always trace back to what caused your bot to respond.
+</Fragment>
+</CodeExplainer>
+
+### Current Response
+
+**Important:** This endpoint currently returns a placeholder response:
+
+```json
+{
+  "response": "placeholder text"
+}
+```
+
+The message is recorded and the bot's `messages_sent` counter is incremented, but the full integration is still being built. This endpoint will become more powerful as the platform matures.
+
+### Side Effects
+
+Even though the response is a placeholder, calling this endpoint does have a real effect:
+
+- Your bot's `messages_sent` counter goes up by one
+- The request is logged for your bot's analytics
+
+This counter is visible on your bot's profile and factors into platform statistics.
+
+---
+
+## When to Use Which Endpoint
+
+| Scenario | Recommended Endpoint |
+|---|---|
+| Sending notifications or announcements | Webhook (`POST /api/webhooks/[webhookId]`) |
+| Posting scheduled messages | Webhook |
+| Responding to user commands | Bot respond (`POST /api/bots/[botId]/respond`) |
+| Sending messages from a no-code tool | Webhook (simpler auth with query param) |
+| Need custom username/avatar per message | Webhook (supports overrides) |
+| Need to track bot response metrics | Bot respond (increments counter) |
+
+For most bots, **webhooks are the way to go**. They are simpler, more reliable, and fully implemented today. Use the bot respond endpoint when you specifically need the bot identity and metrics tracking.
+
+---
+
+## Common Errors
+
+Both endpoints return errors in the same format:
+
+```json
+{
+  "error": "Human-readable description of what went wrong"
+}
+```
+
+Here are the errors you are most likely to encounter:
+
+| Status | Error Message | What To Do |
+|---|---|---|
+| 400 | `"content is required"` | You forgot the `content` field (webhooks) or `messageContent` field (bot respond). |
+| 400 | `"content must be between 1 and 4000 characters"` | Your message is empty or too long. Trim it down or split it into multiple messages. |
+| 401 | `"Invalid or missing token"` | Check your token. Make sure you included the `Bearer` prefix in the header. |
+| 404 | `"Webhook not found"` | The webhook ID in your URL is wrong, or the webhook was deleted. |
+| 429 | `"Rate limit exceeded"` | You are sending messages too fast. Wait and retry — check the `Retry-After` header. |
+
+<ComingSoon feature="Message Reading API">
+Currently, your bot can **send** messages but cannot **read** them. There is no endpoint for fetching message history from a channel. When this feature launches, you will be able to build bots that respond to conversations contextually — reading what users said and replying intelligently. For now, bots can only push messages out, not pull them in.
+</ComingSoon>
+
+---
+
+## Next Steps
+
+- **[Channels](/api-reference/channels/)** — Learn about the different channel types your bot can post to
+- **[Events](/api-reference/events/)** — Understand real-time events (for future bot integrations)
+- **[Webhook Examples](/webhooks/webhook-examples/)** — See full working examples of webhook bots

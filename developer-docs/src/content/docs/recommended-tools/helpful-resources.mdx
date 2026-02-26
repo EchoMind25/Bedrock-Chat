@@ -1,0 +1,196 @@
+---
+title: "Helpful Resources"
+description: "Useful links and learning materials for building bots on Bedrock Chat."
+---
+
+import WhatThisMeans from '../../../components/WhatThisMeans.astro';
+import TryIt from '../../../components/TryIt.astro';
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+
+Building a bot is a lot easier when you know where to find good learning materials. This page lists our favorite resources, organized by topic. Everything here is free unless we say otherwise.
+
+---
+
+## Learning JavaScript
+
+JavaScript is the programming language you will use to build most Bedrock Chat bots. If you are new to JavaScript, start here.
+
+### MDN Web Docs (Best for beginners)
+
+**Link:** [developer.mozilla.org](https://developer.mozilla.org/en-US/docs/Learn/JavaScript)
+
+MDN (Mozilla Developer Network) is the most trusted source for learning web development. Their JavaScript guide starts from the very basics and builds up step by step. It is written clearly, with lots of examples.
+
+- **What you will learn:** Variables, functions, loops, objects, arrays, and more.
+- **How long it takes:** A few weeks if you do a little each day.
+- **Why we like it:** It is accurate, free, and has no ads or paywalls.
+
+### JavaScript.info
+
+**Link:** [javascript.info](https://javascript.info)
+
+This is a free online textbook that covers JavaScript from beginner to advanced. It has interactive examples you can edit and run right in your browser.
+
+- **What you will learn:** Everything from "Hello World" to advanced topics.
+- **Why we like it:** Very thorough. Great if you like reading and following along.
+
+<TryIt>
+Open [javascript.info/hello-world](https://javascript.info/hello-world) and try changing the example code. See what happens when you change the text inside the quotes. This is a great way to start learning!
+</TryIt>
+
+---
+
+## Learning Node.js
+
+Node.js lets you run JavaScript outside of a web browser. Your bot runs on Node.js.
+
+### Official Node.js Documentation
+
+**Link:** [nodejs.org/docs](https://nodejs.org/docs/latest/api/)
+
+The official Node.js docs are the definitive reference. They are more technical than beginner tutorials, but they are the most accurate and up-to-date source.
+
+- **Best for:** Looking up how a specific feature works.
+- **Not best for:** Learning Node.js from scratch (start with MDN first).
+
+### Node.js "Getting Started" Guide
+
+**Link:** [nodejs.org/en/learn/getting-started](https://nodejs.org/en/learn/getting-started/introduction-to-nodejs)
+
+This is a gentler introduction to Node.js from the official website. It walks you through the basics step by step.
+
+- **What you will learn:** How to install Node.js, run your first script, and understand the basics.
+
+---
+
+## Learning About APIs
+
+Your bot talks to Bedrock Chat through an **API** (Application Programming Interface). Understanding how APIs work will help you build better bots.
+
+<WhatThisMeans term="API">
+An **API** (Application Programming Interface) defines the requests your bot can make and the responses it will receive. The API documentation specifies available endpoints, required parameters, and response formats.
+</WhatThisMeans>
+
+### FreeCodeCamp: APIs for Beginners
+
+**Link:** [freecodecamp.org](https://www.freecodecamp.org/news/what-is-an-api-in-english-please-b880a3214a82/)
+
+This article explains APIs in plain English. No jargon, no assumed knowledge. If you have never worked with an API before, start here.
+
+### MDN: Fetching Data from the Server
+
+**Link:** [developer.mozilla.org/en-US/docs/Learn/JavaScript/Client-side_web_APIs/Fetching_data](https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Client-side_web_APIs/Fetching_data)
+
+This guide shows you how to use JavaScript's `fetch()` function to make API requests. Since your bot will use `fetch()` to talk to Bedrock Chat, this is practical knowledge you will use directly.
+
+<TryIt>
+Open your browser's developer console (press F12, then click "Console") and paste this code:
+
+```js
+fetch('https://jsonplaceholder.typicode.com/posts/1')
+  .then(response => response.json())
+  .then(data => console.log(data));
+```
+
+You just made your first API request! The response is a fake blog post from a free practice API.
+</TryIt>
+
+---
+
+## Learning Express.js
+
+If you are building a custom bot that receives webhooks, you will likely use Express.js to create a simple web server.
+
+<WhatThisMeans term="Express.js">
+**Express.js** is a tool that helps you build a web server using JavaScript. A web server is a program that listens for incoming requests (like webhook messages from Bedrock Chat) and sends back responses.
+</WhatThisMeans>
+
+### Official Express.js Guide
+
+**Link:** [expressjs.com/en/starter/installing.html](https://expressjs.com/en/starter/installing.html)
+
+The official "Getting Started" guide walks you through installing Express and building your first server in just a few minutes.
+
+- **What you will learn:** How to set up a basic web server, handle incoming requests, and send responses.
+- **Why it matters:** This is the foundation for building a bot that receives webhook events from Bedrock Chat.
+
+---
+
+## Bedrock Chat Developer Resources
+
+### Bedrock Chat API Reference
+
+Check the **API Reference** section of these docs for complete details on every endpoint, request format, and response format your bot can use.
+
+### Bedrock Chat Community Server
+
+Join the Bedrock Chat community server to connect with other developers. The **#dev-help** channel is a great place to ask questions and share what you are building.
+
+- **Ask questions** about bot development.
+- **Share your bots** and get feedback.
+- **Report bugs** you find in the API.
+- **Suggest features** you would like to see.
+
+### Troubleshooting Section
+
+If you run into problems, check the [Troubleshooting](/troubleshooting/common-problems/) section of these docs. It covers common errors, what they mean, and how to fix them.
+
+---
+
+## Tools for Testing Your Bot
+
+### Postman (Free)
+
+**Link:** [postman.com](https://www.postman.com)
+
+Postman is a tool for testing API requests. You can use it to send test messages to your bot's webhook URL and see what comes back. It has a graphical interface, so you do not need to write code to test things.
+
+<PrivacyNote>
+Postman's free tier stores your API collections in the cloud. If you are testing with real bot tokens, use the **Scratch Pad** (offline mode) or the **VS Code REST Client** extension instead, which keeps everything on your computer.
+</PrivacyNote>
+
+### VS Code REST Client (Free)
+
+If you use VS Code, the REST Client extension lets you send API requests directly from your editor. You write requests in a simple text file and click "Send Request." Everything stays on your computer.
+
+### curl (Free, built-in)
+
+`curl` is a command-line tool that comes built into Mac and Linux. On Windows, it comes with Git Bash. It lets you send API requests from your terminal.
+
+```bash
+curl -X POST https://your-bot-url.com/webhook \
+  -H "Content-Type: application/json" \
+  -d '{"type": "MESSAGE_CREATE", "data": {"content": "Hello!"}}'
+```
+
+---
+
+## Helpful YouTube Channels
+
+Sometimes watching someone code is easier than reading about it. These YouTube channels have high-quality, beginner-friendly tutorials:
+
+- **Fireship** -- Short, fast-paced explainers of programming concepts.
+- **The Net Ninja** -- Step-by-step tutorial series on JavaScript, Node.js, and more.
+- **Traversy Media** -- Practical project-based tutorials.
+- **FreeCodeCamp** -- Full-length courses that are completely free.
+
+---
+
+## Books (Free Online)
+
+- **Eloquent JavaScript** ([eloquentjavascript.net](https://eloquentjavascript.net)) -- A free online book that teaches JavaScript from scratch. Well-written and thorough.
+- **You Don't Know JS** ([github.com/getify/You-Dont-Know-JS](https://github.com/getify/You-Dont-Know-JS)) -- A free book series that digs deeper into how JavaScript actually works.
+
+---
+
+## What to Learn First
+
+If you are brand new to programming, here is a suggested order:
+
+1. **JavaScript basics** -- Start with MDN Web Docs or JavaScript.info.
+2. **Node.js basics** -- Learn how to run JavaScript on your computer.
+3. **APIs** -- Understand how your bot will talk to Bedrock Chat.
+4. **Express.js** -- Learn to build a simple server for receiving webhooks.
+5. **Bedrock Chat API** -- Read our API Reference docs and start building!
+
+Take your time with each step. It is better to understand the basics well than to rush through everything. And remember, you can always ask for help in the community server.

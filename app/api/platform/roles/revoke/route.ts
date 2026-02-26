@@ -71,6 +71,15 @@ export async function POST(request: NextRequest) {
 			.delete()
 			.eq("user_id", targetUserId);
 
+		// Suspend all active/pending bots owned by this user
+		if (oldRole === "developer") {
+			await serviceClient
+				.from("bot_applications")
+				.update({ status: "suspended" })
+				.eq("owner_id", targetUserId)
+				.in("status", ["pending", "approved"]);
+		}
+
 		// Audit log
 		await auditLog({
 			actorId: user.id,

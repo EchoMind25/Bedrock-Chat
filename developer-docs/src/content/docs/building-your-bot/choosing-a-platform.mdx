@@ -1,0 +1,104 @@
+---
+title: "Choosing a Platform"
+description: "Pick the right bot type for what you want to build."
+---
+
+import ComingSoon from '../../../components/ComingSoon.astro';
+import WhatThisMeans from '../../../components/WhatThisMeans.astro';
+
+## Three Ways to Build a Bot
+
+Bedrock Chat supports three bot types. Each has different capabilities and trade-offs. Choose based on what your bot needs to do.
+
+---
+
+## 1. Webhook Bots
+
+A webhook bot posts messages to a channel by sending HTTP requests to a URL. Traffic flows one direction: your bot pushes data in, and Bedrock Chat displays it.
+
+Webhook bots are the simplest to build. They require minimal code and no persistent server connection. The trade-off: they cannot read messages or respond to users.
+
+### Best for:
+
+- **Notifications** -- deployment alerts, new content announcements
+- **Scheduled messages** -- daily standups, recurring reminders
+- **Monitoring** -- uptime alerts, error reports
+- **Cross-platform bridges** -- piping data from external services into chat
+
+### Constraints:
+
+- Rate limit: **1 message per second** per webhook
+- Supports plain text and embeds (rich formatted messages)
+- Bot name and avatar can be set per-message
+
+---
+
+## 2. Custom Bots
+
+A custom bot connects to Bedrock Chat with a token and maintains a two-way interaction. It receives incoming messages via webhook and sends responses through the API.
+
+<WhatThisMeans>
+A **Bearer token** is a credential your bot includes with every API request to authenticate itself. Bedrock Chat uses it to verify which bot is making the request.
+</WhatThisMeans>
+
+Custom bots require more code than webhook bots, but they can read messages, parse commands, and reply contextually.
+
+### Best for:
+
+- **Interactive bots** -- responds to user input in real time
+- **Games** -- trivia, polls, turn-based games
+- **Moderation** -- auto-warnings, message cleanup, role management
+- **Utilities** -- lookups, calculations, timers
+
+### Constraints:
+
+- Authenticates via Bearer token to `POST /api/bots/[botId]/respond`
+- Maximum **50 registered commands** per bot
+
+---
+
+## 3. Claude AI Bots
+
+<ComingSoon>
+Claude AI bots are under active development. They will enable bots powered by Anthropic's Claude to understand natural language and hold real conversations. Check back for updates.
+</ComingSoon>
+
+When available, Claude bots will support:
+
+- **Q&A** -- answer questions on any topic with contextual understanding
+- **Creative writing** -- generate stories, summaries, or copy
+- **Tutoring** -- explain concepts with follow-up dialogue
+- **Support** -- handle user questions in your server
+
+---
+
+## Decision Guide
+
+**"I need to post messages to a channel."**
+Use a **Webhook Bot**. Minimal setup, one-way delivery.
+
+**"I need my bot to read and respond to messages."**
+Use a **Custom Bot**. Two-way communication with command support.
+
+**"I need natural language understanding."**
+Use a **Claude AI Bot** when available. Start with a Custom Bot now and migrate later.
+
+---
+
+## Comparison
+
+| Feature | Webhook Bot | Custom Bot | Claude AI Bot |
+|---|---|---|---|
+| Complexity | Low | Medium | Low (coming soon) |
+| Sends messages | Yes | Yes | Yes |
+| Reads messages | No | Yes | Yes |
+| Responds to users | No | Yes | Yes |
+| Requires hosting | No | Yes | No |
+| AI-powered | No | No | Yes |
+| Max commands | N/A | 50 | TBD |
+
+---
+
+## Next Step
+
+Once you have chosen your bot type, proceed to [Setting Up Your Workspace](/building-your-bot/setting-up-your-workspace) to configure your development environment.

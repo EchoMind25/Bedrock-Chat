@@ -1,0 +1,264 @@
+---
+title: "Making Your Bot Respond"
+description: "Send messages back to Bedrock Chat from your bot."
+---
+
+import WhatThisMeans from '../../../components/WhatThisMeans.astro';
+import CodeExplainer from '../../../components/CodeExplainer.astro';
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+
+## Sending Messages Back
+
+Your bot can receive messages. Now you need it to reply. Your bot sends responses by making HTTP POST requests to the Bedrock Chat API.
+
+<WhatThisMeans>
+An **API** (Application Programming Interface) is a set of endpoints that programs use to communicate. Your bot sends structured HTTP requests to Bedrock Chat's API, and the API posts the message in the appropriate channel.
+</WhatThisMeans>
+
+The response endpoint:
+
+```
+POST /api/bots/[botId]/respond
+```
+
+Replace `[botId]` with your bot's ID from the developer dashboard.
+
+---
+
+## Requirements
+
+Before your bot can respond, you need:
+
+1. **Your Bot ID** -- unique identifier for your bot
+2. **Your Bot Token** -- secret credential for authentication
+
+<PrivacyNote>
+Never commit your bot token to a public repository. If someone obtains your token, they can impersonate your bot.
+</PrivacyNote>
+
+---
+
+## Authentication
+
+<WhatThisMeans>
+A **Bearer token** is an authentication credential included in the `Authorization` header of each request. Bedrock Chat uses it to verify which bot is making the call.
+</WhatThisMeans>
+
+Every request to the API must include your token in the `Authorization` header:
+
+```
+Authorization: Bearer your-secret-token-here
+```
+
+---
+
+## The Response Function
+
+Add this function to your `index.js` file:
+
+<CodeExplainer>
+```javascript
+async function sendResponse(channelId, messageContent, triggeredBy) {
+  const url = 'https://bedrock.chat/api/bots/YOUR_BOT_ID/respond';
+
+  const body = {
+    channelId: channelId,
+    messageContent: messageContent,
+    triggeredBy: triggeredBy
+  };
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer YOUR_BOT_TOKEN'
+    },
+    body: JSON.stringify(body)
+  });
+
+  const data = await response.json();
+  console.log('Response from Bedrock Chat:', data);
+  return data;
+}
+```
+Sends a POST request with your bot's reply. The `body` contains the target channel, message text, and the username that triggered the response. `fetch` is the built-in Node.js HTTP client. `async/await` handles the asynchronous network call.
+</CodeExplainer>
+
+### Request body fields
+
+| Field | Description |
+|---|---|
+| `channelId` | Target channel for the message |
+| `messageContent` | Text content of the reply |
+| `triggeredBy` | Username of the user who triggered the bot |
+
+---
+
+## Wiring It Into Your Webhook
+
+Update your webhook handler to call `sendResponse` when a message matches:
+
+```javascript
+app.post('/webhook', async (req, res) => {
+  const message = req.body;
+
+  // Handle verification
+  if (message.type === 'verification') {
+    res.json({ challenge: message.challenge });
+    return;
+  }
+
+  // Reply to "hello"
+  if (message.content && message.content.toLowerCase() === 'hello') {
+    await sendResponse(
+      message.channelId,
+      'Hi there! I am a Bedrock Chat bot.',
+      message.username
+    );
+  }
+
+  res.json({ success: true });
+});
+```
+
+The handler is now `async` to support `await` inside the function body. The `.toLowerCase()` check makes matching case-insensitive.
+
+---
+
+## Error Handling
+
+Network requests can fail. Wrap the response function in `try/catch` to keep your bot running:
+
+<CodeExplainer>
+```javascript
+async function sendResponse(channelId, messageContent, triggeredBy) {
+  const url = 'https://bedrock.chat/api/bots/YOUR_BOT_ID/respond';
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer YOUR_BOT_TOKEN'
+      },
+      body: JSON.stringify({ channelId, messageContent, triggeredBy })
+    });
+
+    if (!response.ok) {
+      console.log('Error! Status code:', response.status);
+      return null;
+    }
+
+    return await response.json();
+  } catch (error) {
+    // Network failure — bot stays running
+    console.log('Could not reach Bedrock Chat:', error.message);
+    return null;
+  }
+}
+```
+`try/catch` prevents network errors from crashing the process. `response.ok` is `false` for any non-2xx status code.
+</CodeExplainer>
+
+---
+
+## Status Codes
+
+| Code | Meaning | Action |
+|---|---|---|
+| 200 | Success | None required |
+| 401 | Invalid token | Check your Bearer token |
+| 404 | Bot not found | Check your bot ID |
+| 429 | Rate limited | Back off and retry after 1 second |
+| 500 | Server error | Retry later |
+
+---
+
+## Rate Limits
+
+Your bot can send **1 message per second** per webhook. Exceeding this returns a `429` status code.
+
+To stay within limits:
+- Do not send multiple messages in a tight loop.
+- Wait for each response before sending the next.
+- If you receive a `429`, wait one second before retrying.
+
+---
+
+## Complete Updated File
+
+Here is the full `index.js` with response capabilities:
+
+```javascript
+const express = require('express');
+const app = express();
+app.use(express.json());
+
+// Replace with your real credentials
+const BOT_ID = 'YOUR_BOT_ID';
+const BOT_TOKEN = 'YOUR_BOT_TOKEN';
+
+// Send a message to Bedrock Chat
+async function sendResponse(channelId, messageContent, triggeredBy) {
+  const url = `https://bedrock.chat/api/bots/${BOT_ID}/respond`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${BOT_TOKEN}`
+      },
+      body: JSON.stringify({ channelId, messageContent, triggeredBy })
+    });
+
+    if (!response.ok) {
+      console.log('Error sending message:', response.status);
+      return null;
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.log('Network error:', error.message);
+    return null;
+  }
+}
+
+// Handle incoming webhooks
+app.post('/webhook', async (req, res) => {
+  const message = req.body;
+  console.log('Got a message:', message);
+
+  // Verification
+  if (message.type === 'verification') {
+    res.json({ challenge: message.challenge });
+    return;
+  }
+
+  // Reply to "hello"
+  if (message.content && message.content.toLowerCase() === 'hello') {
+    await sendResponse(
+      message.channelId,
+      'Hi there! I am a Bedrock Chat bot.',
+      message.username
+    );
+  }
+
+  res.json({ success: true });
+});
+
+// Health check
+app.get('/', (req, res) => {
+  res.send('Bot is running!');
+});
+
+app.listen(3000, () => {
+  console.log('Bot is running on port 3000');
+});
+```
+
+---
+
+## Next Step
+
+Your bot can now receive and send messages. Proceed to [Adding Commands](/building-your-bot/adding-commands) to give users structured ways to interact with your bot.

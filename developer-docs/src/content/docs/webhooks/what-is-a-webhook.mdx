@@ -1,0 +1,55 @@
+---
+title: "What is a Webhook?"
+description: "Learn what webhooks are and how they work in Bedrock Chat."
+---
+
+import ComingSoon from '../../../components/ComingSoon.astro';
+import WhatThisMeans from '../../../components/WhatThisMeans.astro';
+
+A webhook is a URL that accepts incoming HTTP requests. You send data to that URL, and Bedrock Chat turns it into a message in the channel.
+
+<WhatThisMeans term="Webhook">
+  A webhook is a URL endpoint that accepts HTTP POST requests. When your bot sends a JSON payload to a webhook URL, Bedrock Chat posts it as a message in the associated channel.
+</WhatThisMeans>
+
+## Incoming vs. Outgoing Webhooks
+
+Bedrock Chat supports two types of webhooks.
+
+### Incoming Webhooks (Available Now)
+
+An incoming webhook lets you send messages into a channel. Your code makes an HTTP POST request with a JSON body, and the message appears in chat.
+
+Use cases:
+
+- Post scheduled announcements or reminders
+- Forward alerts from monitoring systems
+- Push updates from external services (GitHub, CI/CD, weather APIs)
+- Send messages with a custom display name and avatar per request
+
+### Outgoing Webhooks
+
+<ComingSoon feature="Outgoing Webhooks">
+  Bedrock Chat currently supports **incoming webhooks** only. Outgoing webhooks (chat sends events to your server) are planned. This section covers incoming webhooks, which are fully available today.
+</ComingSoon>
+
+Outgoing webhooks work in the opposite direction. When something happens in the server -- a message is sent, a member joins -- Bedrock Chat delivers that event to a URL you control.
+
+## How Incoming Webhooks Work
+
+1. Create a webhook in your server settings.
+2. Bedrock Chat generates a **URL** and a **token**.
+3. Your code sends a POST request with a JSON body to that URL, authenticating with the token.
+4. Bedrock Chat posts the message in the configured channel.
+
+## When to Use Webhooks vs. Full Bots
+
+| Feature | Webhook | Full Bot |
+|---|---|---|
+| Send messages | Yes | Yes |
+| Listen for messages | No (coming soon) | Yes |
+| Custom name per message | Yes | No |
+| Persistent connection required | No | Yes |
+| Complexity | Low | Medium |
+
+Webhooks are the right choice when you only need to push messages into a channel. If you need to listen for events and respond to user input, use a full bot instead.

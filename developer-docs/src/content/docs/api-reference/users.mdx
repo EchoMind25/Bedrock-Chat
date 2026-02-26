@@ -1,0 +1,185 @@
+---
+title: "Users"
+description: "What user data your bot can access, what is off-limits, and how the members.read scope works."
+---
+
+import WhatThisMeans from '../../../components/WhatThisMeans.astro';
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+import ComingSoon from '../../../components/ComingSoon.astro';
+import CodeExplainer from '../../../components/CodeExplainer.astro';
+
+Your bot can see some basic information about users — just enough to interact with them naturally. But Bedrock Chat is a privacy-first platform, and most user data is completely off-limits to bots. This page explains exactly what you can see, what you cannot see, and why.
+
+---
+
+## What Your Bot Can See
+
+When your bot has the `members.read` scope, it can access these fields for users in servers where the bot is installed:
+
+| Field | Type | Description | Example |
+|---|---|---|---|
+| `username` | string | The user's unique handle. This never changes and is used to identify them. | `"alex_dev"` |
+| `display_name` | string | The user's chosen display name. They can change this anytime. | `"Alex D."` |
+| `avatar_url` | string | URL to the user's profile picture. May be `null` if they have not set one. | `"https://..."` |
+| `status` | string | The user's current presence status. One of four values. | `"online"` |
+
+<WhatThisMeans term="members.read scope">
+The `members.read` scope is a permission you request when registering your bot. It tells Bedrock Chat that your bot needs to read basic member information. Without this scope, your bot cannot access any user data at all. With it, you get the four fields listed above — nothing more.
+</WhatThisMeans>
+
+### User Status Values
+
+The `status` field tells you whether a user is currently active. Here are the four possible values:
+
+| Status | Meaning |
+|---|---|
+| `"online"` | The user is actively using Bedrock Chat right now. |
+| `"idle"` | The user has Bedrock Chat open but has not interacted with it recently (usually 5+ minutes of inactivity). |
+| `"dnd"` | The user has set their status to "Do Not Disturb." They are online but do not want notifications. |
+| `"offline"` | The user is not currently connected to Bedrock Chat. |
+
+<WhatThisMeans term="DND (Do Not Disturb)">
+DND stands for "Do Not Disturb." When a user sets this status, they are telling the platform (and your bot) that they do not want to be bothered. If your bot sends personalized messages or notifications, you should respect this status and skip DND users.
+</WhatThisMeans>
+
+### Using This Data Responsibly
+
+Here are some appropriate ways to use the visible user fields:
+
+- **Greeting users by name:** `"Welcome, ${display_name}!"`
+- **Showing who is online:** Listing active members in a dashboard
+- **Displaying user avatars:** Showing profile pictures next to messages
+- **Respecting DND status:** Skipping notifications for users who set Do Not Disturb
+
+<CodeExplainer title="Using user data in a welcome message">
+<Fragment slot="code">
+```js
+// Imagine your bot receives information about a new member
+// (This data comes from real-time events — see the Events page)
+const newMember = {
+  username: 'alex_dev',         // Their unique handle
+  display_name: 'Alex D.',     // Their chosen display name
+  avatar_url: 'https://...',   // Their profile picture URL
+  status: 'online',            // They just joined, so they are online
+};
+
+// Use their display_name for a friendly greeting
+const greeting = `Welcome to the server, ${newMember.display_name}!`;
+
+// Send the greeting via your webhook
+await fetch(webhookUrl, {
+  method: 'POST',                          // POST = sending new data
+  headers: {
+    'Authorization': `Bearer ${token}`,    // Your webhook token
+    'Content-Type': 'application/json',    // Sending JSON data
+  },
+  body: JSON.stringify({
+    content: greeting,                     // The personalized welcome message
+  }),
+});
+```
+</Fragment>
+<Fragment slot="explanation">
+Always use `display_name` when addressing users in messages — it is the name they chose to be called. Use `username` for internal tracking and identification, since display names can change but usernames are permanent.
+</Fragment>
+</CodeExplainer>
+
+---
+
+## What Your Bot CANNOT See
+
+This is the most important section on this page. Bedrock Chat has hard privacy boundaries that apply to every bot, regardless of scopes, permissions, or server settings.
+
+<PrivacyNote title="Permanent Privacy Boundaries">
+The following data is **permanently off-limits** to all bots. There is no endpoint to access it, no scope to request it, and no workaround. These boundaries are a core design decision of Bedrock Chat and will never change.
+</PrivacyNote>
+
+| Off-Limits Data | Why It Is Protected |
+|---|---|
+| **Email addresses** | Emails are used for account recovery and security notifications. Exposing them to bots would create phishing and spam risks. |
+| **Phone numbers** | Phone numbers are optional and used for two-factor authentication. They are never shared with any third party. |
+| **Date of birth** | Birth dates are collected for age verification only. They are processed internally and immediately restricted from all external access. |
+| **Family data** | Parent-child relationships, family group memberships, and parental control settings are completely invisible to bots. Bedrock Chat's family safety features operate in a separate, isolated layer. |
+| **IP addresses** | Connection metadata is infrastructure-level data. It is logged for security purposes only and never exposed through any API. |
+| **Direct messages** | Private conversations between users are end-to-end private. Bots cannot read, write, or be added to direct message conversations. |
+| **User reports** | When a user reports another user or a message, that report is confidential and handled by the Bedrock Chat trust and safety team. |
+| **Keyword alerts** | Parents can set keyword alerts to be notified when specific words appear in their child's conversations. These alerts, their configuration, and their triggers are invisible to bots. |
+| **Screen time data** | Usage tracking information (how long someone has used the app, session counts, etc.) is private to each user and their family. |
+| **Voice audio** | Bots cannot access, record, or process audio from voice channels. This applies to live streams and any recordings. |
+
+### Why So Strict?
+
+Bedrock Chat was built for communities that include younger users and families. The privacy boundaries exist to protect everyone — especially those who are most vulnerable. Even if you are building a bot for an adults-only server, the same rules apply. The platform does not make exceptions because consistent enforcement is the only way to keep the promise trustworthy.
+
+---
+
+## The members.read Scope in Detail
+
+When you register your bot with `POST /api/platform/bots`, you include a list of scopes your bot needs. Here is how `members.read` fits in:
+
+<CodeExplainer title="Requesting the members.read scope during bot registration">
+<Fragment slot="code">
+```json
+{
+  "name": "Greeter Bot",                        // Your bot's display name
+  "description": "Greets new members when they join", // What your bot does
+  "botType": "custom",                          // Type of bot (custom, claude, or webhook)
+  "scopes": ["messages.send", "members.read"],  // The permissions your bot needs
+  "privacyPolicyUrl": "https://example.com/privacy", // Link to your privacy policy
+  "dpaAccepted": true,                          // You accept the data processing agreement
+  "isTeenSafe": true                            // Your bot is safe for younger users
+}
+```
+</Fragment>
+<Fragment slot="explanation">
+The `scopes` array lists every permission your bot needs. Here, `messages.send` lets your bot send messages, and `members.read` lets it see basic user info (username, display name, avatar, status). Only request the scopes you actually use — requesting unnecessary scopes may cause your bot to be rejected during review.
+</Fragment>
+</CodeExplainer>
+
+<WhatThisMeans term="Scope Enforcement">
+Important: scopes are currently **stored but not enforced** at runtime. This means the API does not check your scopes before responding to requests today. However, do not rely on this. When enforcement is turned on, bots that access data outside their declared scopes will break. Always declare the scopes you actually use and never access data you have not requested permission for.
+</WhatThisMeans>
+
+### What Happens Without members.read
+
+If your bot does not include `members.read` in its scopes:
+
+- Your bot can still send messages (with `messages.send`)
+- Your bot will not be able to access any user information
+- You will not see usernames, display names, avatars, or status
+- Your bot can still function — it just cannot personalize based on user data
+
+Many bots work perfectly fine without `members.read`. A reminder bot that posts scheduled messages, for example, does not need to know anything about users.
+
+---
+
+## Best Practices
+
+### Do Not Store User Data Longer Than Needed
+
+If your bot accesses user information, use it in the moment and discard it. Do not build a database of user profiles. If you need to reference a user later, store only their `username` (which is the stable identifier) and fetch fresh details when needed.
+
+### Respect the DND Status
+
+If a user has set their status to `"dnd"` (Do Not Disturb), your bot should avoid sending them direct notifications, @-mentions, or personalized messages when possible. This is not enforced by the API, but it is the right thing to do — and reviewers may check for this behavior.
+
+### Use display_name for User-Facing Messages
+
+When your bot mentions a user in a message, use their `display_name`, not their `username`. The display name is what the user chose to be called. The username is for your internal logic.
+
+### Handle Missing Avatars
+
+The `avatar_url` field can be `null` if a user has not set a profile picture. Always have a fallback in your code:
+
+```js
+// Check if the user has an avatar, fall back to a default
+const avatarSrc = user.avatar_url || 'https://your-bot.com/default-avatar.png';
+```
+
+---
+
+## Next Steps
+
+- **[Events](/api-reference/events/)** — Learn about real-time presence and typing events
+- **[Channels](/api-reference/channels/)** — Understand the channel types your bot can interact with
+- **[Privacy Rules](/privacy-and-rules/our-privacy-promise/)** — Read the full privacy guidelines for bot developers

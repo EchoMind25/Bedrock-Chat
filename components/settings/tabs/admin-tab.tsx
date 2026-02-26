@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Shield, UserPlus, UserMinus, Loader2, Bot, Check, X, ExternalLink, AlertTriangle } from "lucide-react";
+import { Search, Shield, UserPlus, UserMinus, Loader2, Bot, Check, X, ExternalLink, AlertTriangle, Rocket } from "lucide-react";
 import { usePlatformRoleStore } from "@/store/platform-role.store";
 import { Badge } from "@/components/ui/badge/badge";
 import { Button } from "@/components/ui/button/button";
@@ -37,6 +37,7 @@ export function AdminTab() {
 
 			{isSuperAdmin && <RoleManagement />}
 			{isAdmin && <BotReviewQueue />}
+			{isSuperAdmin && <DeveloperApplicationQueue />}
 			{isAdmin && <RecentAuditLog />}
 		</div>
 	);
@@ -52,15 +53,24 @@ function RoleManagement() {
 	const [selectedRole, setSelectedRole] = useState<PlatformRole>("developer");
 
 	const handleSearch = async () => {
-		if (!searchQuery.trim()) return;
+		if (!searchQuery.trim() || searchQuery.trim().length < 2) {
+			toast.error("Search Query", "Enter at least 2 characters to search.");
+			return;
+		}
 		setIsSearching(true);
 		try {
-			// Use the permissions endpoint to check — for now search by username
-			// In production, add a dedicated user search endpoint
-			setSearchResults([]);
-			toast.info("User search requires a dedicated API endpoint (coming soon)");
+			const res = await fetch(`/api/platform/users/search?q=${encodeURIComponent(searchQuery.trim())}`);
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({}));
+				toast.error("Search Failed", err.error || "Could not search users.");
+				setSearchResults([]);
+				return;
+			}
+			const { users } = await res.json();
+			setSearchResults(users);
 		} catch {
-			toast.error("Search failed");
+			toast.error("Search Failed", "Could not search users. Check your connection.");
+			setSearchResults([]);
 		} finally {
 			setIsSearching(false);
 		}
@@ -205,15 +215,52 @@ function RoleManagement() {
 
 function BotReviewQueue() {
 	const [pendingBots, setPendingBots] = useState<Array<{
-		id: string; name: string; owner_id: string; bot_type: string; description: string | null; created_at: string;
+		id: string; name: string; description: string | null; bot_type: string;
+		webhook_url: string | null; is_teen_safe: boolean; scopes: string[];
+		created_at: string;
+		owner: { id: string; username: string; display_name: string; account_type: string } | null;
 	}>>([]);
 	const [isLoading, setIsLoading] = useState(true);
+	const [reviewingId, setReviewingId] = useState<string | null>(null);
+
+	const fetchPending = async () => {
+		try {
+			const res = await fetch("/api/platform/bots/pending");
+			if (!res.ok) return;
+			const data = await res.json();
+			setPendingBots(data.bots ?? []);
+		} catch {
+			// Silently fail
+		} finally {
+			setIsLoading(false);
+		}
+	};
 
 	useEffect(() => {
-		// Placeholder: would fetch pending bots via admin API
-		setIsLoading(false);
-		setPendingBots([]);
+		fetchPending();
 	}, []);
+
+	const handleReview = async (botId: string, action: "approve" | "reject") => {
+		setReviewingId(botId);
+		try {
+			const res = await fetch(`/api/platform/bots/${botId}/review`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ action }),
+			});
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({}));
+				toast.error(err.error || `Failed to ${action} bot`);
+				return;
+			}
+			toast.success(`Bot ${action === "approve" ? "approved" : "rejected"} successfully`);
+			setPendingBots((prev) => prev.filter((b) => b.id !== botId));
+		} catch {
+			toast.error(`Failed to ${action} bot`);
+		} finally {
+			setReviewingId(null);
+		}
+	};
 
 	return (
 		<SettingsSection title="Bot Review Queue" description="Pending bot applications awaiting approval">
@@ -230,20 +277,147 @@ function BotReviewQueue() {
 				<div className="space-y-2">
 					{pendingBots.map((bot) => (
 						<div key={bot.id} className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-white/5">
-							<div>
-								<p className="text-sm font-medium text-white">{bot.name}</p>
-								<p className="text-xs text-slate-400">{bot.bot_type} &middot; {new Date(bot.created_at).toLocaleDateString()}</p>
+							<div className="min-w-0 flex-1">
+								<div className="flex items-center gap-2">
+									<p className="text-sm font-medium text-white">{bot.name}</p>
+									<Badge variant="default">{bot.bot_type}</Badge>
+									{bot.owner?.account_type === "teen" && (
+										<span title="Teen-owned bot"><AlertTriangle className="w-3.5 h-3.5 text-yellow-400" /></span>
+									)}
+								</div>
+								<p className="text-xs text-slate-400 truncate">
+									by @{bot.owner?.username ?? "unknown"} &middot; {new Date(bot.created_at).toLocaleDateString()}
+								</p>
+								{bot.description && (
+									<p className="text-xs text-slate-500 mt-1 truncate">{bot.description}</p>
+								)}
 							</div>
-							<div className="flex items-center gap-2">
-								<Button size="sm" variant="secondary">
-									<Check className="w-3 h-3 mr-1" />
+							<div className="flex items-center gap-2 ml-3 shrink-0">
+								<Button
+									size="sm"
+									variant="secondary"
+									onClick={() => handleReview(bot.id, "approve")}
+									disabled={reviewingId === bot.id}
+								>
+									{reviewingId === bot.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3 mr-1" />}
 									Approve
 								</Button>
-								<Button size="sm" variant="danger">
-									<X className="w-3 h-3 mr-1" />
+								<Button
+									size="sm"
+									variant="danger"
+									onClick={() => handleReview(bot.id, "reject")}
+									disabled={reviewingId === bot.id}
+								>
+									{reviewingId === bot.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3 mr-1" />}
 									Reject
 								</Button>
 							</div>
+						</div>
+					))}
+				</div>
+			)}
+		</SettingsSection>
+	);
+}
+
+function DeveloperApplicationQueue() {
+	const [applications, setApplications] = useState<Array<{
+		id: string; actor_id: string; metadata: { email?: string; intended_use?: string }; created_at: string;
+		actor: { id: string; username: string; display_name: string; avatar_url: string | null } | null;
+	}>>([]);
+	const [isLoading, setIsLoading] = useState(true);
+	const [reviewingId, setReviewingId] = useState<string | null>(null);
+
+	const fetchApplications = async () => {
+		try {
+			const res = await fetch("/api/platform/developer-application");
+			if (!res.ok) return;
+			const data = await res.json();
+			setApplications(data.applications ?? []);
+		} catch {
+			// Silently fail
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	useEffect(() => {
+		fetchApplications();
+	}, []);
+
+	const handleReview = async (userId: string, action: "approve" | "reject") => {
+		setReviewingId(userId);
+		try {
+			const res = await fetch(`/api/platform/developer-application/${userId}`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ action }),
+			});
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({}));
+				toast.error(err.error || `Failed to ${action} application`);
+				return;
+			}
+			toast.success(`Developer application ${action === "approve" ? "approved" : "rejected"}`);
+			setApplications((prev) => prev.filter((a) => a.actor_id !== userId));
+		} catch {
+			toast.error(`Failed to ${action} application`);
+		} finally {
+			setReviewingId(null);
+		}
+	};
+
+	return (
+		<SettingsSection title="Developer Applications" description="Users requesting developer access">
+			{isLoading ? (
+				<div className="flex justify-center py-4">
+					<Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
+				</div>
+			) : applications.length === 0 ? (
+				<div className="flex items-center gap-3 p-4 rounded-lg border border-white/10 bg-white/5">
+					<Rocket className="w-5 h-5 text-slate-500" />
+					<p className="text-sm text-slate-400">No pending developer applications</p>
+				</div>
+			) : (
+				<div className="space-y-2">
+					{applications.map((app) => (
+						<div key={app.id} className="p-3 rounded-lg border border-white/10 bg-white/5">
+							<div className="flex items-center justify-between">
+								<div className="min-w-0 flex-1">
+									<p className="text-sm font-medium text-white">
+										{app.actor?.display_name ?? "Unknown"}
+										<span className="text-slate-400 font-normal ml-1.5">@{app.actor?.username ?? "unknown"}</span>
+									</p>
+									<p className="text-xs text-slate-500 mt-0.5">
+										{app.metadata?.email} &middot; {new Date(app.created_at).toLocaleDateString()}
+									</p>
+								</div>
+								<div className="flex items-center gap-2 ml-3 shrink-0">
+									<Button
+										size="sm"
+										variant="secondary"
+										onClick={() => handleReview(app.actor_id, "approve")}
+										disabled={reviewingId === app.actor_id}
+									>
+										{reviewingId === app.actor_id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3 mr-1" />}
+										Approve
+									</Button>
+									<Button
+										size="sm"
+										variant="danger"
+										onClick={() => handleReview(app.actor_id, "reject")}
+										disabled={reviewingId === app.actor_id}
+									>
+										{reviewingId === app.actor_id ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3 mr-1" />}
+										Reject
+									</Button>
+								</div>
+							</div>
+							{app.metadata?.intended_use && (
+								<p className="text-xs text-slate-400 mt-2 bg-white/5 p-2 rounded">
+									{app.metadata.intended_use}
+								</p>
+							)}
 						</div>
 					))}
 				</div>

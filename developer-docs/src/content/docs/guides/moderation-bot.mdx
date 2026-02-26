@@ -1,0 +1,406 @@
+---
+title: "Build a Moderation Bot"
+description: "Build a bot that helps moderate your server with warnings and auto-responses."
+---
+
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+import StepByStep from '../../../components/StepByStep.astro';
+import TryIt from '../../../components/TryIt.astro';
+import CodeExplainer from '../../../components/CodeExplainer.astro';
+
+A bot that watches public channel messages for rule violations and posts warnings. It does not delete messages or ban users -- a human moderator makes the final call.
+
+<PrivacyNote>
+This bot can only see messages in channels where it is installed. It cannot access private messages, direct messages, or personal user data.
+</PrivacyNote>
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org) installed
+- A text editor ([VS Code](https://code.visualstudio.com) works well)
+- A Bedrock Chat account with a test server
+- A bot token from the Bedrock Chat developer portal
+- A webhook in the channel where warnings should appear
+
+## Build the bot
+
+<StepByStep title="Step 1: Create your project folder">
+
+```bash
+mkdir moderation-bot
+cd moderation-bot
+npm init -y
+```
+
+</StepByStep>
+
+<StepByStep title="Step 2: Install dependencies">
+
+```bash
+npm install express dotenv
+```
+
+</StepByStep>
+
+<StepByStep title="Step 3: Create your environment file">
+
+Create a `.env` file in your project root.
+
+```bash
+WEBHOOK_ID=your-webhook-id-here
+WEBHOOK_TOKEN=your-webhook-token-here
+BOT_TOKEN=your-bot-token-here
+BOT_ID=your-bot-id-here
+PORT=3000
+```
+
+Replace each placeholder with your actual values.
+
+<PrivacyNote>
+Keep your tokens secret. Never share them, commit them to version control, or put them directly in your code.
+</PrivacyNote>
+
+</StepByStep>
+
+<StepByStep title="Step 4: Create your rules file">
+
+Create `rules.js`. This defines keyword rules and auto-responses.
+
+```javascript
+module.exports = {
+  keywords: [
+    {
+      name: 'unkind-language',
+      words: ['stupid', 'dumb', 'idiot', 'shut up'],
+      warning: 'Let\'s keep things kind. Words can hurt. Please be respectful to everyone here.',
+      severity: 'medium'
+    },
+    {
+      name: 'spam-links',
+      words: ['free robux', 'free vbucks', 'click this link for free'],
+      warning: 'That looks like it might be a scam. Please do not click unknown links. Stay safe!',
+      severity: 'high'
+    },
+    {
+      name: 'all-caps-yelling',
+      words: [], // handled with special logic
+      warning: 'Typing in ALL CAPS can feel like yelling. Could you try regular letters instead?',
+      severity: 'low'
+    }
+  ],
+
+  autoResponses: [
+    {
+      trigger: '!rules',
+      response: '**Server Rules:**\n1. Be kind to everyone.\n2. No spam or scam links.\n3. Keep conversations in the right channels.\n4. Have fun and be yourself!'
+    },
+    {
+      trigger: '!report',
+      response: 'To report a problem, please message a moderator directly. They will help you. You are never in trouble for reporting.'
+    },
+    {
+      trigger: '!help',
+      response: 'Need help? Here are some commands:\n- `!rules` - See the server rules\n- `!report` - Learn how to report a problem\n- `!help` - See this message'
+    }
+  ]
+};
+```
+
+</StepByStep>
+
+<CodeExplainer title="How keyword matching works">
+<Fragment slot="code">
+```javascript
+{
+  name: 'unkind-language',
+  words: ['stupid', 'dumb', 'idiot', 'shut up'],
+  warning: 'Let\'s keep things kind!',
+  severity: 'medium'
+}
+```
+</Fragment>
+<Fragment slot="explanation">
+Each rule has a list of `words` to match against. The bot lowercases every incoming message before checking, so "STUPID" and "stupid" both trigger the rule. The `severity` field controls the label prefix on warnings: high shows "Warning," medium shows "Friendly reminder," and low shows "Quick note."
+</Fragment>
+</CodeExplainer>
+
+<StepByStep title="Step 5: Write your bot code">
+
+Create `index.js` with the following code.
+
+```javascript
+require('dotenv').config();
+const express = require('express');
+const rules = require('./rules');
+
+const app = express();
+app.use(express.json());
+
+const WEBHOOK_ID = process.env.WEBHOOK_ID;
+const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN;
+const BOT_TOKEN = process.env.BOT_TOKEN;
+const BOT_ID = process.env.BOT_ID;
+const PORT = process.env.PORT || 3000;
+
+const WEBHOOK_URL = `https://bedrockchat.app/api/webhooks/${WEBHOOK_ID}?token=${WEBHOOK_TOKEN}`;
+
+const recentWarnings = {}; // username -> timestamp of last warning
+const WARNING_COOLDOWN = 30; // seconds between warnings for the same user
+
+async function postMessage(text) {
+  const body = {
+    content: text,
+    username: 'Mod Bot',
+    avatar_url: 'https://bedrockchat.app/images/mod-bot.png'
+  };
+
+  const response = await fetch(WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  return response.json();
+}
+
+function wasRecentlyWarned(username) {
+  const lastWarning = recentWarnings[username];
+  if (!lastWarning) return false;
+  const secondsSince = (Date.now() - lastWarning) / 1000;
+  return secondsSince < WARNING_COOLDOWN;
+}
+
+function recordWarning(username) {
+  recentWarnings[username] = Date.now();
+}
+
+function checkKeywords(messageText) {
+  const lowerMessage = messageText.toLowerCase();
+
+  for (const rule of rules.keywords) {
+    for (const word of rule.words) {
+      if (lowerMessage.includes(word)) {
+        return rule;
+      }
+    }
+  }
+
+  return null;
+}
+
+function isAllCaps(messageText) {
+  const lettersOnly = messageText.replace(/[^a-zA-Z]/g, '');
+  if (lettersOnly.length < 8) return false; // ignore short messages
+  return lettersOnly === lettersOnly.toUpperCase();
+}
+
+function checkAutoResponses(messageText) {
+  const cleanMessage = messageText.trim().toLowerCase();
+
+  for (const auto of rules.autoResponses) {
+    if (cleanMessage === auto.trigger.toLowerCase()) {
+      return auto.response;
+    }
+  }
+
+  return null;
+}
+
+function formatWarning(username, rule) {
+  let text = `**@${username}** - `;
+
+  if (rule.severity === 'high') {
+    text += '**Warning:** ';
+  } else if (rule.severity === 'medium') {
+    text += '**Friendly reminder:** ';
+  } else {
+    text += '**Quick note:** ';
+  }
+
+  text += rule.warning;
+  return text;
+}
+
+// Receives messages from Bedrock Chat
+app.post('/bot/message', async (req, res) => {
+  const { content, username, channelId } = req.body;
+
+  // Prevent self-reply loops
+  if (username === 'Mod Bot') {
+    return res.json({ success: true, action: 'ignored-self' });
+  }
+
+  // Auto-responses take priority
+  const autoResponse = checkAutoResponses(content);
+  if (autoResponse) {
+    await postMessage(autoResponse);
+    return res.json({ success: true, action: 'auto-response' });
+  }
+
+  // Check keyword rules
+  const matchedRule = checkKeywords(content);
+  if (matchedRule) {
+    if (!wasRecentlyWarned(username)) {
+      const warning = formatWarning(username, matchedRule);
+      await postMessage(warning);
+      recordWarning(username);
+      return res.json({ success: true, action: 'warned', rule: matchedRule.name });
+    } else {
+      return res.json({ success: true, action: 'cooldown' });
+    }
+  }
+
+  // Check all-caps
+  if (isAllCaps(content)) {
+    const capsRule = rules.keywords.find(r => r.name === 'all-caps-yelling');
+    if (capsRule && !wasRecentlyWarned(username)) {
+      const warning = formatWarning(username, capsRule);
+      await postMessage(warning);
+      recordWarning(username);
+      return res.json({ success: true, action: 'caps-warning' });
+    }
+  }
+
+  res.json({ success: true, action: 'none' });
+});
+
+// Test endpoint: check a message against rules
+app.post('/test/check', async (req, res) => {
+  const { message, username } = req.body;
+
+  const matched = checkKeywords(message || '');
+  const caps = isAllCaps(message || '');
+  const auto = checkAutoResponses(message || '');
+
+  res.json({
+    message: message,
+    matchedRule: matched ? matched.name : null,
+    isAllCaps: caps,
+    autoResponse: auto || null
+  });
+});
+
+// List all configured rules
+app.get('/rules', (req, res) => {
+  res.json({
+    keywords: rules.keywords.map(r => ({
+      name: r.name,
+      severity: r.severity,
+      wordCount: r.words.length
+    })),
+    autoResponses: rules.autoResponses.map(a => ({
+      trigger: a.trigger
+    }))
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`Moderation bot is running on port ${PORT}`);
+  console.log(`Loaded ${rules.keywords.length} keyword rules`);
+  console.log(`Loaded ${rules.autoResponses.length} auto-responses`);
+});
+```
+
+</StepByStep>
+
+<StepByStep title="Step 6: Start your bot">
+
+```bash
+node index.js
+```
+
+You should see:
+
+```
+Moderation bot is running on port 3000
+Loaded 3 keyword rules
+Loaded 3 auto-responses
+```
+
+</StepByStep>
+
+<StepByStep title="Step 7: Test the keyword checker">
+
+Open a second terminal. First, test a clean message.
+
+```bash
+curl -X POST http://localhost:3000/test/check \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Hello everyone! Great day today!", "username": "Alex"}'
+```
+
+The response should show `"matchedRule": null` -- no rules violated.
+
+Now test a message that triggers a rule.
+
+```bash
+curl -X POST http://localhost:3000/test/check \
+  -H "Content-Type: application/json" \
+  -d '{"message": "That idea is so stupid", "username": "Alex"}'
+```
+
+The response should show `"matchedRule": "unkind-language"`.
+
+</StepByStep>
+
+<StepByStep title="Step 8: Test the auto-responses">
+
+```bash
+curl -X POST http://localhost:3000/test/check \
+  -H "Content-Type: application/json" \
+  -d '{"message": "!rules", "username": "Alex"}'
+```
+
+The response includes the full server rules text in `autoResponse`.
+
+</StepByStep>
+
+<TryIt>
+Verify the all-caps detection by sending a message with 8+ uppercase letters, such as `"THIS IS VERY LOUD"`. Then test `!help` and `!report`.
+</TryIt>
+
+<PrivacyNote title="Important Privacy Reminder">
+Your moderation bot should only check messages in public channels. It must never attempt to access private messages, direct messages, or personal user data. Bedrock Chat enforces this at the API level, but keep it in mind when writing your rules.
+</PrivacyNote>
+
+## Customization
+
+### Add new keyword rules
+
+Open `rules.js` and add a new entry to the `keywords` array.
+
+```javascript
+{
+  name: 'personal-info',
+  words: ['my phone number is', 'my address is', 'my password is'],
+  warning: 'Never share personal information in chat. Keep your phone number, address, and passwords private.',
+  severity: 'high'
+}
+```
+
+### Add new auto-responses
+
+Append to the `autoResponses` array.
+
+```javascript
+{
+  trigger: '!mods',
+  response: '**Our Moderators:**\n- @Sarah (Head Mod)\n- @Jake (Mod)\n- @Priya (Mod)\n\nFeel free to message any of them if you need help.'
+}
+```
+
+### Change the warning cooldown
+
+In `index.js`, update `WARNING_COOLDOWN`. The value is in seconds.
+
+```javascript
+const WARNING_COOLDOWN = 60;
+```
+
+## Next steps
+
+- Add more keyword rules tailored to your community.
+- Add more auto-responses for frequently asked questions.
+- Track warning counts per user for escalation.
+- [Deploy your bot](/recommended-tools/free-hosting-options) so it runs 24/7.
+- [Submit your bot for review](/publishing/submitting-for-review) to publish it.

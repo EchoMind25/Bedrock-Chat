@@ -706,8 +706,6 @@
 
 body {
   font-family: var(--app-font-family);
-  /* Prevent content from going under status bar in PWA standalone mode */
-  padding-top: var(--safe-area-top);
 }
 
 /* ── Message style variants ──────────────────────────────── */

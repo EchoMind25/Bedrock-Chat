@@ -1,0 +1,70 @@
+---
+title: What is a Bot?
+description: Bots are programs that automate tasks inside your Bedrock Chat server — sending messages, responding to commands, and handling routine work so you don't have to.
+---
+
+import WhatThisMeans from '../../../components/WhatThisMeans.astro';
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+
+A bot is a program that runs inside your Bedrock Chat server. It can send messages, respond to commands, and handle repetitive tasks automatically. You set it up once, and it runs on its own.
+
+If you've used slash commands on Discord, automated workflows in Slack, or even set up a GitHub Action — you already understand the concept. Bedrock Chat bots work the same way, with one major difference: they're built around strict privacy rules from the ground up.
+
+## What Bots Actually Do
+
+Bots interact with your server through Bedrock Chat's API. In practical terms, that means they can:
+
+- **Post messages on a schedule** — daily standups, reminders, announcements
+- **Respond to commands** — users type something like `!trivia` or `/score add 10`, and the bot handles it
+- **React to events** — greet new members, log activity, moderate content
+- **Push data from external services** — pull updates from GitHub, weather APIs, calendars, or anything with a webhook
+
+<WhatThisMeans>
+An **API** (Application Programming Interface) is a set of rules that lets your bot talk to Bedrock Chat. Your bot sends a request, Bedrock Chat processes it, and sends back a response. Every bot interaction goes through the API.
+</WhatThisMeans>
+
+## Use Cases by Audience
+
+**For gaming communities:** Score trackers, match schedulers, LFG (looking-for-group) boards, tournament brackets, and automated role assignment based on game rank.
+
+**For families:** Homework reminders, chore rotations, screen-time-friendly activity suggestions, and birthday announcements. Bots in family servers respect all parental monitoring settings transparently.
+
+**For teams and small businesses:** Daily standup prompts, meeting reminders, on-call rotation pings, and integration with project management tools via webhooks.
+
+**For hobbyists and creators:** Trivia games, daily quote or art prompts, community polls, welcome messages, and custom moderation rules.
+
+You don't need to be a software engineer to build one. This documentation walks you through every step, from zero to a working bot.
+
+## How Bots Fit Into Bedrock Chat
+
+Bedrock Chat is organized into **servers** (shared group spaces) and **channels** (individual rooms within a server — text, voice, or announcement). When you add a bot to a server, you choose which channels it can access and what permissions it has.
+
+A bot only sees what you explicitly allow. It operates within the same permission system that applies to every user — roles, channel overrides, and server-level settings all apply.
+
+## Privacy by Design
+
+This is where Bedrock Chat bots differ from other platforms.
+
+<PrivacyNote>
+Bots on Bedrock Chat **cannot** access private messages, email addresses, phone numbers, dates of birth, voice call audio, or any family monitoring data. They are limited to the public channel data you grant them access to. Every bot is reviewed by a real person before it can be listed publicly. No exceptions.
+</PrivacyNote>
+
+When you build a bot, you declare exactly what data it needs (called **scopes**). If your bot only sends messages, it doesn't get read access. If it only works in one channel, it can't see the others. The principle is simple: minimum access, maximum transparency.
+
+Bot developers are also required to accept a **Data Processing Agreement (DPA)** and provide a privacy policy before submitting for review. This isn't optional — it's enforced at the platform level.
+
+## What You'll Build in This Guide
+
+By the end of this documentation, you'll be able to:
+
+1. Apply for a developer account on Bedrock Chat
+2. Set up a workspace and write bot code
+3. Use webhooks to send messages into any channel
+4. Handle commands and respond to users
+5. Test, submit, and publish your bot for others to use
+
+No prior bot-building experience is required. If you can follow instructions and copy-paste code, you can build a working bot today.
+
+## What's Next
+
+The next page covers exactly what you need before you start — accounts, tools, and the developer application process.

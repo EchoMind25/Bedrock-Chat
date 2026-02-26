@@ -1,0 +1,227 @@
+---
+title: "Channels"
+description: "Understanding channel types, structure, and what your bot can see within Bedrock Chat servers."
+---
+
+import WhatThisMeans from '../../../components/WhatThisMeans.astro';
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+import ComingSoon from '../../../components/ComingSoon.astro';
+import CodeExplainer from '../../../components/CodeExplainer.astro';
+
+Channels are where conversations happen in Bedrock Chat. Every message your bot sends goes into a specific channel. This page explains the different types of channels, how they are organized inside servers, and what your bot can and cannot do with them.
+
+---
+
+## What is a Channel?
+
+A channel is a single conversation space inside a server. Each channel has a name, a type, and belongs to a category.
+
+---
+
+## Channel Types
+
+Bedrock Chat has three types of channels. Your bot interacts with each one differently.
+
+### Text Channels
+
+```
+Type: "text"
+```
+
+Text channels are the standard conversation channels. This is where most of your bot's activity will happen. Users type messages, and your bot can send messages to these channels via webhooks or the bot respond endpoint.
+
+**What your bot can do:**
+- Send messages (via webhook or bot respond endpoint)
+- Include embeds in messages
+- Override display name and avatar per message (webhooks only)
+
+**Example channel names:** `#general`, `#random`, `#tech-talk`, `#bot-commands`
+
+### Voice Channels
+
+```
+Type: "voice"
+```
+
+Voice channels are for live audio conversations using LiveKit (a real-time communication service). Users join a voice channel to talk with each other using their microphones.
+
+<WhatThisMeans term="LiveKit">
+LiveKit is the technology that powers voice chat in Bedrock Chat. It handles the complex work of streaming audio between users in real time. Your bot does not interact with LiveKit directly.
+</WhatThisMeans>
+
+**What your bot can do:**
+- Nothing, currently. Bots cannot join voice channels, listen to audio, or send audio.
+
+<PrivacyNote>
+Bots will **never** have access to voice audio streams. This is a hard privacy boundary. Your bot cannot listen to, record, or process any voice conversations. This restriction is permanent and by design.
+</PrivacyNote>
+
+**Example channel names:** `General Voice`, `Gaming`, `Music`
+
+### Announcement Channels
+
+```
+Type: "announcement"
+```
+
+Announcement channels are read-only for regular users. Only server administrators (and authorized bots) can post to them. These are typically used for important server-wide messages like rules, updates, or news.
+
+**What your bot can do:**
+- Send messages if the webhook is configured for that channel
+- This is a great fit for bots that post daily updates, scheduled reminders, or automated news
+
+**Example channel names:** `#welcome`, `#rules`, `#server-news`
+
+---
+
+## Channel Structure Within Servers
+
+Channels do not float freely — they are organized inside **categories** within a server. Here is how the hierarchy works:
+
+```
+Server
+  └── Category (a group of related channels)
+        ├── Channel
+        ├── Channel
+        └── Channel
+  └── Category
+        ├── Channel
+        └── Channel
+```
+
+<WhatThisMeans term="Category">
+A category is a named folder that groups related channels together. For example, a server might have a "General" category containing `#general` and `#random`, and a "Voice" category containing `General Voice` and `Gaming`. Categories help keep the channel list organized.
+</WhatThisMeans>
+
+### Example Server Layout
+
+Here is what a real server structure looks like:
+
+```
+Bedrock Community (Server)
+│
+├── INFORMATION (Category)
+│     ├── #welcome        (announcement)
+│     └── #rules          (announcement)
+│
+├── TEXT CHANNELS (Category)
+│     ├── #general        (text)
+│     ├── #random         (text)
+│     └── #tech-talk      (text)
+│
+└── VOICE CHANNELS (Category)
+      ├── General Voice   (voice)
+      └── Gaming          (voice)
+```
+
+Each channel has a few key properties:
+
+| Property | Type | Description |
+|---|---|---|
+| `id` | string | The unique identifier for this channel. You use this in API calls. |
+| `name` | string | The display name of the channel (like "general" or "rules"). |
+| `type` | string | One of `"text"`, `"voice"`, or `"announcement"`. |
+| `serverId` | string | The ID of the server this channel belongs to. |
+| `categoryId` | string | The ID of the category this channel is grouped under. |
+| `position` | number | The display order of this channel within its category. Lower numbers appear first. |
+
+### How Your Bot Targets a Channel
+
+When your bot sends a message, it needs to know the **channel ID** — not the channel name. Channel names can change, but IDs are permanent.
+
+<CodeExplainer title="Sending a message to a specific channel">
+<Fragment slot="code">
+```js
+// You need the channel's ID, not its name
+// Channel IDs look like: "channel-general" or "a1b2c3d4-e5f6-..."
+const channelId = 'channel-general';
+
+// For webhooks, the channel is already set — each webhook is tied to one channel
+// You just post to the webhook URL and the message goes to the right place
+await fetch('https://bedrockchat.com/api/webhooks/wh_abc123', {
+  method: 'POST',                              // POST = sending new data
+  headers: {
+    'Authorization': 'Bearer YOUR_TOKEN',      // Your webhook token
+    'Content-Type': 'application/json',        // We are sending JSON data
+  },
+  body: JSON.stringify({
+    content: 'This goes to whatever channel the webhook is configured for!',
+  }),
+});
+
+// For bot respond, you specify the channel explicitly
+await fetch('https://bedrockchat.com/api/bots/bot_xyz/respond', {
+  method: 'POST',                              // POST = sending new data
+  headers: {
+    'Authorization': 'Bearer YOUR_BOT_TOKEN',  // Your bot token
+    'Content-Type': 'application/json',        // We are sending JSON data
+  },
+  body: JSON.stringify({
+    channelId: channelId,                      // Specify which channel to post in
+    messageContent: 'Hello, this channel!',    // The message text
+  }),
+});
+```
+</Fragment>
+<Fragment slot="explanation">
+Webhooks are simpler here — each webhook is already linked to a specific channel, so you do not need to specify the channel. The bot respond endpoint requires you to pass the `channelId` explicitly, giving you more flexibility to post to different channels with a single bot.
+</Fragment>
+</CodeExplainer>
+
+---
+
+## The channels.read Scope
+
+When you register your bot, one of the scopes you can request is `channels.read`. This scope determines what channel information your bot can access.
+
+<WhatThisMeans term="Scope">
+A scope is a permission that defines what your bot is allowed to do. When you register your bot, you declare which scopes it needs. Each scope grants access to a specific set of API operations.
+</WhatThisMeans>
+
+With the `channels.read` scope, your bot can see:
+
+- Channel names and IDs
+- Channel types (text, voice, announcement)
+- Which category a channel belongs to
+- Channel position (display order)
+
+Without this scope, your bot can still send messages to channels (via webhooks), but it cannot list or browse channels programmatically.
+
+---
+
+## No Channel Management API for Bots
+
+This is an important limitation to understand: **your bot cannot create, edit, or delete channels**. There is no API endpoint for channel management.
+
+Only server administrators can manage channels through the Bedrock Chat interface. Your bot can send messages to existing channels, but it cannot:
+
+- Create new channels
+- Rename channels
+- Delete channels
+- Move channels between categories
+- Change channel types
+- Change channel permissions
+
+<ComingSoon feature="Channel Management API">
+A channel management API for bots is being considered for a future release. If it is built, it will require explicit permissions from the server administrator and will be limited to specific scopes. For now, coordinate with your server admin if your bot needs new channels set up.
+</ComingSoon>
+
+---
+
+## Tips for Working With Channels
+
+**Tip 1: Use webhooks for fixed channels.** If your bot always posts to the same channel (like a `#daily-updates` channel), use a webhook. It is simpler because the channel is built into the webhook — you do not need to manage channel IDs in your code.
+
+**Tip 2: Use the bot respond endpoint for dynamic channels.** If your bot needs to post to different channels based on context (like replying in the channel where a user asked a question), use the bot respond endpoint with the `channelId` parameter.
+
+**Tip 3: Do not hardcode channel names.** Channel names can change at any time. Always use channel IDs. If you display channel names to users, fetch the current name rather than storing it permanently.
+
+**Tip 4: Check the channel type.** If your bot tries to send a message to a voice channel, it will not work the way you expect. Make sure you are targeting text or announcement channels.
+
+---
+
+## Next Steps
+
+- **[Servers](/api-reference/servers/)** — Learn how servers are structured and what limits apply
+- **[Messages](/api-reference/messages/)** — See the full details on sending messages
+- **[Events](/api-reference/events/)** — Understand real-time events including per-channel message events

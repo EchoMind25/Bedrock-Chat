@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHmac } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requirePlatformRole } from "@/lib/platform-roles.server";
@@ -53,18 +54,19 @@ export async function POST(
 
 		// Send verification challenge
 		const challenge = crypto.randomUUID();
+		const payload = JSON.stringify({ type: "verification", challenge });
+		const signature = createHmac("sha256", bot.webhook_secret)
+			.update(payload)
+			.digest("hex");
 
 		try {
 			const response = await fetch(bot.webhook_url, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
-					"X-Bedrock-Signature": bot.webhook_secret,
+					"X-Bedrock-Signature": `sha256=${signature}`,
 				},
-				body: JSON.stringify({
-					type: "verification",
-					challenge,
-				}),
+				body: payload,
 				signal: AbortSignal.timeout(10_000),
 			});
 

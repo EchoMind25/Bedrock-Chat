@@ -340,7 +340,10 @@ export function MainLayoutClient({
 
 	return (
 		<MotionConfig reducedMotion={reducedMotion ? "always" : "never"}>
-		<div className="flex h-screen overflow-hidden bg-[oklch(0.12_0.02_250)]">
+		<div
+			className="flex h-screen overflow-hidden bg-[oklch(0.12_0.02_250)]"
+			style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+		>
 			{/* Apply global settings effects (theme, font size, accessibility) */}
 			<SettingsEffects />
 			<ColorBlindFilters />

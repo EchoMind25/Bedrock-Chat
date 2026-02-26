@@ -1,0 +1,165 @@
+---
+title: "Webhook Events"
+description: "Event types and payloads for outgoing webhooks in Bedrock Chat."
+---
+
+import ComingSoon from '../../../components/ComingSoon.astro';
+
+<ComingSoon feature="Outgoing Webhook Events">
+  Outgoing webhook event dispatch is **not yet implemented**. This page documents the planned event types and payload formats. None of these events are being sent yet.
+</ComingSoon>
+
+## Overview
+
+When outgoing webhooks launch, Bedrock Chat will deliver events to a URL you control. Each event represents something that happened in your server -- a message posted, a member joining, a member leaving, or a server event created.
+
+Events are sent as HTTP POST requests with a JSON body.
+
+## Planned Event Types
+
+| Event | Trigger |
+|---|---|
+| `message_create` | A message is sent in a channel |
+| `member_join` | A member joins the server |
+| `member_leave` | A member leaves the server |
+| `event_create` | A server event is created |
+
+---
+
+## message_create
+
+Fires when a message is posted in any channel the webhook is subscribed to.
+
+**Use cases:** content moderation, message logging, auto-responses.
+
+**Payload:**
+
+```json
+{
+  "event": "message_create",
+  "timestamp": "2026-02-25T14:30:00Z",
+  "data": {
+    "messageId": "msg-abc123",
+    "channelId": "channel-456",
+    "serverId": "server-789",
+    "author": {
+      "id": "user-101",
+      "username": "CoolUser",
+      "avatar_url": "https://example.com/avatar.png"
+    },
+    "content": "Hey everyone, what's up?",
+    "createdAt": "2026-02-25T14:30:00Z"
+  }
+}
+```
+
+**Fields:**
+
+- `event` -- The event type identifier.
+- `timestamp` -- ISO 8601 time the event was dispatched.
+- `data.messageId` -- Unique ID of the message.
+- `data.channelId` -- Channel where the message was posted.
+- `data.serverId` -- Server the channel belongs to.
+- `data.author` -- The user who sent the message.
+- `data.content` -- The message text.
+
+---
+
+## member_join
+
+Fires when a new member joins the server.
+
+**Use cases:** welcome messages, default role assignment, member count tracking.
+
+**Payload:**
+
+```json
+{
+  "event": "member_join",
+  "timestamp": "2026-02-25T15:00:00Z",
+  "data": {
+    "serverId": "server-789",
+    "member": {
+      "id": "user-202",
+      "username": "NewMember",
+      "avatar_url": "https://example.com/new-avatar.png",
+      "joinedAt": "2026-02-25T15:00:00Z"
+    }
+  }
+}
+```
+
+---
+
+## member_leave
+
+Fires when a member leaves the server or is removed.
+
+**Use cases:** departure logging, member count tracking, resource cleanup.
+
+**Payload:**
+
+```json
+{
+  "event": "member_leave",
+  "timestamp": "2026-02-25T16:00:00Z",
+  "data": {
+    "serverId": "server-789",
+    "member": {
+      "id": "user-202",
+      "username": "NewMember",
+      "leftAt": "2026-02-25T16:00:00Z"
+    }
+  }
+}
+```
+
+---
+
+## event_create
+
+Fires when a server event (game night, study session, etc.) is created.
+
+**Use cases:** cross-posting to an announcements channel, scheduling reminders, syncing to an external calendar.
+
+**Payload:**
+
+```json
+{
+  "event": "event_create",
+  "timestamp": "2026-02-25T17:00:00Z",
+  "data": {
+    "serverId": "server-789",
+    "channelId": "channel-456",
+    "eventDetails": {
+      "id": "event-303",
+      "title": "Friday Game Night",
+      "description": "Join us for board games!",
+      "startTime": "2026-02-27T20:00:00Z",
+      "createdBy": {
+        "id": "user-101",
+        "username": "CoolUser"
+      }
+    }
+  }
+}
+```
+
+---
+
+## Receiving Events
+
+When outgoing webhooks are available, the flow will be:
+
+1. Register an outgoing webhook with your endpoint URL.
+2. Select which event types to subscribe to.
+3. Bedrock Chat sends a POST request to your URL each time a subscribed event occurs.
+4. Your server processes the event and returns a `200` response.
+
+## Signature Verification
+
+Every outgoing webhook request will include an `X-Bedrock-Signature` header containing an HMAC-SHA256 signature. Verify this signature before processing any event to ensure the request originated from Bedrock Chat.
+
+## What You Can Do Now
+
+Outgoing webhooks are not yet available. In the meantime, **incoming webhooks** are fully operational. See [Webhook Examples](/webhooks/webhook-examples) for working integrations you can build today.

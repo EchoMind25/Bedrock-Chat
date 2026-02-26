@@ -1,0 +1,248 @@
+---
+title: "API Overview"
+description: "Everything you need to know before making your first API call — authentication, rate limits, errors, and what your bot can and cannot access."
+---
+
+import WhatThisMeans from '../../../components/WhatThisMeans.astro';
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+import ComingSoon from '../../../components/ComingSoon.astro';
+import CodeExplainer from '../../../components/CodeExplainer.astro';
+
+The Bedrock Chat API is how your bot talks to the platform. Every message your bot sends, every piece of information it reads — it all goes through this API. This page gives you the full picture before you start writing code.
+
+## Base URL
+
+Every API request you make starts with the same base URL:
+
+```
+https://bedrockchat.com/api
+```
+
+All requests must use **HTTPS** (the secure version of HTTP). If you try plain `http://`, your request will be rejected.
+
+<WhatThisMeans term="HTTPS">
+HTTPS encrypts data in transit between your bot and Bedrock Chat. All API requests must use HTTPS — plain HTTP requests are rejected.
+</WhatThisMeans>
+
+When you see an endpoint like `POST /api/webhooks/[webhookId]`, the full URL you would call is:
+
+```
+https://bedrockchat.com/api/webhooks/your-webhook-id-here
+```
+
+---
+
+## What Your Bot Cannot Access (Boundaries)
+
+Before you plan any features, you need to know what is off-limits. Bedrock Chat is a privacy-first platform, and these boundaries are non-negotiable.
+
+<PrivacyNote title="Hard Privacy Boundaries">
+Your bot will **never** have access to any of the following data, regardless of what scopes you request or what permissions a server grants. There is no endpoint, no workaround, and no exception.
+</PrivacyNote>
+
+**Your bot CANNOT access:**
+
+| Off-Limits Data | Why |
+|---|---|
+| **Family data** | Parent-child relationships, family group settings, and parental controls are completely invisible to bots. |
+| **Direct messages** | Bots cannot read, send, or monitor private conversations between users. |
+| **User reports** | Reports filed by users are confidential and handled by platform staff only. |
+| **Email addresses** | User emails are never exposed through any API endpoint. |
+| **Phone numbers** | Phone numbers are never exposed through any API endpoint. |
+| **Birth dates** | Date of birth is collected for age verification only and is never shared. |
+| **IP addresses** | Connection information is never available to bots. |
+| **Voice audio streams** | Bots cannot listen to or record voice channel audio. |
+| **Keyword alerts** | Parental monitoring features are invisible to all third-party code. |
+| **Screen time data** | Usage tracking information is private to each user and their family. |
+
+This is not a temporary limitation. These boundaries are a core part of the Bedrock Chat platform design. If your bot idea requires any of this data, you will need to rethink your approach.
+
+---
+
+## Authentication
+
+Your bot needs to prove its identity on every API request. There are two ways to do this, depending on which endpoint you are calling.
+
+### Bot Token (Bearer Authentication)
+
+For bot-specific endpoints like `/api/bots/[botId]/respond`, you include your bot token in the `Authorization` header:
+
+<CodeExplainer title="Adding your bot token to a request">
+<Fragment slot="code">
+```bash
+# The -H flag adds a header to your request
+# "Bearer" is a keyword that tells the server "here comes a token"
+# Replace YOUR_BOT_TOKEN with the actual token from your bot settings
+curl -X POST https://bedrockchat.com/api/bots/abc123/respond \
+  -H "Authorization: Bearer YOUR_BOT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"channelId": "channel-1", "messageContent": "Hello!"}'
+```
+</Fragment>
+<Fragment slot="explanation">
+The word "Bearer" before your token is required. It tells the server what kind of authentication you are using.
+</Fragment>
+</CodeExplainer>
+
+<WhatThisMeans term="Bearer Token">
+A bearer token is a secret string that authenticates your bot. Include it in the `Authorization` header of every request. Anyone with the token can act as your bot, so keep it secret.
+</WhatThisMeans>
+
+### Webhook Token
+
+For webhook endpoints like `/api/webhooks/[webhookId]`, you have two options:
+
+**Option A — Query parameter:**
+```
+https://bedrockchat.com/api/webhooks/your-webhook-id?token=YOUR_WEBHOOK_TOKEN
+```
+
+**Option B — Bearer header** (same as above):
+```bash
+# Same Bearer format, just pointed at a webhook endpoint
+curl -X POST https://bedrockchat.com/api/webhooks/your-webhook-id \
+  -H "Authorization: Bearer YOUR_WEBHOOK_TOKEN"
+```
+
+Both methods work identically. Use whichever feels more natural for your setup. The query parameter option can be simpler if you are using a no-code tool that does not let you set custom headers.
+
+---
+
+## Rate Limiting
+
+Rate limiting controls how often you can call each endpoint. It prevents any single bot from overwhelming the platform.
+
+<WhatThisMeans term="Rate Limiting">
+Rate limiting caps how many requests your bot can make to each endpoint within a time window. Exceeding the limit returns a `429` status code with a `Retry-After` header.
+</WhatThisMeans>
+
+Each endpoint has its own limit. Here is a summary:
+
+| Endpoint | Rate Limit |
+|---|---|
+| `POST /api/webhooks/[webhookId]` | 1 request per second per webhook |
+| `POST /api/platform/bots` | 5 requests per minute |
+| `GET /api/platform/bots` | 30 requests per minute |
+| `PATCH /api/platform/bots/[botId]` | 10 requests per minute |
+| `DELETE /api/platform/bots/[botId]` | 5 requests per minute |
+| `POST /api/platform/bots/[botId]/verify` | 3 requests per minute |
+| `GET /api/stats` | 20 requests per minute |
+
+### What Happens When You Hit the Limit
+
+If you exceed a rate limit, the server responds with HTTP status **429** (Too Many Requests). The response includes a `Retry-After` header that tells you how many seconds to wait before trying again.
+
+<CodeExplainer title="Handling a rate limit response">
+<Fragment slot="code">
+```js
+// Send a request to the webhook endpoint
+const response = await fetch(webhookUrl, {
+  method: 'POST',                          // We are sending data
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ content: 'Hello!' })
+});
+
+// Check if we got rate limited (status code 429)
+if (response.status === 429) {
+  // Read the Retry-After header to find out how long to wait
+  const waitSeconds = response.headers.get('Retry-After');
+
+  // Convert seconds to milliseconds and wait that long
+  await new Promise(resolve =>
+    setTimeout(resolve, waitSeconds * 1000)
+  );
+
+  // Now it is safe to try the request again
+}
+```
+</Fragment>
+<Fragment slot="explanation">
+The `Retry-After` header is a number (in seconds). Your code reads it, waits that many seconds, then retries. This is the polite way to handle rate limits — do not just keep hammering the endpoint.
+</Fragment>
+</CodeExplainer>
+
+---
+
+## Error Response Format
+
+When something goes wrong, every endpoint returns errors in the same format:
+
+```json
+{
+  "error": "Human-readable error message"
+}
+```
+
+The `error` field always contains a plain-English description of what went wrong. You can show this directly to your users or use it for debugging.
+
+### HTTP Status Codes
+
+Here is every status code the API returns, what it means, and what you should do about it:
+
+| Status Code | Name | What It Means | What To Do |
+|---|---|---|---|
+| **200** | OK | Your request succeeded. The response body contains the data you asked for. | Nothing — everything worked. |
+| **201** | Created | Your request succeeded and a new resource was created (like a new bot registration). | Nothing — your new resource is ready. |
+| **400** | Bad Request | Something is wrong with your request. Maybe a required field is missing, or a value is the wrong type. | Read the `error` message carefully. Fix the issue in your request and try again. |
+| **401** | Unauthorized | Your authentication is missing or invalid. Either you forgot the token, or the token is wrong. | Double-check your bot token or webhook token. Make sure you included the `Bearer` prefix. |
+| **403** | Forbidden | Your token is valid, but you do not have permission for this action. For example, trying to delete a bot you do not own. | Check that you are using the correct bot and that your account has the right role (like "developer"). |
+| **404** | Not Found | The resource you requested does not exist. The bot ID, webhook ID, or channel ID might be wrong. | Verify the ID in your URL is correct. |
+| **409** | Conflict | Your request conflicts with existing data. For example, trying to register a bot with a name that is already taken. | Change the conflicting value and try again. |
+| **429** | Too Many Requests | You hit the rate limit. | Wait the number of seconds specified in the `Retry-After` header, then retry. |
+| **500** | Server Error | Something went wrong on the Bedrock Chat side. This is not your fault. | Wait a moment and retry. If it keeps happening, check the Bedrock Chat status page or ask for help. |
+
+---
+
+## All Bot-Relevant Endpoints
+
+Here is a complete summary of every endpoint your bot can use:
+
+| Method | Endpoint | Auth | What It Does |
+|---|---|---|---|
+| `POST` | `/api/webhooks/[webhookId]` | Webhook token | Send a message to a channel via webhook |
+| `POST` | `/api/bots/[botId]/respond` | Bot token | Send a bot response to a channel |
+| `POST` | `/api/platform/bots` | Session (developer) | Register a new bot application |
+| `GET` | `/api/platform/bots` | Session (developer) | List all your registered bots |
+| `PATCH` | `/api/platform/bots/[botId]` | Session (owner) | Update your bot's settings |
+| `DELETE` | `/api/platform/bots/[botId]` | Session (owner) | Delete a pending or rejected bot |
+| `POST` | `/api/platform/bots/[botId]/verify` | Session (owner) | Verify your bot's webhook URL |
+| `GET` | `/api/stats` | None (public) | Get platform-wide statistics |
+
+For detailed request and response formats, see the individual endpoint pages:
+- [Messages](/api-reference/messages/) — Sending messages via webhooks and bot responses
+- [Channels](/api-reference/channels/) — Understanding channel types and structure
+- [Servers](/api-reference/servers/) — Server structure and platform stats
+- [Users](/api-reference/users/) — What user data your bot can see
+- [Events](/api-reference/events/) — Real-time events and live updates
+
+---
+
+## Features Not Yet Available
+
+<ComingSoon feature="Bot Platform Expansion">
+The following features are planned but **not yet implemented**. Do not build your bot around these — they do not work today:
+
+- **Bot message read API** — Bots cannot fetch message history from channels yet. There is no endpoint for reading past messages.
+- **Bot event subscription** — Bots cannot subscribe to real-time events (like new messages or user joins) via WebSocket or server-sent events yet.
+- **OAuth2 for bots** — There is no OAuth2 client credentials flow. Authentication is token-based only.
+- **Bot scope enforcement** — Scopes are stored when you register your bot, but they are not enforced at runtime yet. This means the API does not check scopes before responding — but do not rely on that. When enforcement is added, bots exceeding their scopes will break.
+- **Bot marketplace / discovery** — There is no public directory where users can browse and add bots.
+- **"Add to Server" flow** — There is no invite URL or OAuth2-style installation flow (like Discord's). Server admins add bots manually for now.
+- **Claude AI integration** — The configuration fields exist for Claude-powered bots, but no actual AI API calls are made yet.
+
+We will update these docs as each feature launches. For now, focus on what works: webhooks for sending messages, and the bot registration API for managing your bot.
+</ComingSoon>
+
+---
+
+## Next Steps
+
+Now that you understand how the API works at a high level, dive into the specifics:
+
+1. **[Messages](/api-reference/messages/)** — Learn how to send your first message
+2. **[Channels](/api-reference/channels/)** — Understand the different channel types
+3. **[Servers](/api-reference/servers/)** — See how servers are structured
+4. **[Users](/api-reference/users/)** — Find out what user data is available
+5. **[Events](/api-reference/events/)** — Explore real-time updates
+
+If you have not built a bot yet, start with [Your First Bot](/getting-started/your-first-bot/) instead. That guide walks you through the full process from zero.

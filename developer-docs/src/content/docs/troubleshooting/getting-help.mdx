@@ -1,0 +1,151 @@
+---
+title: "Getting Help"
+description: "Where to get support when you are stuck."
+---
+
+import StepByStep from '../../../components/StepByStep.astro';
+
+Getting stuck is a normal part of building things. Every developer -- even the most experienced ones -- runs into problems they cannot solve on their own. The difference between staying stuck and getting unstuck is knowing where to ask for help.
+
+This page shows you all the places you can get support.
+
+---
+
+## Bedrock Chat Community Server
+
+The fastest way to get help is to ask in the Bedrock Chat community server. Other developers who build bots hang out there, and many of them have seen the same problems you are running into.
+
+### Where to ask
+
+- **#dev-help** -- This is the main channel for developer questions. Post your question here and someone will usually respond within a few hours.
+- **#bot-showcase** -- If you want feedback on your bot (not just bug help), share it here.
+- **#api-discussion** -- For deeper conversations about the API, feature requests, and design decisions.
+
+### How to ask a good question
+
+The better your question, the faster you will get help. Here is what to include:
+
+<StepByStep title="Writing a good help request">
+
+1. **Say what you are trying to do.** Start with a one-sentence summary. For example: "I am trying to send a message to a channel using a webhook bot."
+
+2. **Say what you expected to happen.** For example: "I expected the message to show up in the #general channel."
+
+3. **Say what actually happened.** For example: "Instead, I got a 401 error."
+
+4. **Share the error message.** Copy and paste the full error message. Do not paraphrase it or say "I got an error." The exact text matters.
+
+5. **Share your code (but hide your token!).** Copy the relevant part of your code. **Replace your bot token with `YOUR_TOKEN_HERE`** before posting. Never share your real token.
+
+6. **Say what you already tried.** This saves people from suggesting things you have already done. For example: "I already checked that my token is correct and that the URL uses HTTPS."
+
+</StepByStep>
+
+### Example of a good question
+
+> "I am trying to send a message using the webhook endpoint. I am sending a POST request to my webhook URL with the content field set to 'Hello!' but I get a 401 Unauthorized error. Here is my code (token hidden). I already checked that the URL is correct and uses HTTPS. I also tried regenerating my token."
+
+### Example of a question that is hard to help with
+
+> "My bot doesn't work. Help?"
+
+The first example gives helpers all the information they need. The second example would require a lot of back-and-forth questions before anyone could help you.
+
+---
+
+## Reporting Bugs
+
+If you think you found a bug in the Bedrock Chat API (not a bug in your own code), here is how to report it.
+
+### Before you report
+
+1. **Check the docs.** Make sure the behavior you see is actually wrong. Sometimes the API works correctly, but the behavior is just different from what you expected. Read the API Reference carefully.
+2. **Search for existing reports.** Someone else may have already reported the same bug. Check the #dev-help channel and any bug tracking system for duplicates.
+3. **Test it more than once.** A problem that only happens once might be a temporary server issue, not a bug. Try again after a few minutes.
+
+### How to report a bug
+
+<StepByStep title="Bug report checklist">
+
+1. **Describe the bug.** What happened? What should have happened instead?
+2. **Steps to reproduce.** List the exact steps someone else would need to follow to see the same bug. Be as specific as possible.
+3. **Include the request and response.** Share the URL, headers (with token hidden), request body, response status code, and response body.
+4. **Include your environment.** What language are you using? What version of Node.js? What hosting platform?
+5. **Post it in #dev-help** with the tag "Bug Report" or follow the community's bug reporting process.
+
+</StepByStep>
+
+---
+
+## Documentation Feedback
+
+If you find a mistake in these docs, or if something is confusing, we want to know! Good documentation helps everyone.
+
+### How to suggest improvements
+
+- **Typos or mistakes:** Post in the community server's #docs-feedback channel (if available), or mention it in #dev-help.
+- **Confusing sections:** Tell us which page was confusing and what you did not understand. This helps us rewrite it more clearly.
+- **Missing information:** If you looked for something in the docs and could not find it, let us know what you were searching for.
+
+---
+
+## Debugging Tips
+
+Before you ask for help, try these debugging techniques. They solve most problems on their own.
+
+### 1. Read the error message carefully
+
+This sounds obvious, but many developers skip past the error message. Error messages are written to tell you what went wrong. Read every word. Often the answer is right there.
+
+### 2. Check the browser console
+
+If you are working in a web browser, press **F12** to open the developer tools. Click the **Console** tab. Errors show up here in red. They often include a file name and line number that tells you exactly where the problem is.
+
+### 3. Use console.log
+
+Add `console.log` statements to your code to print out values at different points. This helps you see what your code is actually doing, step by step.
+
+```js
+// Example: Debugging a request
+console.log('Sending request to:', url);
+console.log('Request body:', JSON.stringify(body));
+
+const response = await fetch(url, options);
+console.log('Response status:', response.status);
+
+const data = await response.json();
+console.log('Response data:', data);
+```
+
+### 4. Simplify your code
+
+If something is not working, remove everything except the basic thing you are trying to do. Get that working first, then add features back one at a time. This is called **isolating the problem**.
+
+### 5. Take a break
+
+Seriously. If you have been staring at the same problem for an hour, step away for 10 minutes. Get a glass of water. Walk around. When you come back, you will often see the problem right away. Developers call this "rubber duck debugging" -- sometimes just stepping back gives your brain the space it needs to see the answer.
+
+### 6. Search the web
+
+Copy and paste the exact error message into a search engine. Chances are very good that someone else has had the same problem and posted about it. Stack Overflow, GitHub Issues, and developer blogs are all great places to find answers.
+
+---
+
+## Quick Reference: Where to Go
+
+| Problem | Where to go |
+|---|---|
+| My bot is not working | [Common Problems](/troubleshooting/common-problems/) |
+| I got an error code | [Error Messages](/troubleshooting/error-messages/) |
+| I need to ask a question | Bedrock Chat community server, #dev-help |
+| I found a bug | Community server, follow bug report steps above |
+| The docs are confusing | Community server, #docs-feedback or #dev-help |
+| I want to learn more | [Helpful Resources](/recommended-tools/helpful-resources/) |
+
+---
+
+## Remember
+
+Every developer gets stuck sometimes. Asking for help is not a sign of weakness -- it is a sign that you care about getting things right. The Bedrock Chat community is here to help you succeed.
+
+When someone helps you, consider helping someone else later. That is how communities grow.

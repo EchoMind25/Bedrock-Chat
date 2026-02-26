@@ -1,0 +1,223 @@
+---
+title: "Free Hosting Options"
+description: "Where to run your bot for free so it stays online 24/7, ranked by privacy."
+---
+
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+import WhatThisMeans from '../../../components/WhatThisMeans.astro';
+import StepByStep from '../../../components/StepByStep.astro';
+
+When you build a bot on your computer, it only works while your computer is on and your code is running. If you close your laptop or turn off your computer, your bot goes offline.
+
+**Hosting** means running your bot on a server that stays online 24/7, even when your own computer is off.
+
+Several hosting platforms have free tiers that work well for small bot projects. Below, we rank them by how well they protect your privacy.
+
+---
+
+## Railway -- RECOMMENDED
+
+**Privacy Rating: GOOD**
+
+<PrivacyNote title="Privacy: Good">
+Railway has passed a **SOC 2 Type II** audit, which means an independent company checked their security practices and confirmed they are solid. They offer a **GDPR DPA** (Data Processing Agreement) for European users. Railway will not look at, modify, or use your code without your permission. They do not train AI on your code.
+</PrivacyNote>
+
+### What is it?
+
+Railway is a hosting platform that makes it easy to put your bot online. You connect your GitHub repository, and Railway automatically builds and runs your code whenever you push an update.
+
+### Why we recommend it
+
+- **Good free tier** -- you get a limited number of hours each month at no cost.
+- **Easy setup** -- connect your GitHub repo and you are done.
+- **Auto-deploys** -- every time you push new code to GitHub, Railway updates your bot automatically.
+- **Strong privacy** -- SOC 2 certified, no AI training on your code.
+
+### Things to know
+
+- The free tier has a limit on how many hours your bot can run per month. For small bots, this is usually enough.
+- If your bot needs to run 24/7 without any downtime, you may eventually need a paid plan (starts at $5/month).
+
+<StepByStep title="How to deploy your bot on Railway">
+
+1. Go to [railway.app](https://railway.app) and sign up for a free account.
+2. Click **New Project**.
+3. Choose **Deploy from GitHub repo**.
+4. Pick the repository that has your bot code.
+5. Railway will automatically detect your project type and start building it.
+6. Once the build is done, your bot is online!
+7. Every time you push new code to GitHub, Railway will automatically update your bot.
+
+</StepByStep>
+
+### Best for
+
+Most bot projects. If you are not sure which hosting to pick, start here.
+
+---
+
+## Render -- RECOMMENDED
+
+**Privacy Rating: GOOD**
+
+<PrivacyNote title="Privacy: Good">
+Render is certified under the **EU-US Data Privacy Framework** (as of January 2025), which means they follow strict rules about protecting data for European users. They offer a **DPA** (Data Processing Agreement) on request. Render only shares your data with service providers who help run their platform -- they do not sell your data or use it for AI training.
+</PrivacyNote>
+
+### What is it?
+
+Render is a hosting platform similar to Railway. You connect your GitHub repo, and Render builds and deploys your bot automatically.
+
+### Why we recommend it
+
+- **Generous free tier** -- free for small projects.
+- **Simple setup** -- connect GitHub and deploy.
+- **Good documentation** -- clear guides to help you get started.
+- **Privacy-certified** -- EU-US Data Privacy Framework compliant.
+
+### Things to know
+
+- On the free tier, your bot **goes to sleep after 15 minutes of inactivity**. This means if nobody talks to your bot for 15 minutes, it takes about 30 seconds to wake up again when someone does.
+- For bots that need to respond instantly all the time, you may need a paid plan.
+
+<StepByStep title="How to deploy your bot on Render">
+
+1. Go to [render.com](https://render.com) and create a free account.
+2. Click **New** and then **Web Service**.
+3. Connect your GitHub account and pick your bot's repository.
+4. Render will detect your project settings. Check that the **build command** and **start command** look correct.
+5. Choose the **Free** plan.
+6. Click **Create Web Service**.
+7. Render will build and deploy your bot. This takes a few minutes the first time.
+
+</StepByStep>
+
+### Best for
+
+Bots that do not need to be online every single second. If your bot is okay with a short wake-up delay after being idle, Render is a great free option.
+
+---
+
+## Deno Deploy -- Acceptable (Advanced Users)
+
+**Privacy Rating: GOOD**
+
+<PrivacyNote title="Privacy: Good">
+Deno Deploy runs your code inside **fully isolated microVMs** (tiny virtual computers), so your bot's code is separated from everyone else's code. The Deno runtime is open-source and was designed with security as a top priority. Deno does not use your code for AI training.
+</PrivacyNote>
+
+### What is it?
+
+Deno Deploy is a hosting platform made by the team behind Deno, a JavaScript runtime (like Node.js, but newer). It runs your code on servers around the world, so your bot responds quickly no matter where your users are.
+
+<WhatThisMeans term="runtime">
+A **runtime** is the environment that executes your code. Node.js and Deno are both JavaScript runtimes. They serve the same purpose but differ in security model, module system, and API surface.
+</WhatThisMeans>
+
+### Why it can be a good choice
+
+- **Free tier available** -- generous limits for small projects.
+- **Very fast** -- your code runs on servers all around the world.
+- **Security-first design** -- Deno was built from the ground up to be secure.
+- **Good privacy** -- open-source runtime, isolated execution.
+
+### Things to know
+
+- Deno Deploy uses the **Deno runtime**, not Node.js. Most JavaScript code works the same way, but some things are different. For example, Deno uses `import` URLs instead of `npm install`.
+- This is best for developers who are already comfortable with JavaScript and want to try something more advanced.
+- Some Node.js packages might not work directly in Deno. Check compatibility before you start.
+
+### Best for
+
+Advanced users who are comfortable with TypeScript and want a fast, secure hosting option.
+
+---
+
+## Vercel -- Acceptable with Caveats
+
+**Privacy Rating: MIXED**
+
+<PrivacyNote title="Privacy: Mixed -- Read Their Policy">
+Vercel is certified under the **EU-US Data Privacy Framework**, which is good. However, their privacy policy mentions sharing data with **"advertising partners"** and **"analytics companies."** Their Web Analytics product uses aggregated (combined) and anonymous data, but the broader data-sharing language in their privacy policy is something to be aware of. We recommend reading their privacy policy carefully before you decide.
+</PrivacyNote>
+
+### What is it?
+
+Vercel is a hosting platform that is very popular for websites and web apps. It can also run **serverless functions** -- small pieces of code that run only when needed.
+
+<WhatThisMeans term="serverless">
+**Serverless** means the platform manages infrastructure for you. Your code runs on-demand in response to incoming requests and scales to zero when idle. You do not provision or maintain servers.
+</WhatThisMeans>
+
+### Why it can be a good choice
+
+- **Very generous free tier** -- plenty of resources for bot projects.
+- **Fast deployments** -- push code and it is live in seconds.
+- **Great for webhooks** -- if your bot uses webhooks (incoming messages to a URL), Vercel handles this well.
+
+### Things to know
+
+- Vercel is designed for **serverless functions**, not always-on processes. If your bot needs a persistent connection (like a WebSocket), Vercel is not the right choice.
+- Their privacy policy mentions advertising partners. This does not necessarily mean your code is shared, but it is worth knowing about.
+- Best for webhook-style bots that respond to incoming requests.
+
+### Best for
+
+Webhook bots or serverless API endpoints. Not ideal for bots that need to stay connected all the time.
+
+---
+
+## Self-Hosted -- Best Privacy (Advanced)
+
+**Privacy Rating: BEST**
+
+<PrivacyNote title="Privacy: Best">
+When you self-host, your code runs on hardware that **you own and control**. No company can see your code, collect telemetry, or share your data with anyone. This is the most private option possible.
+</PrivacyNote>
+
+### What is it?
+
+Self-hosting means running your bot on your own hardware. This could be an old laptop, a Raspberry Pi (a tiny $35 computer), or a VPS (Virtual Private Server) that you rent.
+
+### Why it is the most private
+
+- **Your hardware, your rules.** Nobody else has access to your code or data.
+- **No telemetry.** No company is collecting data about what you do.
+- **Full control.** You decide what software runs, what updates to install, and how everything is configured.
+
+### Things to know
+
+- You need **technical knowledge** to set up and maintain a server.
+- You are responsible for **security updates**, **backups**, and **keeping the server online**.
+- If your internet goes down, your bot goes down.
+- Electricity costs money. Running a computer 24/7 adds to your electric bill (though a Raspberry Pi uses very little power).
+
+### Best for
+
+Privacy maximalists who want full control over their bot's environment and have the technical skills to maintain a server.
+
+---
+
+## Quick Comparison
+
+| Feature | Railway | Render | Deno Deploy | Vercel | Self-Hosted |
+|---|---|---|---|---|---|
+| Privacy | Good | Good | Good | Mixed | Best |
+| Free tier? | Yes | Yes | Yes | Yes | N/A |
+| Always online? | Yes (free limits) | Sleeps after 15 min | Yes | Serverless only | Yes (if you maintain it) |
+| Auto-deploy from GitHub? | Yes | Yes | Yes | Yes | Manual |
+| Best for | Most bots | Idle-tolerant bots | Advanced users | Webhooks | Privacy maximalists |
+| Our recommendation | Yes | Yes | For advanced users | With caveats | For experts |
+
+---
+
+## Our Advice
+
+If you are just getting started, **use Railway**. It has good privacy, a simple setup, and works well for most bot projects.
+
+If your bot does not need to respond instantly after being idle, **Render** is another solid free option.
+
+If privacy is your number one concern and you have the technical skills, **self-hosting** gives you the most control. But be honest with yourself about whether you can maintain it.
+
+No matter which platform you choose, always keep your **bot tokens and secrets** safe. Never put them in your code directly. Use **environment variables** instead -- every platform listed here supports them.

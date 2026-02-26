@@ -1,0 +1,124 @@
+---
+title: "Protecting Young Users"
+description: "Requirements for bots that may interact with users under 18."
+---
+
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+import WhatThisMeans from '../../../components/WhatThisMeans.astro';
+import StepByStep from '../../../components/StepByStep.astro';
+
+## Age Requirements
+
+Bedrock Chat is used by families and teenagers. Some users are under 13. All bots must comply with child safety regulations regardless of their intended audience.
+
+<WhatThisMeans term="COPPA">
+**COPPA** (Children's Online Privacy Protection Act) is a United States law that requires websites and apps to protect the personal information of children under 13. It restricts data collection from minors and requires verifiable parental consent.
+</WhatThisMeans>
+
+<PrivacyNote>
+Bedrock Chat is **COPPA compliant**. All bots on the platform must maintain this compliance.
+</PrivacyNote>
+
+## Core Rule
+
+Your bot must never collect, store, or share personal information -- data that can identify a real person, such as real names, home addresses, schools, phone numbers, email addresses, photos of faces, or locations -- from any user.
+
+If your bot does not collect personal information from anyone, it cannot accidentally collect it from a child. This is the safest and simplest approach.
+
+## Prohibited Behaviors
+
+### Requesting Personal Details
+
+Your bot must not ask users for their real name, location, school, or any other identifying information.
+
+<PrivacyNote>
+Even if a user volunteers personal information in a message, your bot should **not store it**. Discard it and do not repeat it back.
+</PrivacyNote>
+
+### Age-Based Differentiation
+
+Your bot must not ask for a user's age, track age data, or deliver different content based on age. Having a "kid-friendly mode" or "adult mode" implies age tracking, which constitutes collecting personal information.
+
+<PrivacyNote>
+Do not check whether a user is under 13 or under 18. Build your bot to be safe for **all ages** by default.
+</PrivacyNote>
+
+### Unsolicited Direct Messages to Minors
+
+Your bot must not send direct messages to users under 18 unless they message your bot first. Even then, keep responses brief and relevant.
+
+### Storing Data Without Disclosure
+
+If your bot stores any data (even a username for a leaderboard), you must disclose this in your bot submission. Specify what you store, where it is stored, and why. Submissions without this disclosure are rejected.
+
+### Sharing Data With External Services
+
+Your bot must not send user data to external websites or services. When your bot calls an external API (such as a weather service), send only the request parameters, never user information.
+
+<PrivacyNote>
+When calling external services, send only the query (e.g., "weather in Paris"), never user identifiers or metadata (e.g., "User JohnDoe wants weather").
+</PrivacyNote>
+
+## The isTeenSafe Flag
+
+The `isTeenSafe` flag on your bot registration indicates your bot is safe for users under 18. When you enable this flag, you are certifying that:
+
+- Your bot does not collect personal information
+- Your bot does not display content intended only for adults
+- Your bot does not use violent or inappropriate language
+- Your bot does not encourage users to share personal details
+- Your bot does not link to websites with adult content
+
+### Review Process for isTeenSafe Bots
+
+Bots with `isTeenSafe` enabled receive additional scrutiny during review. Reviewers will attempt to elicit personal information requests, verify consistent behavior across users, and audit all possible bot responses.
+
+<PrivacyNote>
+If your bot is marked `isTeenSafe` and reviewers find compliance issues, the bot will be **rejected**. You can fix the issues and resubmit.
+</PrivacyNote>
+
+## Bots Without isTeenSafe
+
+Even if your bot is not marked as teen-safe, follow these rules. You cannot control which servers install your bot, and those servers may have teenage members.
+
+Build every bot as if young users will interact with it.
+
+## Pre-Submission Checklist
+
+<StepByStep title="Safety Checklist">
+
+1. **No personal data collection.** Your bot never asks for real names, ages, locations, schools, or contact information.
+
+2. **No age tracking.** Your bot treats every user the same regardless of age.
+
+3. **No unsolicited DMs.** Your bot does not message users who have not messaged it first.
+
+4. **No adult content.** Your bot does not send, link to, or reference inappropriate content.
+
+5. **No external data sharing.** Your bot does not send user information to outside services.
+
+6. **Data storage disclosed.** If your bot stores anything, you have documented what, where, and why in your submission.
+
+7. **isTeenSafe flag set correctly.** If your bot meets all the above criteria, enable the flag.
+
+</StepByStep>
+
+## Enforcement
+
+Bots that violate child safety rules are removed from the platform. Serious violations have no warning period.
+
+Collecting personal information from a child may constitute a legal violation. Bedrock Chat will cooperate with authorities when required.
+
+<PrivacyNote>
+Child safety compliance is a **platform requirement**. Bots that do not meet these standards cannot be published.
+</PrivacyNote>
+
+## Getting Help
+
+If you are unsure whether your bot meets these requirements, contact the review team before submitting. It is faster to resolve questions upfront than to go through a rejection cycle.
+
+## What's Next
+
+Learn the data handling rules that apply to all bots, including deletion requirements and retention limits.
+
+**Next up:** [Data Handling Rules](/privacy-and-rules/data-handling-rules)

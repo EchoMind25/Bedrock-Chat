@@ -1,0 +1,163 @@
+---
+title: "Your First Bot"
+description: "Build and ship a working webhook bot in about 15 minutes."
+---
+
+import StepByStep from '../../../components/StepByStep.astro';
+import TryIt from '../../../components/TryIt.astro';
+import CodeExplainer from '../../../components/CodeExplainer.astro';
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+import WhatThisMeans from '../../../components/WhatThisMeans.astro';
+
+## Overview
+
+This tutorial walks you through building a webhook bot — the simplest bot type on Bedrock Chat. It sends messages to a channel via HTTP requests. No code beyond a `curl` command is required.
+
+## Prerequisites
+
+- A Bedrock Chat account with the developer role ([apply here](/getting-started/becoming-a-developer) if you haven't)
+- A server where you're the owner or have admin permissions
+
+If you don't have a test server, create one from your server list.
+
+## What You'll Build
+
+<StepByStep title="Tutorial Steps">
+
+1. **Register a webhook bot** in the developer portal.
+2. **Create a webhook** in your test server.
+3. **Send a test message** via the webhook URL.
+4. **Verify the message** appears in your channel.
+
+</StepByStep>
+
+## Step 1: Register a Webhook Bot
+
+Open **Settings > Developer > My Bots** and click **"Create New Bot."**
+
+Fill in the following:
+
+- **Bot Name:** e.g., "Hello Bot"
+- **Bot Type:** Webhook
+- **Description:** e.g., "A test bot that sends messages to a channel."
+
+Click **Create**. Your bot is now registered and visible in your bot list.
+
+## Step 2: Create a Webhook
+
+Navigate to your test server's **Server Settings > Webhooks** (or **Integrations**).
+
+Click **"Create Webhook"** and configure:
+
+- **Name:** Match your bot name, e.g., "Hello Bot"
+- **Channel:** The channel where the bot will post (e.g., #general or a dedicated test channel)
+
+After creation, you'll receive two values:
+
+- **Webhook ID** -- A unique identifier for this webhook.
+- **Webhook Token** -- A secret used to authenticate requests. Keep this private.
+
+Copy both values. You'll need them next.
+
+## Step 3: Send a Message
+
+### Option A: Use an HTTP Client
+
+Use any HTTP client (Hoppscotch, Insomnia, Postman, etc.) with these settings:
+
+- **Method:** POST
+- **URL:** `https://your-bedrock-chat-url/api/webhooks/YOUR_WEBHOOK_ID?token=YOUR_TOKEN`
+- **Content-Type:** `application/json`
+- **Body:** `{"content": "Hello from my first bot!"}`
+
+### Option B: Use curl
+
+<CodeExplainer title="Sending a message with curl">
+<Fragment slot="code">
+```bash
+# Replace YOUR_WEBHOOK_ID and YOUR_TOKEN with your actual values
+curl -X POST "https://your-bedrock-chat-url/api/webhooks/YOUR_WEBHOOK_ID?token=YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"content": "Hello from my first bot!"}'
+```
+</Fragment>
+<Fragment slot="explanation">
+- **curl -X POST** -- Sends an HTTP POST request to the webhook URL.
+- **-H "Content-Type: application/json"** -- Indicates the request body is JSON.
+- **-d** -- The JSON payload. The `content` field contains the message text.
+</Fragment>
+</CodeExplainer>
+
+## Step 4: Verify
+
+Open the channel you configured for the webhook. You should see the message "Hello from my first bot!" posted by your bot.
+
+If the message doesn't appear, check:
+
+- The webhook ID and token are correct.
+- The URL is properly formatted.
+- You selected the right channel in Step 2.
+
+## Message Format
+
+The basic payload requires only the `content` field. You can also customize the display name and avatar per message.
+
+<CodeExplainer title="Full message payload">
+<Fragment slot="code">
+```json
+{
+  "content": "Hello from my first bot!",
+  "username": "Custom Bot Name",
+  "avatar_url": "https://example.com/bot-avatar.png"
+}
+```
+</Fragment>
+<Fragment slot="explanation">
+- **content** (required) -- Message text, up to 4,000 characters.
+- **username** (optional) -- Overrides the bot's default display name for this message.
+- **avatar_url** (optional) -- Overrides the bot's default avatar for this message.
+</Fragment>
+</CodeExplainer>
+
+<TryIt>
+Send a few messages with different `username` values to see how they render in the channel.
+</TryIt>
+
+## Rate Limits
+
+Webhooks are limited to 1 request per second (60 per minute). If you exceed this, the server returns a `429 Too Many Requests` response. Wait briefly and retry.
+
+<WhatThisMeans term="rate limit">
+A **rate limit** caps how many requests an endpoint accepts within a time window. It prevents abuse and ensures platform stability. When you hit a rate limit, back off and retry after the indicated wait time.
+</WhatThisMeans>
+
+## Token Security
+
+Your webhook token authenticates requests to the webhook endpoint. Anyone with the token can post messages as your bot.
+
+- Never share tokens in public channels, repositories, or social media.
+- If a token is compromised, regenerate it immediately in **Server Settings > Webhooks**.
+- For programmatic bots, store tokens in environment variables rather than hardcoding them.
+
+<PrivacyNote>
+Webhook tokens are secrets. If a token is exposed, regenerate it immediately from Server Settings. The old token is invalidated as soon as a new one is generated.
+</PrivacyNote>
+
+## Summary
+
+In this tutorial you:
+
+- Registered a bot application in the developer portal
+- Created a webhook tied to a specific channel
+- Sent a message via the webhook API
+- Learned the message format and rate limit constraints
+
+<TryIt title="Challenge: Multi-Persona Bot">
+Send three messages with different `username` and `avatar_url` values to simulate multiple bot personas in the same channel.
+</TryIt>
+
+## Next Step
+
+Webhook bots handle one-way messaging. To build bots that respond to commands, react to events, or run on a schedule, continue to the next section.
+
+**Next:** [Building Your Bot](/building-your-bot)

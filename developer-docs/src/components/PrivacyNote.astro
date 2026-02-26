@@ -1,0 +1,14 @@
+---
+interface Props {
+  title?: string;
+}
+
+const { title = 'Privacy Note' } = Astro.props;
+---
+
+<aside class="privacy-note" role="note" aria-label={title}>
+  <div class="privacy-note-label">{title}</div>
+  <div class="privacy-note-content">
+    <slot />
+  </div>
+</aside>

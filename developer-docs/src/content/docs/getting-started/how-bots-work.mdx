@@ -1,0 +1,110 @@
+---
+title: How Bots Work
+description: The request lifecycle, architecture, and permission model behind Bedrock Chat bots.
+---
+
+import WhatThisMeans from '../../../components/WhatThisMeans.astro';
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+import ComingSoon from '../../../components/ComingSoon.astro';
+
+This page explains the technical model behind Bedrock Chat bots — how they communicate with the platform, what permissions govern their behavior, and how they move from code on your machine to a published integration.
+
+## Architecture Overview
+
+Every bot interaction follows the same pattern: your code sends an HTTPS request to the Bedrock Chat API, and the API returns a response. Your bot never connects directly to a server or channel. The API is the only interface.
+
+```
+Your Code  ──HTTPS──▶  Bedrock Chat API  ──▶  Channel
+                              │
+                              ▼
+                        Validation
+                        (auth, scopes, rate limits)
+```
+
+This means your bot can run anywhere — a cloud server, a Raspberry Pi, a serverless function — as long as it can make outbound HTTPS requests.
+
+## Two Communication Models
+
+Bedrock Chat supports two ways for bots to interact with the platform. Today, only one is fully implemented.
+
+### Incoming: Your Bot Sends Messages (Available Now)
+
+Your bot initiates communication by sending HTTP POST requests to the API. This covers:
+
+- **Webhook messages** — Send a message to a channel via `POST /api/webhooks/[webhookId]`
+- **Bot responses** — Reply to a user's command via `POST /api/bots/[botId]/respond`
+
+In both cases, your bot decides when to act. It might respond to an incoming webhook event, run on a cron schedule, or be triggered by an external service.
+
+### Outgoing: The Platform Notifies Your Bot (Partially Implemented)
+
+<ComingSoon feature="Outgoing event subscriptions">
+Bedrock Chat can send webhook events to your bot's endpoint when something happens in a server — a new message, a member joining, a reaction added. This is partially implemented: bots can register a webhook URL and receive verification challenges, but full event delivery is not yet live. Do not build production features around outgoing events yet.
+</ComingSoon>
+
+When outgoing webhooks are fully available, the flow will be:
+
+1. An event occurs in a channel (e.g., a user sends a message)
+2. Bedrock Chat sends an HTTP POST to your registered webhook URL
+3. Your bot processes the event and optionally responds via the API
+
+## The Scope Model
+
+When you register a bot, you declare the **scopes** it needs — a list of specific permissions that define what data your bot can access and what actions it can take.
+
+<WhatThisMeans>
+**Scopes** are granular permissions you request when registering your bot. Each scope grants access to a specific capability (e.g., `messages.send`, `channels.read`). Scopes cannot be changed after submission without re-review.
+</WhatThisMeans>
+
+The scope system follows the principle of least privilege: request only what your bot actually needs. A bot that sends daily reminders doesn't need permission to read message history. A bot that tracks scores doesn't need access to member lists.
+
+<ComingSoon feature="Runtime scope enforcement">
+Scopes are stored when you register your bot, but they are not enforced at the API level yet. The API does not currently reject requests that exceed declared scopes. When enforcement ships, bots exceeding their scopes will break. Declare your scopes accurately now to avoid issues later.
+</ComingSoon>
+
+## Bot Lifecycle
+
+A bot goes through four stages from creation to public availability:
+
+### 1. Registration
+
+You fill out the bot registration form in the Developer Portal: name, description, webhook URL, scopes, privacy policy URL, and the `isTeenSafe` flag. You also accept the Data Processing Agreement (DPA).
+
+### 2. Verification
+
+Before your bot can receive events, Bedrock Chat verifies your webhook URL by sending a challenge request. Your server must respond with the correct challenge value within 10 seconds. This confirms that you control the endpoint.
+
+### 3. Review
+
+You submit your bot for review. A real person checks your bot against the platform requirements: functionality, privacy compliance, content safety, and the `isTeenSafe` criteria if applicable. The reviewer may approve, reject with feedback, or request changes. See [The Review Process](/publishing/the-review-process) for details.
+
+### 4. Publication
+
+Once approved, your bot is live. Server admins can add it to their servers manually. A public bot marketplace is planned but not yet available.
+
+## Authentication
+
+Every API request requires authentication. Bedrock Chat uses token-based auth with two token types:
+
+- **Bot tokens** — Used with `POST /api/bots/[botId]/respond`. Sent as a `Bearer` token in the `Authorization` header.
+- **Webhook tokens** — Used with `POST /api/webhooks/[webhookId]`. Can be sent as a `Bearer` header or as a `?token=` query parameter.
+
+Tokens are generated when you register your bot and can be regenerated in the Developer Portal. Treat them like passwords — store them in environment variables, never commit them to source control.
+
+## Rate Limits
+
+Every endpoint has a rate limit to prevent abuse. If you exceed it, the API returns `429 Too Many Requests` with a `Retry-After` header indicating how many seconds to wait. See [API Overview](/api-reference/overview) for the full rate limit table.
+
+## Privacy Boundaries
+
+Bots operate within hard privacy boundaries that cannot be overridden by any scope, permission, or configuration.
+
+<PrivacyNote>
+Bots cannot access: private/direct messages, email addresses, phone numbers, dates of birth, voice call audio, family relationship data, parental monitoring data, screen time data, keyword alerts, user reports, or IP addresses. These boundaries are architectural — there are no API endpoints for this data.
+</PrivacyNote>
+
+For a complete breakdown, see [What Your Bot Can Access](/privacy-and-rules/what-your-bot-can-access) and [What Your Bot Cannot Do](/privacy-and-rules/what-your-bot-cannot-do).
+
+## What's Next
+
+The next page walks you through building your first working bot, from project setup to sending a message in a channel.

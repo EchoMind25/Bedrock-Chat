@@ -1,0 +1,157 @@
+---
+title: "Writing Your Bot Code"
+description: "Write the code that powers your bot."
+---
+
+import CodeExplainer from '../../../components/CodeExplainer.astro';
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+
+## Your First Bot
+
+This page walks through a complete, working bot that receives messages from Bedrock Chat. Make sure you have completed [Setting Up Your Workspace](/building-your-bot/setting-up-your-workspace) first.
+
+---
+
+## Create the Bot File
+
+Create a file called `index.js` in your project folder. Paste the following code:
+
+```javascript
+const express = require('express');
+const app = express();
+app.use(express.json());
+
+const BOT_TOKEN = 'your-bot-token-here';
+
+// Webhook endpoint — receives messages from Bedrock Chat
+app.post('/webhook', (req, res) => {
+  const message = req.body;
+  console.log('Got a message:', message);
+
+  // Respond to verification challenges
+  if (message.type === 'verification') {
+    console.log('Verification request received');
+    res.json({ challenge: message.challenge });
+    return;
+  }
+
+  // Log incoming message content
+  if (message.content) {
+    console.log('Someone said:', message.content);
+  }
+
+  res.json({ success: true });
+});
+
+// Health check
+app.get('/', (req, res) => {
+  res.send('Bot is running!');
+});
+
+app.listen(3000, () => {
+  console.log('Bot is running on port 3000');
+  console.log('Health check: http://localhost:3000');
+});
+```
+
+<PrivacyNote>
+Your bot token is a secret credential. Never commit it to a public repository or share it with anyone. If compromised, an attacker can impersonate your bot.
+</PrivacyNote>
+
+---
+
+## Code Breakdown
+
+### Server setup
+
+<CodeExplainer>
+```javascript
+const express = require('express');
+const app = express();
+app.use(express.json());
+```
+Imports Express, creates an HTTP server, and configures it to parse JSON request bodies. Bedrock Chat sends all webhook payloads as JSON.
+</CodeExplainer>
+
+### Webhook handler
+
+<CodeExplainer>
+```javascript
+app.post('/webhook', (req, res) => {
+  const message = req.body;
+
+  if (message.type === 'verification') {
+    res.json({ challenge: message.challenge });
+    return;
+  }
+
+  if (message.content) {
+    console.log('Someone said:', message.content);
+  }
+
+  res.json({ success: true });
+});
+```
+Listens for POST requests at `/webhook`. Verification requests get the challenge echoed back. Normal messages are logged and acknowledged with `{ success: true }`.
+</CodeExplainer>
+
+### Server start
+
+<CodeExplainer>
+```javascript
+app.listen(3000, () => {
+  console.log('Bot is running on port 3000');
+});
+```
+Binds the server to port 3000. Change this if another process is using the port.
+</CodeExplainer>
+
+---
+
+## Run Your Bot
+
+Start the server:
+
+```bash
+node index.js
+```
+
+Expected output:
+
+```
+Bot is running on port 3000
+Health check: http://localhost:3000
+```
+
+Open `http://localhost:3000` in a browser. You should see "Bot is running!" displayed. Press **Ctrl+C** to stop the server.
+
+---
+
+## Message Flow
+
+1. Bedrock Chat sends a POST request to your bot's `/webhook` endpoint.
+2. Your bot reads the payload from `req.body`.
+3. Verification requests: bot echoes back the challenge.
+4. Normal messages: bot logs the content and responds with `{ success: true }`.
+
+---
+
+## Common Errors
+
+### "Cannot find module 'express'"
+
+Express is not installed. Run `npm install express` in your project directory.
+
+### "Error: listen EADDRINUSE: port 3000"
+
+Port 3000 is already in use. Stop the other process, or change the port number in your code.
+
+### Bot starts but does not receive messages
+
+`localhost` is not reachable from the internet. Bedrock Chat cannot send webhooks to your local machine without a tunnel or deployment. See [Testing Your Bot](/building-your-bot/testing-your-bot) for solutions.
+
+---
+
+## Next Step
+
+Your bot can receive messages but cannot reply yet. Proceed to [Making Your Bot Respond](/building-your-bot/making-your-bot-respond) to add response capabilities.

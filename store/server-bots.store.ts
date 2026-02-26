@@ -130,7 +130,9 @@ export const useServerBotsStore = create<ServerBotsState>()(
         const { error } = await supabase
           .from("server_bots")
           .update(dbUpdates)
-          .eq("id", botId);
+          .eq("id", botId)
+          .select()
+          .single();
 
         if (error) {
           toast.error("Error", "Could not update bot");

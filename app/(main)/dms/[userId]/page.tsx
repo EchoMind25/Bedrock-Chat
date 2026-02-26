@@ -3,14 +3,16 @@
 import { use, useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
+import { Phone, Video } from "lucide-react";
 import { useDMStore } from "@/store/dm.store";
 import { useAuthStore } from "@/store/auth.store";
 import { useSettingsStore } from "@/store/settings.store";
 import { useFriendsStore } from "@/store/friends.store";
+import { useVoiceStore } from "@/store/voice.store";
 import { EmojiPicker } from "@/components/chat/emoji-picker";
 import { FriendProfileCard } from "@/components/friends/friend-profile-card";
 import { Avatar } from "@/components/ui/avatar/avatar";
-import { Badge } from "@/components/ui/badge/badge";
+import { toast } from "@/lib/stores/toast-store";
 import type { Message } from "@/lib/types/message";
 import type { Friend } from "@/lib/types/friend";
 
@@ -86,7 +88,7 @@ export default function DMPage({ params }: PageProps) {
 	if (isLoading || !hasLoaded) {
 		return (
 			<div className="flex-1 flex flex-col bg-[oklch(0.14_0.02_250)]">
-				<DMHeaderDisplay name={otherParticipant?.displayName} avatar={otherParticipant?.avatar} status={otherParticipant?.status} onProfileClick={handleProfileClick} />
+				<DMHeaderDisplay name={otherParticipant?.displayName} avatar={otherParticipant?.avatar} status={otherParticipant?.status} onProfileClick={handleProfileClick} recipientId={otherUserId} recipientName={otherParticipant?.displayName} recipientAvatar={otherParticipant?.avatar} />
 				<DMMessageSkeleton />
 			</div>
 		);
@@ -95,7 +97,7 @@ export default function DMPage({ params }: PageProps) {
 	if (hasError) {
 		return (
 			<div className="flex-1 flex flex-col bg-[oklch(0.14_0.02_250)]">
-				<DMHeaderDisplay name={otherParticipant?.displayName} avatar={otherParticipant?.avatar} status={otherParticipant?.status} onProfileClick={handleProfileClick} />
+				<DMHeaderDisplay name={otherParticipant?.displayName} avatar={otherParticipant?.avatar} status={otherParticipant?.status} onProfileClick={handleProfileClick} recipientId={otherUserId} recipientName={otherParticipant?.displayName} recipientAvatar={otherParticipant?.avatar} />
 				<div className="flex-1 flex items-center justify-center">
 					<div className="text-center space-y-2">
 						<h3 className="text-lg font-semibold text-white">Unable to load messages</h3>
@@ -118,7 +120,7 @@ export default function DMPage({ params }: PageProps) {
 	return (
 		<div className="flex-1 flex flex-col bg-[oklch(0.14_0.02_250)]">
 			{/* Header */}
-			<DMHeaderDisplay name={otherParticipant?.displayName} avatar={otherParticipant?.avatar} status={otherParticipant?.status} onProfileClick={handleProfileClick} />
+			<DMHeaderDisplay name={otherParticipant?.displayName} avatar={otherParticipant?.avatar} status={otherParticipant?.status} onProfileClick={handleProfileClick} recipientId={otherUserId} recipientName={otherParticipant?.displayName} recipientAvatar={otherParticipant?.avatar} />
 
 			{/* Messages */}
 			<div className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-1">
@@ -202,11 +204,17 @@ function DMHeaderDisplay({
 	avatar,
 	status,
 	onProfileClick,
+	recipientId,
+	recipientName,
+	recipientAvatar,
 }: {
 	name?: string;
 	avatar?: string;
 	status?: string;
 	onProfileClick?: () => void;
+	recipientId?: string;
+	recipientName?: string;
+	recipientAvatar?: string;
 }) {
 	const statusText =
 		status === "online" ? "Online"
@@ -214,10 +222,52 @@ function DMHeaderDisplay({
 		: status === "dnd" ? "Do Not Disturb"
 		: "Offline";
 
+	const handleCall = useCallback(async (callType: "voice" | "video") => {
+		if (!recipientId) return;
+
+		const currentCallState = useVoiceStore.getState().callState;
+		if (currentCallState !== "idle") {
+			toast.error("Already in Call", "End your current call before starting a new one.");
+			return;
+		}
+
+		try {
+			const res = await fetch("/api/voice/direct/initiate", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ calleeId: recipientId, callType }),
+			});
+
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({}));
+				toast.error("Call Failed", err.error || "Could not start call.");
+				return;
+			}
+
+			const { callId, token, wsUrl, roomName } = await res.json();
+			const store = useVoiceStore.getState();
+			store.setActiveDirectCall({
+				id: callId,
+				callerId: "",
+				calleeId: recipientId,
+				callerName: "",
+				calleeName: recipientName || name || "User",
+				calleeAvatar: recipientAvatar || avatar,
+				roomName,
+				callType,
+				status: "ringing",
+			});
+			store.setDirectCallConnection(token, wsUrl);
+			store.setCallState("outgoing_ringing");
+		} catch {
+			toast.error("Call Failed", "Could not start call. Check your connection.");
+		}
+	}, [recipientId, recipientName, recipientAvatar, name, avatar]);
+
 	return (
-		<div className="h-12 px-4 flex items-center justify-between border-b border-white/10 bg-[oklch(0.15_0.02_250)] shrink-0">
+		<div className="h-12 px-3 sm:px-4 flex items-center gap-2 border-b border-white/10 bg-[oklch(0.15_0.02_250)] shrink-0">
 			<div
-				className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+				className="flex items-center gap-2 sm:gap-3 cursor-pointer hover:opacity-80 transition-opacity min-w-0 flex-1"
 				role="button"
 				tabIndex={0}
 				onClick={onProfileClick}
@@ -238,24 +288,47 @@ function DMHeaderDisplay({
 					}
 					size="sm"
 				/>
-				<div className="flex flex-col">
-					<h2 className="font-semibold text-white text-sm hover:underline">{name || "Direct Message"}</h2>
-					<p className="text-xs text-white/50">{statusText}</p>
+				<div className="flex flex-col min-w-0">
+					<h2 className="font-semibold text-white text-sm hover:underline truncate">{name || "Direct Message"}</h2>
+					<p className="text-xs text-white/50 truncate">{statusText}</p>
 				</div>
 			</div>
 
-			<Badge variant="success" className="flex items-center gap-1.5">
-				<svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<title>Encrypted</title>
-					<path
-						strokeLinecap="round"
-						strokeLinejoin="round"
-						strokeWidth={2}
-						d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-					/>
-				</svg>
-				<span className="text-[10px]">E2E Encrypted</span>
-			</Badge>
+			<div className="flex items-center gap-1 sm:gap-2 shrink-0">
+				{recipientId && (
+					<>
+						<button
+							type="button"
+							onClick={() => handleCall("voice")}
+							aria-label={`Call ${name || "user"}`}
+							title="Voice Call"
+							className="p-1.5 rounded-md hover:bg-white/10 transition-colors"
+						>
+							<Phone className="w-4 h-4 text-green-400" />
+						</button>
+						<button
+							type="button"
+							onClick={() => handleCall("video")}
+							aria-label={`Video call ${name || "user"}`}
+							title="Video Call"
+							className="p-1.5 rounded-md hover:bg-white/10 transition-colors"
+						>
+							<Video className="w-4 h-4 text-blue-400" />
+						</button>
+					</>
+				)}
+				<div title="E2E Encrypted" className="p-1 text-green-400">
+					<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<title>E2E Encrypted</title>
+						<path
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							strokeWidth={2}
+							d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+						/>
+					</svg>
+				</div>
+			</div>
 		</div>
 	);
 }

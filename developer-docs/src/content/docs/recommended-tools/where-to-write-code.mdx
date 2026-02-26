@@ -1,0 +1,156 @@
+---
+title: "Where to Write Code"
+description: "The best code editors for building bots, ranked by how well they protect your privacy."
+---
+
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+import StepByStep from '../../../components/StepByStep.astro';
+
+A **code editor** is the application you use to write your bot's code. It provides syntax highlighting, error detection, and tooling that makes development faster.
+
+Not all code editors treat your privacy the same way. Since Bedrock Chat is a privacy-first platform, we looked at each option carefully before recommending it. Below, we rank them from **best privacy** to **worst privacy**.
+
+---
+
+## VS Code (Local Installation) -- RECOMMENDED
+
+**Privacy Rating: BEST**
+
+<PrivacyNote title="Privacy: Best">
+VS Code runs entirely on your computer. Your code never leaves your machine unless you choose to install extensions that send data somewhere. This is the safest choice for your privacy.
+</PrivacyNote>
+
+### What is it?
+
+VS Code (short for Visual Studio Code) is a free code editor made by Microsoft. Millions of developers use it every day. It runs on Windows, Mac, and Linux.
+
+### Why we recommend it
+
+- **Free** -- costs nothing to download and use.
+- **Private** -- your code stays on your computer.
+- **Powerful** -- has thousands of free extensions to add features.
+- **Popular** -- if you get stuck, there are tons of tutorials and help available online.
+- **Works with every programming language** -- JavaScript, Python, TypeScript, and more.
+
+### Things to know
+
+- You need to download and install it on your computer.
+- It uses some memory and storage space (about 300 MB).
+- Some **extensions** (add-ons) might send data to their own servers. Only install extensions you trust.
+
+<StepByStep title="How to install VS Code">
+
+1. Go to [code.visualstudio.com](https://code.visualstudio.com) in your web browser.
+2. Click the big **Download** button. It will pick the right version for your computer automatically.
+3. Open the downloaded file and follow the installation steps.
+4. Once installed, open VS Code.
+5. Click **File** then **Open Folder** and choose the folder where your bot code lives.
+6. You are ready to start writing code!
+
+</StepByStep>
+
+### Recommended extensions for bot development
+
+These extensions are safe and helpful:
+
+- **ESLint** -- finds mistakes in your JavaScript code.
+- **Prettier** -- makes your code look neat and organized.
+- **REST Client** -- lets you test API requests right inside VS Code.
+
+---
+
+## GitHub Codespaces -- Acceptable with Opt-Out
+
+**Privacy Rating: MIXED**
+
+<PrivacyNote title="Privacy: Mixed -- Action Required">
+GitHub Codespaces runs your code on GitHub's servers, not your computer. Private repositories are **not** used for Copilot AI training by default. However, **telemetry is turned on by default**, which means GitHub collects data about how you use the editor. You need to turn this off manually. Also make sure you have **not** opted in to let GitHub use your code snippets for AI training.
+</PrivacyNote>
+
+### What is it?
+
+GitHub Codespaces is VS Code that runs in your web browser. Instead of installing anything on your computer, you open a browser tab and start coding. Your code runs on GitHub's servers (big computers owned by GitHub).
+
+### Why it can be a good choice
+
+- **No installation needed** -- works from any computer with a web browser.
+- **Same as VS Code** -- looks and works almost the same as the desktop version.
+- **Free tier available** -- you get a certain number of free hours each month.
+- **Great for Chromebooks** -- if your computer cannot run VS Code locally, this is a solid alternative.
+
+### Things to know
+
+- Your code runs on GitHub's servers, not your computer.
+- Telemetry (data collection) is turned on by default. You should turn it off.
+- You need a GitHub account.
+
+<StepByStep title="How to protect your privacy on GitHub Codespaces">
+
+1. Open your Codespace.
+2. Click **File**, then **Preferences**, then **Settings**.
+3. In the search box, type **telemetry**.
+4. Find the **Telemetry Level** setting and change it to **off**.
+5. Next, go to [github.com/settings](https://github.com/settings) in a new tab.
+6. Click **Copilot** in the left sidebar.
+7. Find the option that says **"Allow GitHub to use my code snippets for product improvements"** and make sure it is **unchecked**.
+8. Click **Save**.
+
+</StepByStep>
+
+### How much does it cost?
+
+GitHub gives you **60 hours per month** for free on the basic machine type. That is plenty for most bot projects. If you need more, paid plans are available.
+
+---
+
+## Replit -- NOT RECOMMENDED
+
+**Privacy Rating: CONCERN**
+
+<PrivacyNote title="Privacy: Concern -- Not Recommended">
+Replit uses code from **public projects** to train their AI models. Even though they say the data is "anonymized" (your name is removed), your actual code is still being used to teach AI. In July 2025, Replit's AI agent accidentally deleted a user's production database, raising serious safety questions. Many developers left the platform in 2025 because of pricing changes and data practices. For a privacy-first platform like Bedrock Chat, we cannot recommend a tool that uses your code to train AI models without a clear way to say no.
+</PrivacyNote>
+
+### What is it?
+
+Replit is a website where you can write, run, and share code in your browser. It is popular with beginners because everything works without installing anything.
+
+### Why we do not recommend it
+
+1. **Your code trains AI.** If your project is public, Replit uses it to train their AI features. There is no clear opt-out for public projects.
+2. **Safety incidents.** In July 2025, Replit's AI agent deleted a production database by accident. This shows that their AI tools are not always safe.
+3. **"Effort-based pricing" is confusing.** Instead of charging a flat fee, Replit charges based on how hard their servers work. Many developers have been surprised by unexpected bills.
+4. **Developer trust is low.** A large number of developers moved away from Replit in 2025. When developers leave a platform, it can mean less support and fewer updates in the future.
+
+### If you still want to use Replit
+
+We understand that some people like Replit for its simplicity. If you choose to use it anyway, follow these rules:
+
+- **Never put secrets or tokens in public projects.** Anyone can see them.
+- **Never put your bot token in a public Repl.** Somebody could steal it and pretend to be your bot.
+- **Know that your public code may be used for AI training.**
+- Consider keeping all your projects **private** (requires a paid plan).
+
+---
+
+## Quick Comparison
+
+| Feature | VS Code (Local) | GitHub Codespaces | Replit |
+|---|---|---|---|
+| Privacy | Best | Mixed | Concern |
+| Cost | Free | Free tier | Free tier |
+| Needs install? | Yes | No | No |
+| Code stays on your machine? | Yes | No | No |
+| AI training on your code? | No | No (by default) | Yes (public) |
+| Telemetry default | Minimal | On (turn it off) | On |
+| Our recommendation | Yes | With opt-out | No |
+
+---
+
+## Our Advice
+
+If you can install software on your computer, **use VS Code**. It gives you the best privacy, the most features, and it is completely free.
+
+If you cannot install software (for example, you are on a school Chromebook), **use GitHub Codespaces** and follow our privacy opt-out steps above.
+
+If you are already using Replit, consider moving your projects to VS Code or Codespaces when you get a chance. Your code and your privacy are worth protecting.

@@ -1,0 +1,339 @@
+---
+title: "Events"
+description: "Real-time events in Bedrock Chat — messages, presence, typing indicators, and voice status."
+---
+
+import WhatThisMeans from '../../../components/WhatThisMeans.astro';
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+import ComingSoon from '../../../components/ComingSoon.astro';
+import CodeExplainer from '../../../components/CodeExplainer.astro';
+
+Bedrock Chat uses real-time events to keep everything in sync — when someone sends a message, goes online, starts typing, or joins a voice channel, the platform broadcasts an event so every connected client updates instantly. This page documents all event types, their payloads, and what they mean for bot developers.
+
+**Important note before you read further:** The real-time event system described on this page currently powers the **web client** (the Bedrock Chat app in your browser). External bots **cannot subscribe to these events yet**. We are documenting them here so you understand how the platform works and can plan ahead for when bot event subscriptions launch.
+
+---
+
+## How Real-Time Events Work
+
+Bedrock Chat uses **Supabase Realtime** as its event system. Supabase Realtime provides three communication patterns:
+
+<WhatThisMeans term="Supabase Realtime">
+Supabase Realtime is a service that pushes live updates to connected clients over WebSockets. Instead of your app constantly asking "any new messages?" (polling), the server tells your app the instant something happens (pushing). This makes everything feel instant.
+</WhatThisMeans>
+
+1. **Postgres Changes** — When a row in the database is inserted, updated, or deleted, an event fires automatically. This is how message events work.
+2. **Presence** — Tracks who is currently online and their status. Used for the online/offline indicators you see next to usernames.
+3. **Broadcast** — One client sends a message, and all other clients in the same channel receive it. Used for typing indicators.
+
+<WhatThisMeans term="WebSocket">
+A WebSocket is a persistent, two-way connection between a client and a server. Unlike regular HTTP requests (which are one-and-done), a WebSocket stays open so the server can push data to the client at any time. It is what makes chat applications feel "live."
+</WhatThisMeans>
+
+---
+
+## Message Events
+
+Message events fire whenever a message is created, edited, or deleted in a channel. The web client subscribes to these to keep the chat view up to date.
+
+### Channel Name Format
+
+```
+messages:${channelId}
+```
+
+Each channel has its own event stream. You subscribe to a specific channel's events using the channel's ID. For example, to watch for messages in the `general` channel:
+
+```
+messages:channel-general
+```
+
+### Event Types
+
+#### INSERT — New Message
+
+Fires when a new message is posted to the channel (by a user, a bot, or a webhook).
+
+<CodeExplainer title="New message event payload">
+<Fragment slot="code">
+```json
+{
+  "type": "INSERT",                          // The type of database change
+  "table": "messages",                       // Which database table was modified
+  "record": {                                // The full message object
+    "id": "msg_a1b2c3",                      // Unique message ID
+    "channel_id": "channel-general",         // Which channel it was posted in
+    "user_id": "user_abc",                   // Who sent it (null for webhooks)
+    "content": "Hello everyone!",            // The message text
+    "created_at": "2026-02-25T10:30:00Z",   // When it was sent (ISO 8601 format)
+    "updated_at": null,                      // null because it has not been edited
+    "metadata": null                         // Extra data (embeds, webhook info, etc.)
+  },
+  "old_record": null                         // null for INSERT events
+}
+```
+</Fragment>
+<Fragment slot="explanation">
+The `record` field contains the complete message as it exists in the database. For INSERT events, `old_record` is always `null` because there was no previous version. The `metadata` field contains webhook information and embeds when the message came from a bot.
+</Fragment>
+</CodeExplainer>
+
+#### UPDATE — Message Edited
+
+Fires when an existing message is edited.
+
+```json
+{
+  "type": "UPDATE",                          // This is an edit, not a new message
+  "table": "messages",
+  "record": {                                // The message AFTER the edit
+    "id": "msg_a1b2c3",
+    "content": "Hello everyone! (edited)",   // The new content
+    "updated_at": "2026-02-25T10:32:00Z"    // When the edit happened
+  },
+  "old_record": {                            // The message BEFORE the edit
+    "id": "msg_a1b2c3",
+    "content": "Hello everyone!",            // The old content
+    "updated_at": null
+  }
+}
+```
+
+The `old_record` field lets you compare what changed. This is useful for moderation bots that need to track edits.
+
+#### DELETE — Message Deleted
+
+Fires when a message is removed from the channel.
+
+```json
+{
+  "type": "DELETE",                          // The message was deleted
+  "table": "messages",
+  "record": null,                            // null for DELETE events
+  "old_record": {                            // The message that was deleted
+    "id": "msg_a1b2c3",
+    "content": "Hello everyone!",
+    "channel_id": "channel-general"
+  }
+}
+```
+
+For DELETE events, `record` is `null` (because the message no longer exists) and `old_record` contains the message as it was before deletion.
+
+---
+
+## Presence Events
+
+Presence events track which users are online and their current status. The web client uses these to show the green/yellow/red dots next to usernames.
+
+### Channel Name Format
+
+```
+presence:server:${serverId}
+```
+
+Presence is tracked per server, not per channel. When you subscribe to a server's presence channel, you receive updates for all members of that server.
+
+### SYNC Event
+
+The SYNC event delivers the current presence state for all connected users in the server.
+
+<CodeExplainer title="Presence SYNC event payload">
+<Fragment slot="code">
+```json
+{
+  "event": "SYNC",                            // Presence data is being synchronized
+  "payload": {
+    "user_abc": {                             // Keyed by user ID
+      "userId": "user_abc",                   // The user's unique ID
+      "username": "alex_dev",                 // Their unique handle
+      "displayName": "Alex D.",               // Their chosen display name
+      "avatar": "https://...",                // Their profile picture URL
+      "status": "online",                     // Current status: online/idle/dnd/offline
+      "lastSeen": "2026-02-25T10:30:00Z"     // When they were last active (ISO 8601)
+    },
+    "user_def": {
+      "userId": "user_def",
+      "username": "jamie_42",
+      "displayName": "Jamie",
+      "avatar": null,                         // null if no avatar is set
+      "status": "idle",
+      "lastSeen": "2026-02-25T10:25:00Z"
+    }
+  }
+}
+```
+</Fragment>
+<Fragment slot="explanation">
+The SYNC event fires when you first subscribe and periodically after that. The payload is an object where each key is a user ID and each value contains that user's current presence data. The `status` field matches the four values documented on the [Users](/api-reference/users/) page: `online`, `idle`, `dnd`, or `offline`.
+</Fragment>
+</CodeExplainer>
+
+<WhatThisMeans term="SYNC">
+A SYNC event delivers a complete snapshot of the current state. Instead of telling you "this user just came online," it says "here is everyone who is currently online." Your client replaces its local presence data with this snapshot to stay in sync.
+</WhatThisMeans>
+
+---
+
+## Typing Events
+
+Typing events tell connected clients when someone is actively typing a message. This is the "Alex is typing..." indicator you see at the bottom of a chat.
+
+### Channel Name Format
+
+Typing events are broadcast on the same presence channel as the server:
+
+```
+presence:server:${serverId}
+```
+
+### BROADCAST "typing" Event
+
+<CodeExplainer title="Typing indicator event payload">
+<Fragment slot="code">
+```json
+{
+  "event": "typing",                          // This is a typing indicator
+  "payload": {
+    "channelId": "channel-general",           // Which channel the user is typing in
+    "username": "alex_dev"                    // Who is typing
+  }
+}
+```
+</Fragment>
+<Fragment slot="explanation">
+Typing events are lightweight on purpose — they only contain the channel and username. The web client uses this to show "alex_dev is typing..." at the bottom of the chat. If multiple users are typing, the client aggregates them into "alex_dev and jamie_42 are typing..."
+</Fragment>
+</CodeExplainer>
+
+### Debouncing and Clearing
+
+Typing indicators use two timing rules to avoid being annoying:
+
+- **Debounced at 2 seconds:** The client only sends a typing event at most once every 2 seconds, even if the user is typing continuously. This prevents flooding the event channel with hundreds of rapid-fire events.
+- **Cleared after 3 seconds:** If no new typing event arrives within 3 seconds, the indicator disappears. This handles cases where a user stops typing without sending a message.
+
+<WhatThisMeans term="Debouncing">
+Debouncing is a technique that limits how often an action can happen. If a user types "Hello world" very quickly, the client does not send 11 typing events (one per character). Instead, it sends one event and then waits 2 seconds before sending another. This reduces network traffic and server load without affecting the user experience.
+</WhatThisMeans>
+
+---
+
+## Voice Presence Events
+
+Voice presence events track which users are currently in voice channels and their audio states (muted, deafened, speaking).
+
+### Channel Name Format
+
+```
+voice:server:${serverId}
+```
+
+Like presence, voice events are tracked per server.
+
+### Voice State Payload
+
+```json
+{
+  "userId": "user_abc",                       // Who is in the voice channel
+  "username": "alex_dev",                     // Their handle
+  "avatar": "https://...",                    // Their profile picture
+  "channelId": "channel-voice-general",       // Which voice channel they are in
+  "isMuted": false,                           // Whether they have muted their microphone
+  "isDeafened": false,                        // Whether they have deafened (muted all audio)
+  "isSpeaking": true                          // Whether they are actively talking right now
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `userId` | string | The unique ID of the user in the voice channel. |
+| `username` | string | The user's handle. |
+| `avatar` | string or null | URL to their profile picture, or `null` if not set. |
+| `channelId` | string | The ID of the voice channel they are connected to. |
+| `isMuted` | boolean | `true` if the user has muted their microphone. They can hear others but cannot be heard. |
+| `isDeafened` | boolean | `true` if the user has deafened themselves. They cannot hear others and cannot be heard. |
+| `isSpeaking` | boolean | `true` if the user is actively producing audio right now. This updates in real time. |
+
+<PrivacyNote>
+Voice presence events only tell you **who is in a voice channel** and their **audio controls state** (muted, deafened, speaking). They do **not** provide any access to the actual audio stream. Your bot cannot listen to, record, or process any voice data. This is a permanent privacy boundary.
+</PrivacyNote>
+
+---
+
+## Bot Event Subscriptions
+
+<ComingSoon feature="Bot Event Subscriptions">
+**This is the big one.** Currently, the event system described on this page is available only to the Bedrock Chat web client. External bots **cannot subscribe to events** yet.
+
+When bot event subscriptions launch, you will be able to:
+
+- **Listen for new messages** — React to messages in real time instead of relying on webhooks
+- **Track user presence** — Know when users come online or go idle
+- **Detect typing** — See when a user starts typing (useful for AI bots that prepare responses)
+- **Monitor voice channels** — See who is in voice channels without accessing audio
+
+The event subscription system will likely use **WebSockets** or **Server-Sent Events (SSE)**, with authentication via your bot token. We will update this page with full connection instructions, code examples, and best practices when the feature is ready.
+
+**What to build today:** For now, use webhooks to send messages and wait for event subscriptions to handle incoming events. You cannot build a bot that reacts to user messages yet — only bots that send messages on a schedule or in response to external triggers (like an API call from your own server).
+</ComingSoon>
+
+---
+
+## Event System Architecture (For the Curious)
+
+If you want to understand how the real-time system works under the hood, here is the high-level architecture:
+
+```
+User sends message
+       │
+       ▼
+Supabase Database (INSERT into messages table)
+       │
+       ▼
+Postgres triggers a Realtime event
+       │
+       ▼
+Supabase Realtime broadcasts to subscribers
+       │
+       ▼
+Web client receives event and updates UI
+```
+
+For presence and typing, the flow is slightly different:
+
+```
+User goes online / starts typing
+       │
+       ▼
+Web client sends presence/broadcast event
+       │
+       ▼
+Supabase Realtime distributes to all subscribers
+       │
+       ▼
+Other web clients update their UI
+```
+
+The key difference: message events come from database changes (server-side), while presence and typing events come from client broadcasts (client-side). This distinction will matter when bot subscriptions launch, because database-triggered events are more reliable than client broadcasts.
+
+---
+
+## Quick Reference Table
+
+| Event Type | Channel Pattern | Trigger | Key Data |
+|---|---|---|---|
+| Message INSERT | `messages:${channelId}` | New message posted | Full message object |
+| Message UPDATE | `messages:${channelId}` | Message edited | Old and new content |
+| Message DELETE | `messages:${channelId}` | Message deleted | Deleted message data |
+| Presence SYNC | `presence:server:${serverId}` | Periodic sync | All online users and statuses |
+| Typing | `presence:server:${serverId}` | User typing | Channel ID and username |
+| Voice state | `voice:server:${serverId}` | User joins/changes voice | User, channel, mute/deaf/speaking |
+
+---
+
+## Next Steps
+
+- **[Messages](/api-reference/messages/)** — Learn how to send messages (the part you can do today)
+- **[Users](/api-reference/users/)** — Understand the user data available in presence events
+- **[API Overview](/api-reference/overview/)** — Review authentication and rate limits for all endpoints

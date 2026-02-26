@@ -1,0 +1,277 @@
+---
+title: "Build a Reminder Bot"
+description: "Build a bot that posts scheduled reminders to a channel."
+---
+
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+import StepByStep from '../../../components/StepByStep.astro';
+import TryIt from '../../../components/TryIt.astro';
+import CodeExplainer from '../../../components/CodeExplainer.astro';
+
+A bot that posts messages to a channel on a cron schedule -- morning greetings, homework reminders, or anything else you configure.
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org) installed
+- A text editor ([VS Code](https://code.visualstudio.com) works well)
+- A Bedrock Chat account with a test server
+- A webhook in the channel where you want reminders
+
+## Build the bot
+
+<StepByStep title="Step 1: Create your project folder">
+
+```bash
+mkdir reminder-bot
+cd reminder-bot
+npm init -y
+```
+
+</StepByStep>
+
+<StepByStep title="Step 2: Install dependencies">
+
+```bash
+npm install express node-cron dotenv
+```
+
+</StepByStep>
+
+<StepByStep title="Step 3: Create your webhook">
+
+1. Open your server settings.
+2. Click **Webhooks** > **Create Webhook**.
+3. Select the channel you want reminders in.
+4. Name it "Reminder Bot."
+5. Copy the **Webhook ID** and **Token**.
+
+</StepByStep>
+
+<StepByStep title="Step 4: Create your environment file">
+
+Create a `.env` file in your project root.
+
+```bash
+WEBHOOK_ID=your-webhook-id-here
+WEBHOOK_TOKEN=your-webhook-token-here
+PORT=3000
+```
+
+Replace the placeholders with your actual values.
+
+<PrivacyNote>
+Your webhook token is a secret. Never share it, commit it to version control, or put it directly in your code.
+</PrivacyNote>
+
+</StepByStep>
+
+<StepByStep title="Step 5: Write your bot code">
+
+Create `index.js` with the following code.
+
+```javascript
+require('dotenv').config();
+const express = require('express');
+const cron = require('node-cron');
+
+const app = express();
+app.use(express.json());
+
+const WEBHOOK_ID = process.env.WEBHOOK_ID;
+const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN;
+const PORT = process.env.PORT || 3000;
+
+const WEBHOOK_URL = `https://bedrockchat.app/api/webhooks/${WEBHOOK_ID}?token=${WEBHOOK_TOKEN}`;
+
+async function sendReminder(message) {
+  const body = {
+    content: message,
+    username: 'Reminder Bot',
+    avatar_url: 'https://bedrockchat.app/images/reminder-bot.png'
+  };
+
+  const response = await fetch(WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  const result = await response.json();
+  console.log('Reminder sent:', result);
+  return result;
+}
+
+// Every day at 8:00 AM
+cron.schedule('0 8 * * *', () => {
+  sendReminder('Good morning, everyone! Hope you have a great day!');
+});
+
+// Every day at 3:00 PM
+cron.schedule('0 15 * * *', () => {
+  sendReminder('Afternoon check-in! How is everyone doing?');
+});
+
+// Weekdays at 4:00 PM
+cron.schedule('0 16 * * 1-5', () => {
+  sendReminder('Reminder: Don\'t forget your homework! You got this!');
+});
+
+// Weekends at 10:00 AM
+cron.schedule('0 10 * * 6,0', () => {
+  sendReminder('Happy weekend! What fun stuff are you up to today?');
+});
+
+// Manual trigger for testing
+app.post('/remind', async (req, res) => {
+  const message = req.body.message || 'This is a test reminder!';
+
+  try {
+    const result = await sendReminder(message);
+    res.json({ success: true, messageId: result.messageId });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/schedule', (req, res) => {
+  res.json({
+    reminders: [
+      { time: '8:00 AM daily', message: 'Good morning greeting' },
+      { time: '3:00 PM daily', message: 'Afternoon check-in' },
+      { time: '4:00 PM weekdays', message: 'Homework reminder' },
+      { time: '10:00 AM weekends', message: 'Weekend fun message' }
+    ]
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`Reminder bot is running on port ${PORT}`);
+  console.log('Scheduled reminders:');
+  console.log('  - 8:00 AM daily: Good morning');
+  console.log('  - 3:00 PM daily: Afternoon check-in');
+  console.log('  - 4:00 PM weekdays: Homework reminder');
+  console.log('  - 10:00 AM weekends: Weekend message');
+});
+```
+
+</StepByStep>
+
+<CodeExplainer title="How cron schedules work">
+<Fragment slot="code">
+```javascript
+// Cron pattern: minute hour day month weekday
+cron.schedule('0 8 * * *', () => {
+  sendReminder('Good morning, everyone!');
+});
+```
+</Fragment>
+<Fragment slot="explanation">
+A cron pattern has five parts: minute, hour, day, month, weekday. A star (`*`) means "every." So `0 8 * * *` means "at minute 0 of hour 8, every day of every month, regardless of weekday." That fires at 8:00 AM daily.
+</Fragment>
+</CodeExplainer>
+
+### Cron pattern reference
+
+| Pattern | Meaning |
+|---|---|
+| `0 8 * * *` | Every day at 8:00 AM |
+| `0 15 * * *` | Every day at 3:00 PM |
+| `0 12 * * 1` | Every Monday at noon |
+| `30 9 * * 1-5` | Weekdays at 9:30 AM |
+| `0 */2 * * *` | Every 2 hours |
+| `0 10 * * 6,0` | Weekends at 10:00 AM |
+
+<StepByStep title="Step 6: Start your bot">
+
+```bash
+node index.js
+```
+
+You should see:
+
+```
+Reminder bot is running on port 3000
+Scheduled reminders:
+  - 8:00 AM daily: Good morning
+  - 3:00 PM daily: Afternoon check-in
+  - 4:00 PM weekdays: Homework reminder
+  - 10:00 AM weekends: Weekend message
+```
+
+</StepByStep>
+
+<StepByStep title="Step 7: Test it immediately">
+
+You don't need to wait for 8 AM. Open a second terminal and use the test endpoint.
+
+```bash
+curl -X POST http://localhost:3000/remind \
+  -H "Content-Type: application/json" \
+  -d '{"message": "This is a test! The reminder bot works."}'
+```
+
+Verify this works by checking the channel in Bedrock Chat.
+
+</StepByStep>
+
+<StepByStep title="Step 8: View the schedule">
+
+```bash
+curl http://localhost:3000/schedule
+```
+
+This returns the list of all configured reminders and their times.
+
+</StepByStep>
+
+<TryIt>
+Verify rapid scheduling by setting a cron pattern to `* * * * *` (every minute). Start the bot and confirm a message appears each minute. Change it back when done.
+</TryIt>
+
+## Customization
+
+### Change the reminder messages
+
+Edit any of the message strings in `index.js`.
+
+```javascript
+sendReminder('Rise and shine! Today is full of possibilities.');
+```
+
+### Add a new time slot
+
+Copy a cron block and adjust the pattern and message.
+
+```javascript
+// Every day at 8:00 PM
+cron.schedule('0 20 * * *', () => {
+  sendReminder('Time to start winding down. Great work today.');
+});
+```
+
+### Use random messages per time slot
+
+```javascript
+const morningMessages = [
+  'Good morning! Let\'s make today awesome.',
+  'Rise and shine, friends! New day, new chances.',
+  'Morning! Don\'t forget to eat breakfast.',
+  'Hello, beautiful morning! What\'s the plan today?'
+];
+
+cron.schedule('0 8 * * *', () => {
+  const index = Math.floor(Math.random() * morningMessages.length);
+  sendReminder(morningMessages[index]);
+});
+```
+
+## Deployment
+
+The bot needs to stay running to fire scheduled reminders. On your local machine, it stops when you close the terminal. For 24/7 operation, deploy it to a hosting service. See [free hosting options](/recommended-tools/free-hosting-options) for recommendations.
+
+## Next steps
+
+- Add more time slots for every important moment in your day.
+- Vary messages by day of the week.
+- [Deploy your bot](/recommended-tools/free-hosting-options) so it runs continuously.
+- [Submit your bot for review](/publishing/submitting-for-review) to publish it.

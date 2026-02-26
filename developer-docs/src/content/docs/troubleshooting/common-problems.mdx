@@ -1,0 +1,178 @@
+---
+title: "Common Problems"
+description: "Solutions to the most frequently reported bot development issues."
+---
+
+import StepByStep from '../../../components/StepByStep.astro';
+import TryIt from '../../../components/TryIt.astro';
+
+This page covers the most frequently reported issues and their solutions.
+
+---
+
+## "My bot won't connect"
+
+This is the most common issue. Check the following:
+
+<StepByStep title="How to fix it">
+
+1. **Check your bot's URL.** Make sure the URL you registered as your bot's endpoint is correct. Even a small typo will stop it from working. Copy and paste it instead of typing it by hand.
+
+2. **Check that the URL uses HTTPS.** Bedrock Chat only sends webhook events to secure URLs that start with `https://`. If your URL starts with `http://` (no "s"), it will not work.
+
+3. **Check your bot token.** Your bot needs a valid token to authenticate. Make sure you are using the correct token and that it has not expired or been regenerated.
+
+4. **Make sure your server is running.** If you are self-hosting, confirm that your bot's code is actually running. Try visiting your bot's URL in a web browser. You should see some kind of response (even if it is just "OK" or a JSON message).
+
+5. **Check your hosting platform.** If you are using Railway, Render, or another hosting service, check their dashboard. Is your bot deployed? Is it running? Are there any error messages in the logs?
+
+6. **Check your firewall.** Some networks (especially school or work networks) block incoming connections. If you are testing locally, make sure your firewall allows traffic on the port your bot uses.
+
+</StepByStep>
+
+<TryIt>
+Open your bot's URL in a web browser. If you see an error page or "This site can't be reached," your bot is not running or the URL is wrong. If you see a response (even a blank page or error JSON), your server is at least reachable.
+</TryIt>
+
+---
+
+## "Messages aren't sending"
+
+Your bot is connected, but when it tries to send a message, nothing shows up. Here is what to check.
+
+<StepByStep title="How to fix it">
+
+1. **Check the `content` field.** Every message must have a `content` field with text between 1 and 4,000 characters. If the field is empty, missing, or too long, the message will be rejected.
+
+2. **Check the response format.** Make sure your bot is sending a proper JSON response with the correct `Content-Type: application/json` header.
+
+3. **Check your rate limit.** If you are sending messages too fast, Bedrock Chat will temporarily block your requests. Look for a `429` status code in your bot's logs. See the "I'm getting rate limited" section below for more details.
+
+4. **Check that your webhook is active.** Go to your bot's settings in the Bedrock Chat Developer Portal and make sure the webhook is enabled and the URL is correct.
+
+5. **Check your bot's scopes.** Your bot needs the right permissions (scopes) to send messages. Make sure it has the `messages.send` scope.
+
+</StepByStep>
+
+---
+
+## "I'm getting rate limited"
+
+Rate limiting means you are sending requests too fast. Bedrock Chat caps request frequency per endpoint to keep the platform stable.
+
+### What happens when you are rate limited
+
+When you send too many requests, you get back a **429 status code** (Too Many Requests). The response includes a header called `Retry-After` that tells you how many seconds to wait before trying again.
+
+### How to fix it
+
+<StepByStep title="Steps to handle rate limits">
+
+1. **Read the `Retry-After` header.** When you get a 429 response, look at the `Retry-After` header. It tells you exactly how many seconds to wait.
+
+2. **Wait the required time.** Do not try to send another request until the wait time has passed. Sending more requests while rate limited can make the wait time even longer.
+
+3. **Add delays between requests.** If you are sending many messages in a row (like in a loop), add a small delay between each one. A 1-second delay between messages is usually enough.
+
+4. **Use a queue.** For more advanced bots, build a message queue. Instead of sending messages immediately, add them to a list and send them one at a time with small delays.
+
+</StepByStep>
+
+```js
+// Example: Adding a delay between messages
+async function sendWithDelay(messages, delayMs = 1000) {
+  for (const message of messages) {
+    await sendMessage(message);
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+  }
+}
+```
+
+---
+
+## "Webhook verification is failing"
+
+When you first set up a webhook, Bedrock Chat sends a verification request to make sure your URL is real and working. If this verification fails, your webhook will not receive any events.
+
+<StepByStep title="How to fix it">
+
+1. **Check that your URL uses HTTPS.** Verification requests are only sent to HTTPS URLs. If your URL starts with `http://`, it will not work.
+
+2. **Check your response format.** When Bedrock Chat sends a verification request, your server must respond with the correct JSON format within **10 seconds**. If your server takes longer than 10 seconds, the verification fails.
+
+3. **Check that you respond to the verification event type.** The verification request has a specific event type. Make sure your code handles it and sends back the expected response.
+
+4. **Check your server logs.** Look at your hosting platform's logs to see if the verification request arrived. If it did not arrive, the URL might be wrong or your server might not be running.
+
+5. **Try verifying again.** Go to your bot settings in the Developer Portal and click the button to re-verify your webhook. Sometimes it just takes a second try.
+
+</StepByStep>
+
+---
+
+## "My bot was rejected"
+
+If your bot was rejected during review, the review team will tell you what needs to be fixed.
+
+### Common rejection reasons
+
+- **Missing or unclear description.** Your bot's description should explain what it does in plain language. "Cool bot" is not enough. Try something like "A trivia bot that asks science questions and keeps score."
+- **Bot does not respond.** The review team tests your bot. If it does not respond to messages or commands, it will be rejected. Make sure your bot is running and working before you submit it.
+- **Inappropriate content.** Bots must follow the Bedrock Chat community guidelines. No hate speech, no spam, no harmful content.
+- **Security issues.** If your bot exposes user data, has open redirects, or other security problems, it will be rejected. Check the [Privacy and Rules](/privacy-and-rules/) section for details.
+- **Missing privacy policy.** If your bot collects any user data, you need a privacy policy that explains what you collect and why.
+
+### How to fix it and resubmit
+
+1. Read the rejection feedback carefully.
+2. Fix every issue mentioned.
+3. Test your bot thoroughly.
+4. Resubmit with a note explaining what you changed.
+
+---
+
+## "Bot responds slowly"
+
+If your bot takes a long time to respond to messages, here are some things to check.
+
+<StepByStep title="How to speed up your bot">
+
+1. **Check your hosting platform.** If you are on Render's free tier, your bot may be "sleeping" and needs time to wake up. Consider upgrading to an always-on plan or switching to Railway.
+
+2. **Check your code for slow operations.** Are you making many API calls in a row? Each call takes time. Try to combine requests or run them at the same time (in parallel) when possible.
+
+3. **Check for infinite loops.** A bug in your code might be causing it to run the same thing over and over. Look at your server's CPU and memory usage. If they are very high, you might have a loop problem.
+
+4. **Respond to the webhook quickly.** When Bedrock Chat sends your bot a webhook event, respond with a `200 OK` status right away, even if you need more time to process the message. You can send the actual reply in a separate request afterward.
+
+5. **Check your database queries.** If your bot uses a database, slow queries can make everything lag. Add indexes to frequently searched columns and avoid fetching more data than you need.
+
+</StepByStep>
+
+---
+
+## "I lost my token"
+
+Your bot token is like a password. If you lose it, you cannot get the old one back. But you can create a new one.
+
+<StepByStep title="How to get a new token">
+
+1. Go to the Bedrock Chat Developer Portal.
+2. Find your bot in the list and click on it.
+3. Go to the **Settings** or **Security** section.
+4. Click **Regenerate Token**.
+5. Copy the new token immediately and store it somewhere safe.
+6. Update your bot's code or environment variables with the new token.
+7. Restart your bot.
+
+</StepByStep>
+
+**Important:** When you regenerate your token, the old token stops working immediately. If your bot is running with the old token, it will lose connection until you update it with the new one.
+
+**Keep your token safe.** Store it in an environment variable, not in your code. Never share it in a chat, post it on a website, or commit it to a public GitHub repository.
+
+---
+
+## Still stuck?
+
+If none of these solutions fix your problem, head over to [Getting Help](/troubleshooting/getting-help/) to learn where you can ask for support. You can also check the [Error Messages](/troubleshooting/error-messages/) page to look up specific error codes.

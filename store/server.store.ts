@@ -207,8 +207,9 @@ export const useServerStore = create<ServerState>()(
 								const dbRoles = rolesByServer.get(serverId) || [];
 
 								// Map DB roles to frontend Role type, falling back to defaults if none in DB
-								const roles: Role[] = dbRoles.length > 0
-									? dbRoles.map(dbRole => {
+								let roles: Role[];
+								if (dbRoles.length > 0) {
+									roles = dbRoles.map(dbRole => {
 										const roleMembers = membersByRole.get(dbRole.id as string) || [];
 										return {
 											id: dbRole.id as string,
@@ -223,8 +224,27 @@ export const useServerStore = create<ServerState>()(
 											isDefault: (dbRole.is_default as boolean) ?? false,
 											createdAt: new Date(dbRole.created_at as string),
 										};
-									})
-									: generateDefaultRoles(serverId);
+									});
+								} else {
+									// Seed default roles to DB so they persist across reloads
+									roles = generateDefaultRoles(serverId);
+									const roleInserts = roles.map(role => ({
+										id: role.id,
+										server_id: serverId,
+										name: role.name,
+										color: role.color,
+										permissions: role.permissions,
+										position: role.position,
+										mentionable: role.mentionable,
+										is_default: role.isDefault,
+									}));
+									supabase
+										.from("server_roles")
+										.insert(roleInserts)
+										.then(({ error: seedErr }) => {
+											if (seedErr) console.error("Error seeding default roles:", seedErr);
+										});
+								}
 
 								servers.push({
 									id: serverId,

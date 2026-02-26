@@ -36,3 +36,9 @@ next-env.d.ts
 
 # biome
 .biome-cache
+
+# Developer docs
+developer-docs/node_modules/
+developer-docs/dist/
+developer-docs/.astro/
+developer-docs-context.md

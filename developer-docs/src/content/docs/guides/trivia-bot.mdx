@@ -1,0 +1,424 @@
+---
+title: "Build a Trivia Bot"
+description: "Build an interactive trivia game bot for your server."
+---
+
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+import StepByStep from '../../../components/StepByStep.astro';
+import TryIt from '../../../components/TryIt.astro';
+import CodeExplainer from '../../../components/CodeExplainer.astro';
+
+A bot that runs interactive trivia games in your channel. Users type `!trivia` to start a round, answer with a letter, and the bot tracks scores.
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org) installed
+- A text editor ([VS Code](https://code.visualstudio.com) works well)
+- A Bedrock Chat account with a test server
+- A bot token from the Bedrock Chat developer portal
+- A webhook in the channel where you want to play
+
+## Build the bot
+
+<StepByStep title="Step 1: Create your project folder">
+
+```bash
+mkdir trivia-bot
+cd trivia-bot
+npm init -y
+```
+
+</StepByStep>
+
+<StepByStep title="Step 2: Install dependencies">
+
+```bash
+npm install express dotenv
+```
+
+</StepByStep>
+
+<StepByStep title="Step 3: Create your environment file">
+
+Create a `.env` file in your project root.
+
+```bash
+WEBHOOK_ID=your-webhook-id-here
+WEBHOOK_TOKEN=your-webhook-token-here
+BOT_TOKEN=your-bot-token-here
+BOT_ID=your-bot-id-here
+PORT=3000
+```
+
+Replace each placeholder with your actual values.
+
+<PrivacyNote>
+Never share your tokens or commit them to version control. Always use an environment file.
+</PrivacyNote>
+
+</StepByStep>
+
+<StepByStep title="Step 4: Create your question bank">
+
+Create `questions.js`. Each entry needs a question, four choices, the correct letter, and a fun fact.
+
+```javascript
+module.exports = [
+  {
+    question: 'What planet is closest to the Sun?',
+    choices: ['A) Venus', 'B) Mercury', 'C) Mars', 'D) Earth'],
+    answer: 'B',
+    funFact: 'Mercury is only 36 million miles from the Sun!'
+  },
+  {
+    question: 'How many legs does a spider have?',
+    choices: ['A) 6', 'B) 10', 'C) 8', 'D) 4'],
+    answer: 'C',
+    funFact: 'Spiders are arachnids, not insects!'
+  },
+  {
+    question: 'What color do you get when you mix red and blue?',
+    choices: ['A) Green', 'B) Orange', 'C) Yellow', 'D) Purple'],
+    answer: 'D',
+    funFact: 'Purple was once the most expensive color to make!'
+  },
+  {
+    question: 'What is the largest ocean on Earth?',
+    choices: ['A) Atlantic', 'B) Indian', 'C) Pacific', 'D) Arctic'],
+    answer: 'C',
+    funFact: 'The Pacific Ocean covers more area than all land combined!'
+  },
+  {
+    question: 'How many days are in a leap year?',
+    choices: ['A) 364', 'B) 365', 'C) 366', 'D) 367'],
+    answer: 'C',
+    funFact: 'Leap years happen every 4 years to keep our calendar on track!'
+  },
+  {
+    question: 'What gas do plants breathe in?',
+    choices: ['A) Oxygen', 'B) Nitrogen', 'C) Helium', 'D) Carbon dioxide'],
+    answer: 'D',
+    funFact: 'Plants breathe in CO2 and breathe out oxygen for us!'
+  },
+  {
+    question: 'What is the tallest animal in the world?',
+    choices: ['A) Elephant', 'B) Giraffe', 'C) Horse', 'D) Ostrich'],
+    answer: 'B',
+    funFact: 'Giraffes can be up to 19 feet tall!'
+  },
+  {
+    question: 'What do bees make?',
+    choices: ['A) Milk', 'B) Silk', 'C) Honey', 'D) Wax only'],
+    answer: 'C',
+    funFact: 'A single bee makes about 1/12 of a teaspoon of honey in its life!'
+  }
+];
+```
+
+</StepByStep>
+
+<TryIt>
+Verify the question bank by adding your own question following the same structure. Each entry needs `question`, `choices`, `answer`, and `funFact`.
+</TryIt>
+
+<StepByStep title="Step 5: Write your bot code">
+
+Create `index.js` with the following code.
+
+```javascript
+require('dotenv').config();
+const express = require('express');
+const questions = require('./questions');
+
+const app = express();
+app.use(express.json());
+
+const WEBHOOK_ID = process.env.WEBHOOK_ID;
+const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN;
+const BOT_TOKEN = process.env.BOT_TOKEN;
+const BOT_ID = process.env.BOT_ID;
+const PORT = process.env.PORT || 3000;
+
+const WEBHOOK_URL = `https://bedrockchat.app/api/webhooks/${WEBHOOK_ID}?token=${WEBHOOK_TOKEN}`;
+const BOT_RESPOND_URL = `https://bedrockchat.app/api/bots/${BOT_ID}/respond`;
+
+const gameState = {
+  active: false,
+  channelId: null,
+  currentQuestionIndex: -1,
+  currentQuestion: null,
+  scores: {},
+  totalQuestions: 5,
+  questionsAsked: 0
+};
+
+async function postMessage(text) {
+  const body = {
+    content: text,
+    username: 'Trivia Bot',
+    avatar_url: 'https://bedrockchat.app/images/trivia-bot.png'
+  };
+
+  const response = await fetch(WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  return response.json();
+}
+
+function getRandomQuestion() {
+  const index = Math.floor(Math.random() * questions.length);
+  return questions[index];
+}
+
+function formatQuestion(question, questionNumber) {
+  let text = `**Question ${questionNumber}:**\n`;
+  text += `${question.question}\n\n`;
+  text += question.choices.join('\n');
+  text += '\n\n*Type the letter of your answer (A, B, C, or D)*';
+  return text;
+}
+
+async function startGame(channelId) {
+  gameState.active = true;
+  gameState.channelId = channelId;
+  gameState.scores = {};
+  gameState.questionsAsked = 0;
+
+  await postMessage(
+    '**Trivia Time!**\n' +
+    `I will ask ${gameState.totalQuestions} questions.\n` +
+    'Type the letter of your answer (A, B, C, or D).\n' +
+    'First correct answer gets the point!\n\n' +
+    'Get ready...'
+  );
+
+  setTimeout(() => {
+    askNextQuestion();
+  }, 3000);
+}
+
+async function askNextQuestion() {
+  gameState.questionsAsked += 1;
+  gameState.currentQuestion = getRandomQuestion();
+
+  const text = formatQuestion(
+    gameState.currentQuestion,
+    gameState.questionsAsked
+  );
+
+  await postMessage(text);
+}
+
+async function checkAnswer(playerName, answer, channelId) {
+  if (!gameState.active) return;
+  if (channelId !== gameState.channelId) return;
+  if (!gameState.currentQuestion) return;
+
+  const cleanAnswer = answer.trim().toUpperCase();
+
+  if (cleanAnswer === gameState.currentQuestion.answer) {
+    if (!gameState.scores[playerName]) {
+      gameState.scores[playerName] = 0;
+    }
+    gameState.scores[playerName] += 1;
+
+    await postMessage(
+      `Correct! **${playerName}** got it right!\n` +
+      `*${gameState.currentQuestion.funFact}*`
+    );
+
+    gameState.currentQuestion = null;
+
+    if (gameState.questionsAsked >= gameState.totalQuestions) {
+      await endGame();
+    } else {
+      setTimeout(() => {
+        askNextQuestion();
+      }, 3000);
+    }
+  }
+}
+
+async function endGame() {
+  gameState.active = false;
+
+  let scoreboard = '**Game Over! Final Scores:**\n\n';
+
+  const sorted = Object.entries(gameState.scores)
+    .sort((a, b) => b[1] - a[1]);
+
+  if (sorted.length === 0) {
+    scoreboard += 'No one scored this round. Better luck next time.';
+  } else {
+    sorted.forEach((entry, index) => {
+      const [name, score] = entry;
+      const medal = index === 0 ? ' (Winner!)' : '';
+      scoreboard += `**${index + 1}.** ${name}: ${score} point(s)${medal}\n`;
+    });
+  }
+
+  scoreboard += '\n*Type !trivia to play again.*';
+
+  await postMessage(scoreboard);
+}
+
+// Receives messages from Bedrock Chat
+app.post('/bot/message', async (req, res) => {
+  const { content, username, channelId } = req.body;
+
+  if (content.trim().toLowerCase() === '!trivia') {
+    if (!gameState.active) {
+      await startGame(channelId);
+    } else {
+      await postMessage('A game is already running! Finish this one first.');
+    }
+  }
+
+  const letter = content.trim().toUpperCase();
+  if (['A', 'B', 'C', 'D'].includes(letter) && gameState.active) {
+    await checkAnswer(username, letter, channelId);
+  }
+
+  res.json({ success: true });
+});
+
+// Test endpoint: start a game
+app.post('/test/start', async (req, res) => {
+  const channelId = req.body.channelId || 'test-channel';
+  await startGame(channelId);
+  res.json({ success: true, note: 'Game started!' });
+});
+
+// Test endpoint: submit an answer
+app.post('/test/answer', async (req, res) => {
+  const { playerName, answer, channelId } = req.body;
+
+  await checkAnswer(
+    playerName || 'Test Player',
+    answer || 'A',
+    channelId || 'test-channel'
+  );
+
+  res.json({ success: true, scores: gameState.scores });
+});
+
+app.listen(PORT, () => {
+  console.log(`Trivia bot is running on port ${PORT}`);
+  console.log(`Loaded ${questions.length} trivia questions`);
+});
+```
+
+</StepByStep>
+
+<CodeExplainer title="How game state works">
+<Fragment slot="code">
+```javascript
+const gameState = {
+  active: false,
+  channelId: null,
+  currentQuestion: null,
+  scores: {},
+  totalQuestions: 5,
+  questionsAsked: 0
+};
+```
+</Fragment>
+<Fragment slot="explanation">
+The `gameState` object is the bot's in-memory store for the current round. It tracks whether a game is running, which channel it belongs to, and the current question. The `scores` object maps player names to point totals. Everything resets when a new game starts.
+</Fragment>
+</CodeExplainer>
+
+<StepByStep title="Step 6: Start your bot">
+
+```bash
+node index.js
+```
+
+You should see:
+
+```
+Trivia bot is running on port 3000
+Loaded 8 trivia questions
+```
+
+</StepByStep>
+
+<StepByStep title="Step 7: Test the game">
+
+Open a second terminal and start a test game.
+
+```bash
+curl -X POST http://localhost:3000/test/start \
+  -H "Content-Type: application/json" \
+  -d '{"channelId": "test-channel"}'
+```
+
+Verify this works by checking your channel for the welcome message and first question.
+
+</StepByStep>
+
+<StepByStep title="Step 8: Test answering a question">
+
+Look at the question posted in your channel, identify the correct letter, then submit it.
+
+```bash
+curl -X POST http://localhost:3000/test/answer \
+  -H "Content-Type: application/json" \
+  -d '{"playerName": "Alex", "answer": "B", "channelId": "test-channel"}'
+```
+
+A correct answer displays the fun fact and advances to the next question.
+
+</StepByStep>
+
+<TryIt>
+Verify the full game loop by answering all five questions with different player names. Confirm the final scoreboard displays at the end.
+</TryIt>
+
+## Customization
+
+### Add more questions
+
+Open `questions.js` and append new entries following the same structure.
+
+```javascript
+{
+  question: 'What is the fastest land animal?',
+  choices: ['A) Lion', 'B) Cheetah', 'C) Horse', 'D) Greyhound'],
+  answer: 'B',
+  funFact: 'Cheetahs can run up to 70 miles per hour!'
+}
+```
+
+### Change the number of questions per round
+
+In `index.js`, update `totalQuestions` in the `gameState` object.
+
+```javascript
+totalQuestions: 10,
+```
+
+### Add difficulty levels
+
+Add a `difficulty` field to each question and filter accordingly.
+
+```javascript
+{
+  question: 'What is 2 + 2?',
+  choices: ['A) 3', 'B) 4', 'C) 5', 'D) 6'],
+  answer: 'B',
+  funFact: 'Math is everywhere!',
+  difficulty: 'easy'
+}
+```
+
+## Next steps
+
+- Expand the question bank to reduce repeats.
+- Add categories so players can pick topics like science or history.
+- Add a 30-second timer per question.
+- [Deploy your bot](/recommended-tools/free-hosting-options) so it runs 24/7.
+- [Submit your bot for review](/publishing/submitting-for-review) to publish it.

@@ -1,0 +1,184 @@
+---
+title: "Data Handling Rules"
+description: "Requirements for handling user data in your bot."
+---
+
+import WhatThisMeans from '../../../components/WhatThisMeans.astro';
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+import StepByStep from '../../../components/StepByStep.astro';
+import ComingSoon from '../../../components/ComingSoon.astro';
+
+## Data Processing Requirements
+
+If your bot interacts with user data in any way, these rules apply. Most originate from privacy regulations and are enforced at the platform level.
+
+## Data Processing Agreement
+
+Before your bot can go live, you must accept the Data Processing Agreement (DPA). This happens during bot registration.
+
+<WhatThisMeans term="DPA">
+A **Data Processing Agreement** (DPA) is a legally binding agreement between you and Bedrock Chat. It defines your obligations for handling user data responsibly. DPAs are required by privacy laws in many countries.
+</WhatThisMeans>
+
+### DPA Summary
+
+**Your obligations:**
+- Use data only for your bot's stated purpose
+- Never sell, share, or distribute user data
+- Delete data when it is no longer needed
+- Report data incidents to Bedrock Chat
+
+**Platform obligations:**
+- Provide your bot only the data it has permission to access
+- Protect data on platform servers
+- Notify you of privacy rule changes
+- Assist with legal compliance
+
+<PrivacyNote>
+The DPA is stored with a **timestamp and version number**. If the DPA is updated, you must accept the new version before your bot can continue operating.
+</PrivacyNote>
+
+## Account Deletion Handling
+
+When a user deletes their Bedrock Chat account, the platform handles cleanup automatically.
+
+### What the Platform Does
+
+Messages remain, but the author's user ID is removed. The message content persists; the author becomes anonymous.
+
+<WhatThisMeans term="cascading deletion">
+**Cascading deletion** means that when one record is deleted, related records are cleaned up automatically. When a user account is deleted, their user ID is removed from all associated messages.
+</WhatThisMeans>
+
+### What Your Bot Must Handle
+
+If your bot stored a user ID, that ID will no longer resolve to a user. Your bot should handle this gracefully without errors.
+
+If your bot stores data outside of Bedrock Chat (in your own database), you are responsible for deleting that user's data when notified.
+
+<PrivacyNote>
+Bedrock Chat handles platform-side cleanup automatically. If your bot maintains external data stores, **you are responsible** for deletion compliance.
+</PrivacyNote>
+
+## Right to Erasure
+
+Users have the legal right to request deletion of their personal data under GDPR (Europe) and CCPA (California).
+
+<WhatThisMeans term="GDPR">
+**GDPR** (General Data Protection Regulation) is a European privacy law that gives people control over their personal data, including the right to have it deleted on request.
+</WhatThisMeans>
+
+### Deletion Process
+
+<StepByStep title="When a User Requests Data Deletion">
+
+1. **User requests account deletion** through their Bedrock Chat settings.
+
+2. **Platform removes their data** from internal systems. User IDs are cleared from messages and account data is deleted.
+
+3. **Your bot receives a webhook notification** (if it stores data externally) indicating the user was deleted.
+
+4. **You delete that user's data** from your external systems within 30 days.
+
+</StepByStep>
+
+<PrivacyNote>
+If your bot does not store data outside of Bedrock Chat, you do not need to take any action. The platform handles everything.
+</PrivacyNote>
+
+## Right to Access
+
+Users can request a copy of all personal data held about them. Bedrock Chat provides a JSON data export covering platform data.
+
+If your bot stores data separately, users may request their data from you directly. Keep your data organized so you can fulfill these requests.
+
+## Data Retention
+
+Keep data only as long as your bot actively needs it.
+
+**Active use:** A trivia bot keeping the current game score is acceptable.
+
+**Task complete:** When the game ends or the task finishes, delete the data.
+
+**When in doubt:** Retain data for no more than 30 days, then delete it.
+
+<PrivacyNote>
+The less data you retain, the lower your compliance burden. If your bot does not need to remember something, do not store it.
+</PrivacyNote>
+
+### Data You Must Never Store
+
+Some data must never be stored by your bot, even temporarily:
+
+- Real names, addresses, or school names
+- Email addresses or phone numbers
+- Dates of birth or ages
+- Photos of real people
+- Location information
+- Any data from the [restricted access list](/privacy-and-rules/what-your-bot-cannot-do)
+
+If your bot receives personal information in a message, discard it. Do not store or echo it back.
+
+## CCPA Compliance
+
+If California residents use your bot, additional requirements apply.
+
+<WhatThisMeans term="CCPA">
+**CCPA** (California Consumer Privacy Act) gives California residents the right to know what data is collected about them and to opt out of data sales.
+</WhatThisMeans>
+
+**No data sales.** Your bot must never sell user data.
+
+**Data disclosure.** If a California user asks what data you have about them, you must respond within 45 days.
+
+**Opt-out.** If a user asks you to stop collecting their data, you must comply. Your bot must still function without collecting data.
+
+<PrivacyNote>
+If your bot does not collect or store personal data, CCPA compliance is straightforward: inform the user that no personal data is collected.
+</PrivacyNote>
+
+## Privacy Policy
+
+If your bot stores any data, you must provide a privacy policy. It does not need to be written by a lawyer. It needs to be accurate and clear.
+
+### Required Contents
+
+<StepByStep title="Writing Your Privacy Policy">
+
+1. **What data your bot collects.** Be specific. "We store your username and game score" is correct. "We may collect data" is too vague.
+
+2. **Why your bot collects it.** State the purpose. "We store your score so you can continue your game later."
+
+3. **Where the data is stored.** Name the service. "Scores are stored in a Supabase database."
+
+4. **How long you keep it.** Be specific. "Scores are deleted 30 days after your last game."
+
+5. **How users can delete their data.** Provide a mechanism. "Type `/delete-my-data` to remove your scores."
+
+6. **Contact information.** Provide a way to reach you. An email address or Bedrock Chat username works.
+
+</StepByStep>
+
+Include your privacy policy in your bot submission. The review team evaluates it as part of the approval process.
+
+## Quick Reference
+
+| Rule | Requirement |
+|---|---|
+| Accept the DPA | Required during registration |
+| Handle account deletion | Do not error when a user ID no longer resolves |
+| Delete external data on request | Within 30 days of notification |
+| Provide data on request | Respond to user data requests |
+| Retain data only as needed | Delete when the task is complete |
+| Never sell data | No exceptions |
+| Provide a privacy policy | Accurate, specific, and accessible |
+
+<ComingSoon feature="Automated Data Deletion API">
+An automated data deletion API is in development. Once available, you will be able to connect your external database and receive deletion requests automatically.
+</ComingSoon>
+
+## What's Next
+
+You have completed the Privacy and Rules section. Continue to the Publishing section to learn the requirements for submitting your bot.
+
+**Continue to:** [Publishing Requirements](/publishing/our-requirements)

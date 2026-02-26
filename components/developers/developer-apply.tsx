@@ -20,11 +20,26 @@ export function DeveloperApply() {
 		}
 
 		setIsSubmitting(true);
-		// Placeholder — will POST to /api/platform/developer-application in future
-		await new Promise((r) => setTimeout(r, 1000));
-		setIsSubmitting(false);
-		setSubmitted(true);
-		toast.success("Application submitted! We'll review it shortly.");
+		try {
+			const res = await fetch("/api/platform/developer-application", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ email, intendedUse, agreedDPA }),
+			});
+
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({}));
+				toast.error(err.error || "Failed to submit application");
+				return;
+			}
+
+			setSubmitted(true);
+			toast.success("Application submitted! We'll review it shortly.");
+		} catch {
+			toast.error("Failed to submit application. Check your connection.");
+		} finally {
+			setIsSubmitting(false);
+		}
 	};
 
 	if (submitted) {

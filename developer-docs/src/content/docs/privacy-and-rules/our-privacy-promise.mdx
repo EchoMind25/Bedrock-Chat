@@ -1,0 +1,95 @@
+---
+title: "Our Privacy Promise"
+description: "How Bedrock Chat protects user privacy at the platform level."
+---
+
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+import WhatThisMeans from '../../../components/WhatThisMeans.astro';
+
+## Platform Privacy Model
+
+Bedrock Chat enforces privacy at the infrastructure level. These are not policies that depend on good behavior. They are technical constraints built into the platform.
+
+This page describes what is protected, what boundaries exist, and how they are enforced.
+
+## Privacy Guarantees
+
+### 1. No Bot Surveillance
+
+Bots on Bedrock Chat are never asked or permitted to collect data covertly. There are no hidden data pipelines or tracking tools in the platform.
+
+<PrivacyNote>
+Bedrock Chat has **zero tracking, zero analytics, and zero surveillance** infrastructure. This is an architectural decision, not a policy.
+</PrivacyNote>
+
+### 2. Family Data Is Inaccessible to Bots
+
+Bedrock Chat includes Family Accounts for parental oversight. All family data is stored in protected tables that are inaccessible to the bot API. This includes family settings, parental controls, and monitoring alerts.
+
+<PrivacyNote>
+Family monitoring data is stored in protected tables with no API endpoints exposed to bots. This is enforced at the database level.
+</PrivacyNote>
+
+### 3. No Voice Recording
+
+Bots receive voice metadata only (join/leave events). Audio streams are never sent to bots. There is no configuration to enable audio access.
+
+<WhatThisMeans term="metadata">
+**Metadata** means information about an event, not the event itself. Voice metadata tells your bot that someone joined a call. It does not include what they said.
+</WhatThisMeans>
+
+### 4. Transparent Permissions
+
+When a user adds a bot to a server, they see a plain-language list of every permission the bot requests. Users choose what to allow. If they decline a permission, the bot does not receive it.
+
+<PrivacyNote>
+Bedrock Chat displays bot permissions in plain language at install time. Users always see what they are granting before they grant it.
+</PrivacyNote>
+
+### 5. Data Deletion Follows Account Deletion
+
+When a user deletes their account, their user ID is removed from all messages automatically. Bots do not need to handle this. The platform manages cleanup.
+
+If your bot stores data externally, you are responsible for deleting it when notified. See [Data Handling Rules](/privacy-and-rules/data-handling-rules) for details.
+
+### 6. 30-Day Change Notice
+
+If any privacy rule changes, developers receive at least 30 days notice before the change takes effect. The notice includes what changed and what action is required.
+
+## Compliance
+
+Bedrock Chat is compliant with three privacy regulations:
+
+<WhatThisMeans term="COPPA">
+**COPPA** (Children's Online Privacy Protection Act) is a United States law that protects children under 13 online. It limits what data companies can collect from minors.
+</WhatThisMeans>
+
+<WhatThisMeans term="GDPR">
+**GDPR** (General Data Protection Regulation) is a European law that gives people control over their personal data, including the right to access and delete it.
+</WhatThisMeans>
+
+<WhatThisMeans term="CCPA">
+**CCPA** (California Consumer Privacy Act) gives California residents the right to know what data is collected about them and to opt out of data sales.
+</WhatThisMeans>
+
+Bots built on Bedrock Chat inherit this compliance foundation. Platform-level protections apply automatically to all bots.
+
+<PrivacyNote>
+Bedrock Chat is **COPPA, GDPR, and CCPA compliant**. Your bot benefits from this compliance by default.
+</PrivacyNote>
+
+## How It Works in Practice
+
+**At build time:** You declare the permissions your bot needs. Only request what is necessary. Permissions are reviewed before your bot goes live.
+
+**At install time:** Users see exactly what your bot can do and approve each permission. They can remove your bot at any time.
+
+**At runtime:** Your bot can only access data it was approved for. Requests for protected data are blocked automatically.
+
+**On violation:** The platform logs unauthorized access attempts. Repeated violations may result in bot suspension.
+
+## What's Next
+
+Learn exactly what data your bot can access and the scopes required.
+
+**Next up:** [What Your Bot Can Access](/privacy-and-rules/what-your-bot-can-access)

@@ -1,0 +1,214 @@
+---
+title: "Servers"
+description: "How servers are structured, bot and webhook limits, and the public stats endpoint."
+---
+
+import WhatThisMeans from '../../../components/WhatThisMeans.astro';
+import ComingSoon from '../../../components/ComingSoon.astro';
+import CodeExplainer from '../../../components/CodeExplainer.astro';
+import TryIt from '../../../components/TryIt.astro';
+
+Servers are the top-level containers in Bedrock Chat. Every channel, every category, and every member lives inside a server. This page explains how servers are structured, what limits apply to bots and webhooks, and how to use the public stats endpoint.
+
+---
+
+## What is a Server?
+
+A server is a community space — similar to a Discord server or a Slack workspace. Each server has its own name, icon, set of channels, and list of members. Users can join multiple servers, and each server is independent.
+
+---
+
+## Server Structure
+
+Here is how the pieces fit together, from the top level down:
+
+```
+Server
+├── name          — The display name (like "Bedrock Community")
+├── icon          — The server's avatar image or emoji
+├── ownerId       — The user who created the server
+├── memberCount   — How many people are in the server
+├── categories    — Groups that organize channels
+│     └── Category
+│           ├── name      — Category display name (like "TEXT CHANNELS")
+│           └── channels  — The channels inside this category
+│                 └── Channel
+│                       ├── name   — Channel name (like "general")
+│                       ├── type   — "text", "voice", or "announcement"
+│                       └── position — Display order
+└── createdAt     — When the server was created
+```
+
+### A Real Example
+
+Here is what a fully populated server looks like:
+
+```
+Bedrock Community
+│
+├── INFORMATION
+│     ├── #welcome        (announcement)
+│     └── #rules          (announcement)
+│
+├── TEXT CHANNELS
+│     ├── #general        (text)
+│     ├── #random         (text)
+│     └── #tech-talk      (text)
+│
+└── VOICE CHANNELS
+      ├── General Voice   (voice)
+      └── Gaming          (voice)
+```
+
+Every server follows this same pattern: one or more categories, each containing one or more channels. Categories are just for visual organization — they do not affect permissions or bot behavior.
+
+---
+
+## Bot and Webhook Limits
+
+Bedrock Chat enforces strict limits on how many bots and webhooks each server can have. These limits protect server performance and prevent abuse.
+
+| Resource | Maximum Per Server |
+|---|---|
+| **Bots** | 10 |
+| **Webhooks** | 15 |
+
+<WhatThisMeans term="Why these limits exist">
+Each bot and webhook consumes resources on the platform — message processing, rate limit tracking, metadata storage. The limits ensure that no single server can overload the system. For most communities, 10 bots and 15 webhooks are more than enough.
+</WhatThisMeans>
+
+### What Counts Toward the Limit?
+
+- **Bots:** Every bot application that has been added to the server counts as one bot, whether it is active or idle.
+- **Webhooks:** Every webhook created in the server counts, whether or not it is actively receiving messages.
+
+If your server hits the bot limit and you need another bot, you will need to remove an existing one first. The same applies to webhooks.
+
+---
+
+## Installing a Bot on a Server
+
+Currently, adding a bot to a server is a manual process. There is no "Add to Server" button or OAuth2 flow like some other platforms offer.
+
+Here is how it works today:
+
+1. **You register your bot** through the developer dashboard (using `POST /api/platform/bots`)
+2. **Your bot is reviewed** by the Bedrock Chat team
+3. **After approval**, a server administrator can add your bot from the server settings
+
+<ComingSoon feature="Bot Installation Flow">
+A streamlined "Add to Server" experience is planned. In the future, you will be able to generate an invite link that server admins can click to install your bot — similar to how Discord bot invites work. Until then, bot installation is handled manually through server settings.
+</ComingSoon>
+
+---
+
+## GET /api/stats — Platform Statistics
+
+This is the only server-related endpoint currently available to bots. It returns high-level statistics about the entire Bedrock Chat platform.
+
+### Authentication
+
+**None required.** This is a public endpoint. Anyone can call it without a token.
+
+### Request
+
+```bash
+# No authentication needed — this endpoint is fully public
+curl https://bedrockchat.com/api/stats
+```
+
+### Response
+
+```json
+{
+  "users": 15420,    // Total registered users across the entire platform
+  "messages": 892341, // Total messages sent across all servers
+  "servers": 1203    // Total number of servers on the platform
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `users` | number | The total number of registered user accounts on Bedrock Chat. |
+| `messages` | number | The total number of messages ever sent across all servers. |
+| `servers` | number | The total number of servers that exist on the platform. |
+
+### Caching
+
+This endpoint is cached for **60 seconds**. That means if you call it twice within a minute, you will get the same numbers both times. The cache refreshes automatically — you do not need to do anything special.
+
+<WhatThisMeans term="Caching">
+Caching means the server saves the result of an expensive calculation and reuses it for a short time instead of recalculating on every request. For the stats endpoint, the platform counts all users, messages, and servers once per minute and serves that saved number to everyone who asks. This keeps the endpoint fast and cheap.
+</WhatThisMeans>
+
+### Rate Limiting
+
+This endpoint allows **20 requests per minute**. Since the data only updates every 60 seconds anyway, you should not need to call it more often than once a minute.
+
+<CodeExplainer title="Fetching platform stats in JavaScript">
+<Fragment slot="code">
+```js
+// Call the public stats endpoint — no token needed
+const response = await fetch('https://bedrockchat.com/api/stats');
+
+// Parse the JSON response body
+const stats = await response.json();
+
+// Use the data however you like
+console.log(`Users: ${stats.users}`);       // e.g., "Users: 15420"
+console.log(`Messages: ${stats.messages}`); // e.g., "Messages: 892341"
+console.log(`Servers: ${stats.servers}`);   // e.g., "Servers: 1203"
+```
+</Fragment>
+<Fragment slot="explanation">
+Because this endpoint requires no authentication, it is the easiest one to test. You can call it right now from your browser, your terminal, or your code — no setup needed.
+</Fragment>
+</CodeExplainer>
+
+<TryIt title="Try it right now">
+Open your terminal and run this command:
+
+```bash
+# Fetch live platform statistics
+curl https://bedrockchat.com/api/stats
+```
+
+You should see a JSON response with the current `users`, `messages`, and `servers` counts. This is a great way to verify your network setup is working before you move on to authenticated endpoints.
+</TryIt>
+
+### Use Cases for the Stats Endpoint
+
+- **Status pages:** Display live platform health information
+- **Bot dashboards:** Show your users how big the Bedrock Chat platform is
+- **Monitoring:** Track platform growth over time by polling this endpoint periodically (respect the 20/min rate limit)
+
+---
+
+## What Bots Cannot Do With Servers
+
+Currently, bots have very limited interaction with servers. Here is what is **not** available:
+
+| Action | Available? |
+|---|---|
+| Create a server | No |
+| Delete a server | No |
+| Edit server settings | No |
+| List all servers | No |
+| List server members | No |
+| List server channels | No (API endpoint not yet available) |
+| Manage roles or permissions | No |
+| Kick or ban members | No |
+
+The only server-related data your bot can access through the API right now is the public stats endpoint described above. For everything else, your bot operates at the **channel level** — it sends messages to channels, not to servers directly.
+
+<ComingSoon feature="Server Management APIs">
+APIs for listing server channels, reading server member lists, and potentially managing server settings are being considered for future releases. These will require appropriate scopes and explicit server administrator approval. Check back in these docs for updates.
+</ComingSoon>
+
+---
+
+## Next Steps
+
+- **[Channels](/api-reference/channels/)** — Understand how channels work within servers
+- **[Users](/api-reference/users/)** — Learn what user data your bot can access
+- **[Messages](/api-reference/messages/)** — Start sending messages to server channels

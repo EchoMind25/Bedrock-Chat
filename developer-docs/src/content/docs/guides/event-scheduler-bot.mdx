@@ -1,0 +1,493 @@
+---
+title: "Build an Event Scheduler Bot"
+description: "Build a bot that announces upcoming server events with rich formatting."
+---
+
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+import StepByStep from '../../../components/StepByStep.astro';
+import TryIt from '../../../components/TryIt.astro';
+import CodeExplainer from '../../../components/CodeExplainer.astro';
+
+A bot that announces server events using rich embed cards and sends reminders before they start.
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org) installed
+- A text editor ([VS Code](https://code.visualstudio.com) works well)
+- A Bedrock Chat account with a test server
+- A webhook in your #events channel (or any channel)
+
+## Build the bot
+
+<StepByStep title="Step 1: Create your project folder">
+
+```bash
+mkdir event-bot
+cd event-bot
+npm init -y
+```
+
+</StepByStep>
+
+<StepByStep title="Step 2: Install dependencies">
+
+```bash
+npm install express node-cron dotenv
+```
+
+</StepByStep>
+
+<StepByStep title="Step 3: Create your environment file">
+
+Create a `.env` file in your project root.
+
+```bash
+WEBHOOK_ID=your-webhook-id-here
+WEBHOOK_TOKEN=your-webhook-token-here
+PORT=3000
+```
+
+Replace the placeholders with your actual values.
+
+<PrivacyNote>
+Your webhook token is a secret. Never share it or commit it to version control.
+</PrivacyNote>
+
+</StepByStep>
+
+<StepByStep title="Step 4: Create your events file">
+
+Create `events.js`. Each event needs an ID, title, ISO date, duration, description, location, host, hex color, and reminder lead time in minutes.
+
+```javascript
+module.exports = [
+  {
+    id: 'movie-night-1',
+    title: 'Friday Movie Night',
+    date: '2026-03-06T19:00:00',
+    duration: '2 hours',
+    description: 'We are watching a fun movie together! Grab your popcorn and join us in the movie voice channel.',
+    location: '#movie-voice channel',
+    host: 'Sarah',
+    color: '#FF6B6B',
+    reminderMinutes: 30
+  },
+  {
+    id: 'study-group-1',
+    title: 'Math Study Group',
+    date: '2026-03-07T15:00:00',
+    duration: '1 hour',
+    description: 'Stuck on math homework? Join the study group! We help each other out. All skill levels welcome.',
+    location: '#study-hall voice channel',
+    host: 'Jake',
+    color: '#4ECDC4',
+    reminderMinutes: 15
+  },
+  {
+    id: 'game-tournament-1',
+    title: 'Weekend Game Tournament',
+    date: '2026-03-08T14:00:00',
+    duration: '3 hours',
+    description: 'Our first official game tournament! Sign up by reacting to this message. Prizes for the top 3 players!',
+    location: '#gaming voice channel',
+    host: 'Priya',
+    color: '#FFE66D',
+    reminderMinutes: 60
+  },
+  {
+    id: 'art-show-1',
+    title: 'Community Art Show',
+    date: '2026-03-09T16:00:00',
+    duration: '1.5 hours',
+    description: 'Share your art with the community! Post your drawings, paintings, or digital art in the #art-gallery channel. Everyone gets a chance to show their work.',
+    location: '#art-gallery channel',
+    host: 'Marcus',
+    color: '#A78BFA',
+    reminderMinutes: 45
+  }
+];
+```
+
+</StepByStep>
+
+<TryIt>
+Verify the events data by adding your own event to the array. Include all required fields.
+</TryIt>
+
+<StepByStep title="Step 5: Write your bot code">
+
+Create `index.js` with the following code.
+
+```javascript
+require('dotenv').config();
+const express = require('express');
+const cron = require('node-cron');
+const events = require('./events');
+
+const app = express();
+app.use(express.json());
+
+const WEBHOOK_ID = process.env.WEBHOOK_ID;
+const WEBHOOK_TOKEN = process.env.WEBHOOK_TOKEN;
+const PORT = process.env.PORT || 3000;
+
+const WEBHOOK_URL = `https://bedrockchat.app/api/webhooks/${WEBHOOK_ID}?token=${WEBHOOK_TOKEN}`;
+
+const announcedEvents = new Set();
+const sentReminders = new Set();
+
+async function postEmbed(text, embeds) {
+  const body = {
+    content: text,
+    username: 'Event Bot',
+    avatar_url: 'https://bedrockchat.app/images/event-bot.png',
+    embeds: embeds
+  };
+
+  const response = await fetch(WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  const result = await response.json();
+  console.log('Event posted:', result);
+  return result;
+}
+
+function formatDate(dateString) {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+}
+
+function createEventEmbed(event) {
+  return {
+    title: event.title,
+    description: event.description,
+    color: parseInt(event.color.replace('#', ''), 16), // hex string to integer
+    fields: [
+      { name: 'When', value: formatDate(event.date), inline: true },
+      { name: 'Duration', value: event.duration, inline: true },
+      { name: 'Where', value: event.location, inline: true },
+      { name: 'Hosted by', value: event.host, inline: true }
+    ],
+    footer: {
+      text: `A reminder will be sent ${event.reminderMinutes} minutes before the event.`
+    }
+  };
+}
+
+function createReminderEmbed(event) {
+  return {
+    title: `Starting Soon: ${event.title}`,
+    description: `**${event.title}** starts in ${event.reminderMinutes} minutes! Head to ${event.location} to join.`,
+    color: parseInt(event.color.replace('#', ''), 16),
+    fields: [
+      { name: 'Where to go', value: event.location, inline: false }
+    ],
+    footer: {
+      text: `Start time: ${formatDate(event.date)}`
+    }
+  };
+}
+
+async function announceEvent(event) {
+  if (announcedEvents.has(event.id)) return;
+
+  const embed = createEventEmbed(event);
+  await postEmbed('**New Event Announced!**', [embed]);
+  announcedEvents.add(event.id);
+  console.log(`Announced event: ${event.title}`);
+}
+
+async function sendReminder(event) {
+  if (sentReminders.has(event.id)) return;
+
+  const embed = createReminderEmbed(event);
+  await postEmbed('**Event Reminder!**', [embed]);
+  sentReminders.add(event.id);
+  console.log(`Sent reminder for: ${event.title}`);
+}
+
+function checkReminders() {
+  const now = new Date();
+
+  events.forEach((event) => {
+    const eventTime = new Date(event.date);
+    const minutesUntil = (eventTime - now) / 1000 / 60;
+
+    if (minutesUntil > 0 && minutesUntil <= event.reminderMinutes) {
+      sendReminder(event);
+    }
+  });
+}
+
+// Check for due reminders every minute
+cron.schedule('* * * * *', () => {
+  checkReminders();
+});
+
+// Announce a single event by ID
+app.post('/announce/:eventId', async (req, res) => {
+  const event = events.find(e => e.id === req.params.eventId);
+
+  if (!event) {
+    return res.status(404).json({ success: false, error: 'Event not found. Check the event ID.' });
+  }
+
+  try {
+    await announceEvent(event);
+    res.json({ success: true, note: `Announced: ${event.title}` });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Announce all upcoming events
+app.post('/announce-all', async (req, res) => {
+  const now = new Date();
+  const upcoming = events.filter(e => new Date(e.date) > now);
+
+  for (let i = 0; i < upcoming.length; i++) {
+    if (i > 0) {
+      await new Promise(resolve => setTimeout(resolve, 1500)); // respect rate limits
+    }
+    await announceEvent(upcoming[i]);
+  }
+
+  res.json({
+    success: true,
+    count: upcoming.length,
+    note: `Announced ${upcoming.length} upcoming events`
+  });
+});
+
+// Send a reminder for a specific event
+app.post('/remind/:eventId', async (req, res) => {
+  const event = events.find(e => e.id === req.params.eventId);
+
+  if (!event) {
+    return res.status(404).json({ success: false, error: 'Event not found.' });
+  }
+
+  try {
+    await sendReminder(event);
+    res.json({ success: true, note: `Reminder sent for: ${event.title}` });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// List all events with status
+app.get('/events', (req, res) => {
+  const now = new Date();
+
+  const list = events.map(event => ({
+    id: event.id,
+    title: event.title,
+    date: formatDate(event.date),
+    host: event.host,
+    upcoming: new Date(event.date) > now,
+    announced: announcedEvents.has(event.id),
+    reminderSent: sentReminders.has(event.id)
+  }));
+
+  res.json({ events: list });
+});
+
+// Add a new event at runtime
+app.post('/events', (req, res) => {
+  const { id, title, date, duration, description, location, host, color, reminderMinutes } = req.body;
+
+  if (!id || !title || !date) {
+    return res.status(400).json({ success: false, error: 'Required fields: id, title, date.' });
+  }
+
+  const newEvent = {
+    id,
+    title,
+    date,
+    duration: duration || '1 hour',
+    description: description || 'No description provided.',
+    location: location || 'TBD',
+    host: host || 'Unknown',
+    color: color || '#6366F1',
+    reminderMinutes: reminderMinutes || 30
+  };
+
+  events.push(newEvent);
+  res.json({ success: true, note: `Event "${title}" added!`, event: newEvent });
+});
+
+app.listen(PORT, () => {
+  console.log(`Event bot is running on port ${PORT}`);
+  console.log(`Loaded ${events.length} events`);
+  console.log('Checking for reminders every minute...');
+});
+```
+
+</StepByStep>
+
+<CodeExplainer title="How embeds work in webhook messages">
+<Fragment slot="code">
+```javascript
+const body = {
+  content: 'New Event Announced!',
+  username: 'Event Bot',
+  embeds: [{
+    title: 'Friday Movie Night',
+    description: 'Grab your popcorn!',
+    color: 0xFF6B6B,
+    fields: [
+      { name: 'When', value: 'Friday 7 PM', inline: true },
+      { name: 'Where', value: '#movie-voice', inline: true }
+    ]
+  }]
+};
+```
+</Fragment>
+<Fragment slot="explanation">
+The `embeds` array contains embed objects. Each has a `title`, `description`, `color` (integer), and `fields`. Fields are labeled sections inside the embed. Setting `inline: true` renders fields side by side instead of stacked. The `color` controls the accent bar on the left edge of the embed.
+</Fragment>
+</CodeExplainer>
+
+<StepByStep title="Step 6: Start your bot">
+
+```bash
+node index.js
+```
+
+You should see:
+
+```
+Event bot is running on port 3000
+Loaded 4 events
+Checking for reminders every minute...
+```
+
+</StepByStep>
+
+<StepByStep title="Step 7: Announce a single event">
+
+Open a second terminal.
+
+```bash
+curl -X POST http://localhost:3000/announce/movie-night-1
+```
+
+Verify this works by checking your channel for the event embed card.
+
+</StepByStep>
+
+<StepByStep title="Step 8: Announce all events">
+
+```bash
+curl -X POST http://localhost:3000/announce-all
+```
+
+The bot posts each event with a 1.5-second delay between them to respect rate limits.
+
+</StepByStep>
+
+<StepByStep title="Step 9: Send a reminder">
+
+```bash
+curl -X POST http://localhost:3000/remind/game-tournament-1
+```
+
+Verify the channel shows a "Starting Soon" reminder card with the event location.
+
+</StepByStep>
+
+<StepByStep title="Step 10: Add a new event">
+
+Add an event through the API, then announce it.
+
+```bash
+curl -X POST http://localhost:3000/events \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "karaoke-night-1",
+    "title": "Karaoke Night",
+    "date": "2026-03-15T20:00:00",
+    "duration": "2 hours",
+    "description": "Sing your favorite songs with friends!",
+    "location": "#karaoke voice channel",
+    "host": "DJ Sam",
+    "color": "#F472B6",
+    "reminderMinutes": 30
+  }'
+```
+
+```bash
+curl -X POST http://localhost:3000/announce/karaoke-night-1
+```
+
+</StepByStep>
+
+<TryIt>
+Verify the event list endpoint by opening `http://localhost:3000/events` in your browser. It shows which events have been announced and which reminders have been sent.
+</TryIt>
+
+## Customization
+
+### Change embed colors
+
+Each event has a `color` field accepting any hex color code.
+
+```javascript
+color: '#FF6B6B'  // Red
+color: '#4ECDC4'  // Teal
+color: '#FFE66D'  // Yellow
+color: '#A78BFA'  // Purple
+color: '#34D399'  // Green
+color: '#F472B6'  // Pink
+```
+
+### Add extra embed fields
+
+Append to the `fields` array in `createEventEmbed`.
+
+```javascript
+fields: [
+  // ...existing fields...
+  {
+    name: 'How to join',
+    value: 'Hop into the voice channel at the start time.',
+    inline: false
+  }
+]
+```
+
+### Schedule automatic announcements
+
+Add a cron job to announce events a few days in advance.
+
+```javascript
+// Every day at 9 AM, announce events within the next 3 days
+cron.schedule('0 9 * * *', () => {
+  const now = new Date();
+
+  events.forEach((event) => {
+    const eventTime = new Date(event.date);
+    const daysUntil = (eventTime - now) / 1000 / 60 / 60 / 24;
+    if (daysUntil > 0 && daysUntil <= 3) {
+      announceEvent(event);
+    }
+  });
+});
+```
+
+## Next steps
+
+- Add recurring events that repeat weekly.
+- Add RSVP tracking with message reactions.
+- Add time zone support for distributed communities.
+- [Deploy your bot](/recommended-tools/free-hosting-options) so it runs 24/7.
+- [Submit your bot for review](/publishing/submitting-for-review) to publish it.

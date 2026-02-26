@@ -1,0 +1,121 @@
+---
+title: "Setting Up Your Workspace"
+description: "Configure your development environment for building bots."
+---
+
+import StepByStep from '../../../components/StepByStep.astro';
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+
+## Prerequisites
+
+You need two tools installed:
+
+1. **Node.js** (v22+) -- runtime for your bot code
+2. **A code editor** -- VS Code recommended, but any editor works
+
+Setup takes about 5 minutes. You only need to do it once.
+
+---
+
+## Step 1: Install Node.js
+
+<StepByStep>
+1. Download the **LTS** version from [nodejs.org](https://nodejs.org).
+2. Run the installer.
+3. Restart your terminal (or your computer, if on Windows).
+</StepByStep>
+
+Verify the installation:
+
+```bash
+node --version
+```
+
+You should see `v22.0.0` or higher. If you get "command not found," restart your computer and try again.
+
+---
+
+## Step 2: Install a Code Editor
+
+Download VS Code from [code.visualstudio.com](https://code.visualstudio.com) if you do not already have an editor.
+
+<PrivacyNote>
+VS Code runs locally. Your code stays on your machine unless you opt into cloud features.
+</PrivacyNote>
+
+---
+
+## Step 3: Create Your Project
+
+```bash
+mkdir my-bedrock-bot
+cd my-bedrock-bot
+npm init -y
+```
+
+This creates a project directory and initializes a `package.json` file with default values.
+
+---
+
+## Step 4: Install Express
+
+```bash
+npm install express
+```
+
+Express is a lightweight HTTP server framework. Your bot uses it to receive webhook requests from Bedrock Chat.
+
+---
+
+## Verify Your Setup
+
+Your project directory should contain:
+
+```
+my-bedrock-bot/
+  node_modules/
+  package.json
+  package-lock.json
+```
+
+Open the folder in your editor. If you see these files, your workspace is ready.
+
+---
+
+## Quick Reference
+
+| Command | Purpose |
+|---|---|
+| `node --version` | Verify Node.js installation |
+| `mkdir my-bedrock-bot` | Create project directory |
+| `cd my-bedrock-bot` | Enter project directory |
+| `npm init -y` | Initialize package.json |
+| `npm install express` | Install Express |
+
+---
+
+## Troubleshooting
+
+### "node is not recognized" / "command not found"
+
+Node.js did not install correctly, or your terminal session is stale.
+- Restart your computer.
+- Re-download the **LTS** version from [nodejs.org](https://nodejs.org).
+
+### "npm is not recognized"
+
+npm ships with Node.js. Reinstall Node.js to fix this.
+
+### "permission denied" / EACCES error
+
+On Mac or Linux, prefix the command with `sudo`:
+
+```bash
+sudo npm install express
+```
+
+---
+
+## Next Step
+
+Your workspace is ready. Proceed to [Writing Your Bot Code](/building-your-bot/writing-your-bot-code) to build your first bot.

@@ -1,0 +1,181 @@
+---
+title: "Setting Up Webhooks"
+description: "Create and configure webhooks for your Bedrock Chat server."
+---
+
+import StepByStep from '../../../components/StepByStep.astro';
+import TryIt from '../../../components/TryIt.astro';
+import CodeExplainer from '../../../components/CodeExplainer.astro';
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+
+## Create a Webhook
+
+<StepByStep title="Creating a Webhook">
+
+### Step 1: Open Server Settings
+
+Go to your server in Bedrock Chat. Click the **server name** at the top of the channel list, then click **Server Settings**.
+
+### Step 2: Go to the Webhooks Tab
+
+In the settings menu, click **Webhooks** in the left sidebar. This shows all webhooks configured for the server.
+
+### Step 3: Create a New Webhook
+
+Click **Create Webhook**. Enter a name -- this appears as the sender when messages are posted. Select the **channel** where messages should appear.
+
+### Step 4: Copy Your URL and Token
+
+After creation, you will see:
+
+- **Webhook URL** -- The endpoint you send requests to.
+- **Token** -- Your authentication secret.
+
+Your URL will look like this:
+
+```
+https://bedrock.chat/api/webhooks/abc123def456
+```
+
+Copy both values. You need them to send messages.
+
+### Step 5: Send Your First Message
+
+See the sections below for request format and code examples.
+
+</StepByStep>
+
+<PrivacyNote>
+  Your webhook token is a secret credential. Never commit it to version control or share it publicly. Anyone with your token can post messages to your channel. If a token is compromised, delete the webhook and create a new one.
+</PrivacyNote>
+
+## Sending a Message
+
+Send a POST request to your webhook URL with a JSON body.
+
+### Request Body
+
+```json
+{
+  "content": "Hello from my webhook!",
+  "username": "My Cool Bot",
+  "avatar_url": "https://example.com/my-avatar.png"
+}
+```
+
+Only `content` is required. The other fields are optional overrides.
+
+| Field | Required | Description |
+|---|---|---|
+| `content` | Yes | Message text. 1 to 4,000 characters. |
+| `username` | No | Display name for this message. |
+| `avatar_url` | No | Avatar image URL for this message. |
+| `embeds` | No | Rich embed cards (advanced). |
+
+## Authentication
+
+You must authenticate every request. Two methods are supported.
+
+### Option 1: Token in the URL
+
+Append the token as a query parameter:
+
+```
+https://bedrock.chat/api/webhooks/abc123def456?token=your-secret-token
+```
+
+Convenient for quick tests. Not recommended for production.
+
+### Option 2: Authorization Header
+
+Send the token in the `Authorization` header:
+
+```
+Authorization: Bearer your-secret-token
+```
+
+Use this method in production code.
+
+## Code Examples
+
+### Node.js
+
+<CodeExplainer title="Sending a webhook message with Node.js">
+  <Fragment slot="code">
+```javascript
+const WEBHOOK_URL = "https://bedrock.chat/api/webhooks/abc123def456";
+const TOKEN = "your-secret-token";
+
+const message = {
+  content: "Hello from my first webhook!",
+  username: "My Bot",
+  avatar_url: "https://example.com/bot-face.png"
+};
+
+// POST the message with Bearer token auth
+const response = await fetch(WEBHOOK_URL, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${TOKEN}`
+  },
+  body: JSON.stringify(message)
+});
+
+const result = await response.json();
+console.log(result);
+// { success: true, messageId: "some-unique-id" }
+```
+  </Fragment>
+  <Fragment slot="explanation">
+    Sends a message to the webhook URL using Bearer token authentication. The response includes a `success` flag and the posted message's ID.
+  </Fragment>
+</CodeExplainer>
+
+### curl
+
+```bash
+curl -X POST "https://bedrock.chat/api/webhooks/abc123def456" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-secret-token" \
+  -d '{"content": "Hello from curl!"}'
+```
+
+<TryIt>
+  Create a webhook on a test server, copy the URL and token, then run the curl command above with your values.
+</TryIt>
+
+## Rate Limits
+
+- **1 request per second** per webhook
+- **15 webhooks maximum** per server
+
+Requests that exceed the rate limit return a `429` status. Wait one second and retry.
+
+## Response Format
+
+**Success (200):**
+
+```json
+{
+  "success": true,
+  "messageId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+}
+```
+
+**Error (4xx):**
+
+```json
+{
+  "error": "Content is required and must be 1-4000 characters"
+}
+```
+
+## Common Errors
+
+| Problem | Cause | Fix |
+|---|---|---|
+| `401 Unauthorized` | Missing or invalid token | Check token value and auth method |
+| `400 Bad Request` | Empty or oversized `content` | Ensure 1--4,000 characters |
+| `429 Too Many Requests` | Rate limit exceeded | Wait 1 second between requests |
+| `404 Not Found` | Incorrect webhook URL | Verify the full URL was copied |

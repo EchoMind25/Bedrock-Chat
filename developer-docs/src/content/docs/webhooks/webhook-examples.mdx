@@ -1,0 +1,274 @@
+---
+title: "Webhook Examples"
+description: "Working examples of incoming webhooks you can build today."
+---
+
+import CodeExplainer from '../../../components/CodeExplainer.astro';
+import TryIt from '../../../components/TryIt.astro';
+import StepByStep from '../../../components/StepByStep.astro';
+
+All examples below use **incoming webhooks** and work today. Each one sends messages to a channel in your Bedrock Chat server.
+
+---
+
+## Example 1: Daily Quote Bot
+
+Posts a random quote from a predefined list.
+
+<CodeExplainer title="Daily Quote Bot (Node.js)">
+  <Fragment slot="code">
+```javascript
+const quotes = [
+  "Believe you can and you are halfway there.",
+  "Every day is a fresh start.",
+  "Small steps lead to big changes."
+];
+
+const WEBHOOK_URL = "https://bedrock.chat/api/webhooks/your-webhook-id";
+const TOKEN = "your-secret-token";
+
+// Pick a random quote
+const todaysQuote = quotes[Math.floor(Math.random() * quotes.length)];
+
+const response = await fetch(WEBHOOK_URL, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${TOKEN}`
+  },
+  body: JSON.stringify({
+    content: `**Quote of the Day**\n\n"${todaysQuote}"`,
+    username: "Daily Quote Bot",
+    avatar_url: "https://example.com/quote-bot.png"
+  })
+});
+
+const result = await response.json();
+console.log("Quote sent:", result);
+```
+  </Fragment>
+  <Fragment slot="explanation">
+    Selects a random quote and posts it to the configured channel. The `username` and `avatar_url` fields override the webhook's defaults.
+  </Fragment>
+</CodeExplainer>
+
+<StepByStep title="Setup">
+
+1. Create a webhook named "Daily Quote Bot" on your server.
+2. Copy the URL and token.
+3. Save this code as `quote-bot.js` and replace the URL and token.
+4. Test with `node quote-bot.js`.
+5. Schedule with cron to run daily.
+
+</StepByStep>
+
+---
+
+## Example 2: GitHub Notification Bot
+
+Forwards GitHub webhook events to a Bedrock Chat channel. Covers pushes, issues, and pull requests.
+
+<CodeExplainer title="GitHub Notification Bot (Node.js + Express)">
+  <Fragment slot="code">
+```javascript
+import express from "express";
+
+const app = express();
+app.use(express.json());
+
+const BEDROCK_URL = "https://bedrock.chat/api/webhooks/your-webhook-id";
+const BEDROCK_TOKEN = "your-secret-token";
+
+app.post("/github-webhook", async (req, res) => {
+  const eventType = req.headers["x-github-event"];
+  const payload = req.body;
+  let message = "";
+
+  if (eventType === "push") {
+    const who = payload.pusher.name;
+    const branch = payload.ref.split("/").pop();
+    message = `**New push** by ${who} to \`${branch}\``;
+  }
+
+  if (eventType === "issues" && payload.action === "opened") {
+    message = `**New issue** by ${payload.issue.user.login}: "${payload.issue.title}"`;
+  }
+
+  if (eventType === "pull_request" && payload.action === "opened") {
+    message = `**New PR** by ${payload.pull_request.user.login}: "${payload.pull_request.title}"`;
+  }
+
+  // Forward to Bedrock Chat if we matched an event
+  if (message) {
+    await fetch(BEDROCK_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${BEDROCK_TOKEN}`
+      },
+      body: JSON.stringify({
+        content: message,
+        username: "GitHub Bot",
+        avatar_url: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+      })
+    });
+  }
+
+  res.status(200).send("OK");
+});
+
+app.listen(3001, () => {
+  console.log("Listening on port 3001");
+});
+```
+  </Fragment>
+  <Fragment slot="explanation">
+    Runs an Express server that receives GitHub webhook events. It maps push, issue, and pull request events to formatted messages and forwards them to Bedrock Chat.
+  </Fragment>
+</CodeExplainer>
+
+<StepByStep title="Setup">
+
+1. Create a webhook on your Bedrock Chat server.
+2. Deploy this code to a publicly reachable server.
+3. In your GitHub repo, go to **Settings > Webhooks** and add `https://your-server/github-webhook`.
+4. Select the events you want (pushes, issues, pull requests).
+
+</StepByStep>
+
+---
+
+## Example 3: Weather Alert Bot
+
+Checks current weather conditions and posts alerts for extreme temperatures or high winds.
+
+<CodeExplainer title="Weather Alert Bot (Node.js)">
+  <Fragment slot="code">
+```javascript
+const WEBHOOK_URL = "https://bedrock.chat/api/webhooks/your-webhook-id";
+const TOKEN = "your-secret-token";
+const WEATHER_API_KEY = "your-weather-api-key";
+const CITY = "New York";
+
+// Fetch current weather from OpenWeatherMap
+const weatherResponse = await fetch(
+  `https://api.openweathermap.org/data/2.5/weather?q=${CITY}&appid=${WEATHER_API_KEY}&units=imperial`
+);
+const weather = await weatherResponse.json();
+
+const temp = Math.round(weather.main.temp);
+const conditions = weather.weather[0].description;
+const windSpeed = Math.round(weather.wind.speed);
+
+// Check for alert conditions
+let alert = null;
+if (temp > 100) alert = `Extreme heat warning: ${temp}F`;
+if (temp < 10) alert = `Extreme cold warning: ${temp}F`;
+if (windSpeed > 40) alert = `High wind warning: ${windSpeed} mph`;
+
+if (alert) {
+  await fetch(WEBHOOK_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${TOKEN}`
+    },
+    body: JSON.stringify({
+      content: `**Weather Alert for ${CITY}**\n\n${alert}\n\nConditions: ${conditions}`,
+      username: "Weather Bot",
+      avatar_url: "https://example.com/weather-icon.png"
+    })
+  });
+  console.log("Alert sent:", alert);
+} else {
+  console.log(`No alerts. ${CITY}: ${temp}F, ${conditions}`);
+}
+```
+  </Fragment>
+  <Fragment slot="explanation">
+    Queries the OpenWeatherMap API and posts to Bedrock Chat only when conditions exceed defined thresholds. No alert, no message.
+  </Fragment>
+</CodeExplainer>
+
+<StepByStep title="Setup">
+
+1. Get a free API key from [OpenWeatherMap](https://openweathermap.org/api).
+2. Create a webhook on your Bedrock Chat server.
+3. Save as `weather-bot.js` and replace the URL, token, API key, and city.
+4. Schedule with cron to run hourly.
+
+</StepByStep>
+
+---
+
+## Example 4: Announcement Bot
+
+Posts formatted announcements with a custom sender name and avatar. Useful for branded server communications.
+
+<CodeExplainer title="Announcement Bot (Node.js)">
+  <Fragment slot="code">
+```javascript
+const WEBHOOK_URL = "https://bedrock.chat/api/webhooks/your-webhook-id";
+const TOKEN = "your-secret-token";
+
+const title = "Server Maintenance";
+const body = "Maintenance is scheduled for Saturday 2-4 PM EST. Some features may be unavailable.";
+const senderName = "Bedrock Team";
+const senderAvatar = "https://example.com/team-logo.png";
+
+// Build formatted announcement
+const formattedMessage = [
+  `**${title}**`,
+  "",
+  body,
+  "",
+  `-- ${senderName}`
+].join("\n");
+
+const response = await fetch(WEBHOOK_URL, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${TOKEN}`
+  },
+  body: JSON.stringify({
+    content: formattedMessage,
+    username: senderName,
+    avatar_url: senderAvatar
+  })
+});
+
+const result = await response.json();
+if (result.success) {
+  console.log("Posted. Message ID:", result.messageId);
+} else {
+  console.log("Error:", result);
+}
+```
+  </Fragment>
+  <Fragment slot="explanation">
+    Sends a formatted announcement with a custom sender identity. The `username` and `avatar_url` fields override the webhook defaults per message.
+  </Fragment>
+</CodeExplainer>
+
+<StepByStep title="Setup">
+
+1. Create a webhook on your Bedrock Chat server.
+2. Save as `announce.js`.
+3. Update the title, body, and sender details.
+4. Run `node announce.js` when you have an announcement.
+
+</StepByStep>
+
+<TryIt>
+  Send a few messages with different `username` and `avatar_url` values to see per-message sender customization in action.
+</TryIt>
+
+---
+
+## Best Practices
+
+- **Store tokens in environment variables.** Never hardcode secrets in source files.
+- **Check the response.** Verify `success: true` before assuming delivery.
+- **Respect rate limits.** Maximum 1 request per second per webhook.
+- **Test on a private server first.** Validate your integration before deploying to production.

@@ -1,0 +1,225 @@
+---
+title: "Testing Your Bot"
+description: "Validate your bot before going live."
+---
+
+import WhatThisMeans from '../../../components/WhatThisMeans.astro';
+import CodeExplainer from '../../../components/CodeExplainer.astro';
+import StepByStep from '../../../components/StepByStep.astro';
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+
+## Why Test
+
+Testing catches bugs before your users do. A bot that crashes on unexpected input, fails verification, or drops messages will lose trust quickly. Invest time here to avoid debugging in production.
+
+Test your bot for at least **48 hours** before publishing. Some issues only surface over time -- memory leaks, connection drops, and hosting restarts.
+
+---
+
+## Step 1: Test Locally
+
+<StepByStep>
+1. Open your terminal and navigate to your project folder.
+2. Start your bot: `node index.js`
+3. Confirm you see: "Bot is running on port 3000"
+4. Open a second terminal window for sending test requests.
+</StepByStep>
+
+### Send a Test Message
+
+Use curl to simulate a webhook from Bedrock Chat:
+
+```bash
+curl -X POST http://localhost:3000/webhook \
+  -H "Content-Type: application/json" \
+  -d '{"content": "!hello", "username": "TestUser", "channelId": "test-123"}'
+```
+
+Your bot should log the incoming message in the first terminal. If the `!hello` command is configured, it will attempt to send a reply.
+
+Test each command individually: `!hello`, `!help`, `!joke`, `!remind drink water`. Verify that each produces the expected output.
+
+---
+
+## Step 2: Test Verification
+
+Bedrock Chat verifies your bot by sending a challenge string. Your bot must echo it back.
+
+### How verification works
+
+<StepByStep>
+1. You trigger verification from the Bedrock Chat developer dashboard.
+2. Bedrock Chat sends a POST request with `{ "type": "verification", "challenge": "..." }`.
+3. Your bot responds with `{ "challenge": "..." }` (same value).
+4. Bedrock Chat confirms the match and marks your bot as verified.
+</StepByStep>
+
+### Test locally
+
+```bash
+curl -X POST http://localhost:3000/webhook \
+  -H "Content-Type: application/json" \
+  -d '{"type": "verification", "challenge": "test-challenge-123"}'
+```
+
+Expected response: `{"challenge":"test-challenge-123"}`
+
+If your bot returns the correct challenge, verification logic is working.
+
+---
+
+## Step 3: Verify with Bedrock Chat
+
+Once your bot is deployed to a public URL (not `localhost`), you can run real verification.
+
+<StepByStep>
+1. Deploy your bot to a hosting service (Railway, Render, Fly.io, etc.).
+2. Copy the public URL (e.g., `https://my-bot.up.railway.app`).
+3. Open the Bedrock Chat developer dashboard.
+4. Enter your webhook URL: `https://my-bot.up.railway.app/webhook`
+5. Click **"Verify Webhook."**
+6. If your bot responds correctly, the dashboard shows "Verified."
+</StepByStep>
+
+Verification is rate-limited to **3 attempts per minute**. If verification fails, wait a minute before retrying.
+
+---
+
+## Step 4: Validate Signatures
+
+<WhatThisMeans>
+**HMAC-SHA256** is a cryptographic signing algorithm. Bedrock Chat signs each webhook payload so your bot can verify the request is authentic, not forged by a third party.
+</WhatThisMeans>
+
+Bedrock Chat includes an `X-Bedrock-Signature` header with each webhook. Validating this signature is optional but recommended for production bots.
+
+<CodeExplainer>
+```javascript
+const crypto = require('crypto');
+
+const WEBHOOK_SECRET = 'your-webhook-secret';
+
+function verifySignature(body, signature) {
+  // Generate expected signature from payload + secret
+  const expected = 'sha256=' + crypto
+    .createHmac('sha256', WEBHOOK_SECRET)
+    .update(JSON.stringify(body))
+    .digest('hex');
+
+  return expected === signature;
+}
+```
+Computes an HMAC-SHA256 digest of the request body using your webhook secret. If the computed signature matches the `X-Bedrock-Signature` header, the request is authentic.
+</CodeExplainer>
+
+### Using the signature check
+
+```javascript
+app.post('/webhook', async (req, res) => {
+  const signature = req.headers['x-bedrock-signature'];
+
+  // Reject requests with invalid signatures
+  if (signature && !verifySignature(req.body, signature)) {
+    console.log('Invalid signature — rejecting request');
+    res.status(401).json({ error: 'Invalid signature' });
+    return;
+  }
+
+  // ... rest of your bot code
+});
+```
+
+<PrivacyNote>
+Signature validation protects your bot from forged requests. If someone discovers your webhook URL, they cannot send fake commands without knowing your webhook secret.
+</PrivacyNote>
+
+---
+
+## Step 5: Run for 48 Hours
+
+Before publishing, let your bot run continuously for at least 48 hours. Monitor for:
+
+**Uptime.** Check periodically that the bot is still running. Free hosting services may restart your process. Ensure it recovers.
+
+**Correctness.** Send each command multiple times, in different orders. Verify replies are consistent.
+
+**Bad input.** Send messages that are not commands, empty messages, and very long messages. The bot should handle all of them without crashing.
+
+**Rate limits.** Send messages rapidly. Confirm the bot does not exceed 1 message per second and handles `429` responses gracefully.
+
+---
+
+## Edge Cases to Test
+
+Test these inputs to confirm your bot handles them without crashing:
+
+- Empty message (no text)
+- Message with only whitespace
+- Very long message (1000+ characters)
+- HTML/script injection: `<script>alert("hi")</script>`
+- Commands with trailing spaces: `!hello   `
+- Unknown commands: `!notacommand`
+
+---
+
+## Common Testing Mistakes
+
+### Only testing the happy path
+
+Real users send unexpected input. If you only test with well-formed commands, edge cases will crash your bot in production.
+
+### Skipping error scenarios
+
+Disconnect from the network and trigger a command. Your bot should log the error and continue running, not crash.
+
+### Skipping verification testing
+
+Many developers skip this and discover it fails during real verification. Always test the verification flow locally before deploying.
+
+### Ignoring logs
+
+Keep your terminal visible during testing. `console.log` output is your primary debugging tool. Errors in the logs indicate problems that need fixing before you publish.
+
+---
+
+## Pre-publish Checklist
+
+- [ ] Bot starts without errors
+- [ ] All commands respond correctly
+- [ ] Unknown commands do not crash the bot
+- [ ] Empty and malformed messages do not crash the bot
+- [ ] Verification challenge returns the correct response
+- [ ] Network errors are caught (bot does not crash)
+- [ ] Rate limits are respected (1 message/second)
+- [ ] Bot has been running for 48+ hours
+- [ ] Terminal logs show no unexpected errors
+
+---
+
+## Debugging Reference
+
+### Bot crashes on startup
+
+Check the error message in your terminal:
+- Missing `node_modules`: run `npm install`
+- Syntax error: check the line number referenced in the stack trace
+- Port in use: change the port number or stop the conflicting process
+
+### Bot runs but does not respond
+
+- Verify your webhook URL is correct.
+- Verify your bot token is correct.
+- Check terminal logs for error messages.
+- Re-run the curl test from Step 1.
+
+### Verification fails
+
+- Confirm your bot is reachable from the public internet (not `localhost`).
+- Confirm the webhook URL in the dashboard matches your deployed URL.
+- Confirm the response format is `{ "challenge": "..." }`, not `{ "response": "..." }`.
+
+---
+
+## Next Step
+
+Once every item on the checklist passes, your bot is ready for production. Proceed to the [Publishing](/publishing) section to make your bot available to users.

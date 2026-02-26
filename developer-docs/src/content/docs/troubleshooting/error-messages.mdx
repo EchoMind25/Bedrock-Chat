@@ -1,0 +1,249 @@
+---
+title: "Error Messages"
+description: "What error codes mean and how to fix them. Written in plain English."
+---
+
+import WhatThisMeans from '../../../components/WhatThisMeans.astro';
+import StepByStep from '../../../components/StepByStep.astro';
+
+When something goes wrong with an API request, Bedrock Chat sends back an **error code** -- a number that tells you what kind of problem happened. Each code has a specific meaning. This page is a complete reference.
+
+<WhatThisMeans term="status code">
+A **status code** is a three-digit number that a server sends back with every response. Codes in the **200s** mean "everything is fine." Codes in the **400s** mean "you made a mistake in your request." Codes in the **500s** mean "something went wrong on the server's side."
+</WhatThisMeans>
+
+---
+
+## 401 Unauthorized
+
+**What it means:** "Your bot's password (token) is missing or wrong."
+
+Bedrock Chat does not know who your bot is. Either you forgot to include your token, or the token you sent is not valid.
+
+### Common causes
+
+- You forgot to add the `Authorization` header to your request.
+- There is a typo in your token.
+- You are using an old token that has been regenerated.
+- You are using the wrong token (for example, from a different bot).
+
+### How to fix it
+
+<StepByStep title="Fix steps for 401">
+
+1. Check that your request includes an `Authorization` header with the value `Bearer YOUR_TOKEN_HERE`.
+2. Make sure there is a space between "Bearer" and your token.
+3. Double-check that you copied the entire token. Tokens are long, and it is easy to miss the last few characters.
+4. If you recently regenerated your token, make sure you are using the **new** one.
+5. Check that your environment variable is set correctly. Try printing it (temporarily) to make sure it has the right value.
+
+</StepByStep>
+
+```js
+// Correct way to set the Authorization header
+const response = await fetch('https://bedrockchat.com/api/v1/messages', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_TOKEN_HERE',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ content: 'Hello!' })
+});
+```
+
+---
+
+## 403 Forbidden
+
+**What it means:** "Your bot does not have permission to do this."
+
+Your token is valid (Bedrock Chat knows who your bot is), but your bot is not allowed to do what it is trying to do.
+
+### Common causes
+
+- Your bot does not have the right **scopes** (permissions).
+- Your bot is trying to access a channel or server it has not been added to.
+- Your bot is trying to do something that only admins or moderators can do.
+- The bot's role in the server does not have the required permissions.
+
+### How to fix it
+
+<StepByStep title="Fix steps for 403">
+
+1. Check your bot's scopes in the Developer Portal. Make sure it has the permissions it needs (for example, `messages.send` to send messages).
+2. Make sure your bot has been added to the server and channel it is trying to access.
+3. Check if the action requires a special role (like admin). If it does, your bot's role in the server needs that permission.
+4. If you recently changed your bot's scopes, you may need to re-add the bot to the server for the new permissions to take effect.
+
+</StepByStep>
+
+---
+
+## 404 Not Found
+
+**What it means:** "The thing you are looking for does not exist."
+
+You asked for something (a channel, a message, a user, etc.) that Bedrock Chat cannot find.
+
+### Common causes
+
+- The ID in your URL is wrong or has a typo.
+- The channel, message, or server has been deleted.
+- You are using the wrong API endpoint URL.
+- There is a missing or extra `/` in your URL path.
+
+### How to fix it
+
+<StepByStep title="Fix steps for 404">
+
+1. Double-check the ID in your request URL. Copy and paste it from the Developer Portal instead of typing it by hand.
+2. Make sure the resource (channel, message, server) still exists. Someone might have deleted it.
+3. Compare your URL with the API documentation. Make sure every part of the path is correct.
+4. Check for extra or missing slashes. `/api/v1/channels/123` is different from `/api/v1/channels/123/`.
+
+</StepByStep>
+
+---
+
+## 409 Conflict
+
+**What it means:** "Something already exists with that info."
+
+You tried to create something, but it conflicts with something that already exists.
+
+### Common causes
+
+- You are trying to create a bot with a name that is already taken.
+- You are trying to add a webhook to a channel that already has one with the same URL.
+- You are trying to register a command that already exists on your bot.
+
+### How to fix it
+
+<StepByStep title="Fix steps for 409">
+
+1. Use a different name or identifier.
+2. Check if the thing you are trying to create already exists. You might just need to update it instead of creating a new one.
+3. If you are re-deploying your bot, check whether your setup code is trying to create things that were already created on a previous run.
+
+</StepByStep>
+
+---
+
+## 429 Rate Limited
+
+**What it means:** "You are sending requests too fast."
+
+Bedrock Chat limits how many requests you can make in a short period of time. This protects the platform from being overloaded.
+
+### What happens
+
+When you hit the rate limit, you get a `429` status code. The response includes a special header called `Retry-After` that tells you how many seconds you need to wait before sending another request.
+
+### How to fix it
+
+<StepByStep title="Fix steps for 429">
+
+1. **Read the `Retry-After` header** in the response. It tells you exactly how long to wait (in seconds).
+2. **Wait that many seconds** before sending your next request. Do not just ignore it and try again immediately -- that can make the wait time even longer.
+3. **Add delays between requests** in your code. If you are sending multiple messages in a loop, add at least a 1-second pause between each one.
+4. **Consider using a queue** for high-volume bots. Instead of sending messages immediately, add them to a list and process them one at a time with pauses in between.
+
+</StepByStep>
+
+### How to prevent it
+
+```js
+// Example: Respecting the Retry-After header
+async function makeRequest(url, options) {
+  const response = await fetch(url, options);
+
+  if (response.status === 429) {
+    const retryAfter = response.headers.get('Retry-After');
+    const waitSeconds = parseInt(retryAfter, 10) || 5;
+    console.log(`Rate limited. Waiting ${waitSeconds} seconds...`);
+    await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
+    return makeRequest(url, options); // Try again after waiting
+  }
+
+  return response;
+}
+```
+
+---
+
+## 500 Internal Server Error
+
+**What it means:** "Something went wrong on our end."
+
+This is not your fault. Something unexpected happened on the Bedrock Chat servers.
+
+### What to do
+
+<StepByStep title="Fix steps for 500">
+
+1. **Wait a moment and try again.** Many 500 errors are temporary and go away on their own within a few seconds or minutes.
+2. **Check the Bedrock Chat status page** (if available) to see if there is a known outage.
+3. **Do not spam requests.** If you keep getting 500 errors, do not send the same request over and over. Wait at least 30 seconds between retries.
+4. **Report it.** If the error continues for more than a few minutes, report it in the **#dev-help** channel on the Bedrock Chat community server or through the bug reporting process.
+
+</StepByStep>
+
+---
+
+## Other Error Codes You Might See
+
+### 400 Bad Request
+
+**What it means:** "Your request is formatted incorrectly."
+
+The server understood your request but could not process it because something about the data you sent is wrong.
+
+- Check that your JSON is valid (no missing commas, brackets, or quotes).
+- Check that required fields are included.
+- Check that field values are the right type (for example, a number where a number is expected, not a string).
+
+### 413 Payload Too Large
+
+**What it means:** "The data you sent is too big."
+
+- Messages have a maximum length of 4,000 characters.
+- File uploads have size limits.
+- Reduce the size of what you are sending.
+
+### 503 Service Unavailable
+
+**What it means:** "The server is temporarily overloaded or down for maintenance."
+
+- This is similar to a 500 error but usually means the server is briefly overwhelmed.
+- Wait a minute and try again.
+- Check the status page for maintenance announcements.
+
+---
+
+## Quick Reference Table
+
+| Code | Name | Whose fault? | What to do |
+|---|---|---|---|
+| 400 | Bad Request | Yours | Check your request format and data |
+| 401 | Unauthorized | Yours | Check your token |
+| 403 | Forbidden | Yours | Check your bot's permissions |
+| 404 | Not Found | Yours | Check the URL and IDs |
+| 409 | Conflict | Yours | Use a different name or check for duplicates |
+| 413 | Payload Too Large | Yours | Send less data |
+| 429 | Rate Limited | Yours | Slow down, wait for Retry-After |
+| 500 | Server Error | Ours | Wait and retry, then report if it continues |
+| 503 | Service Unavailable | Ours | Wait and retry |
+
+---
+
+## Tips for Debugging Errors
+
+1. **Always log the full response.** Do not just check the status code. The response body often contains a message that explains exactly what went wrong.
+
+2. **Use `console.log` generously.** When something is not working, add `console.log` statements to print out your request headers, body, and the response you get back.
+
+3. **Compare with the docs.** Open the API Reference side by side with your code. Check that every field name, URL path, and header matches exactly.
+
+4. **Test with a simple tool first.** Before debugging your code, try the same request using curl, Postman, or the VS Code REST Client. If it works in those tools but not in your code, the problem is in your code. If it does not work anywhere, the problem might be with the API or your token.
+
+5. **Ask for help.** If you have been stuck for more than 30 minutes, head over to [Getting Help](/troubleshooting/getting-help/). Somebody in the community has probably seen the same error before.

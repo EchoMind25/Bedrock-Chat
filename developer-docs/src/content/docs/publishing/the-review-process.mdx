@@ -1,0 +1,163 @@
+---
+title: "The Review Process"
+description: "What happens after you submit your bot for review."
+---
+
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+
+## Status Lifecycle
+
+Your bot moves through these statuses during and after review:
+
+| Status | Meaning |
+|---|---|
+| **Pending** | In the queue. No reviewer has been assigned yet. |
+| **Under Review** | A reviewer is actively evaluating your bot. |
+| **Approved** | Your bot passed review and is live. |
+| **Rejected** | Your bot did not pass. Review notes explain what to fix. |
+| **Suspended** | Your bot was live but was taken down due to a violation. |
+
+Most bots move from **pending** to **approved** or **rejected**. The **suspended** status only applies to previously approved bots.
+
+## Review Timeline
+
+Review times depend on queue volume:
+
+- **Most bots:** 1 to 3 business days.
+- **Simple bots** (webhook-only): often faster.
+- **Complex bots:** may take longer.
+
+You receive a notification when the review is complete. No need to check manually.
+
+## What Reviewers Evaluate
+
+A human reviewer evaluates your bot. Here is what they check.
+
+### 1. Functionality
+
+The reviewer tests your bot to confirm:
+
+- It responds to commands.
+- Responses arrive within 5 seconds.
+- Behavior matches the description.
+
+### 2. Description Accuracy
+
+Your bot's name and description must match its actual functionality. A bot named "Weather Bot" that plays trivia will be rejected.
+
+### 3. Privacy Policy
+
+The reviewer reads your privacy policy and checks that:
+
+- The URL loads a real page.
+- The policy describes what data your bot accesses.
+- The policy matches your bot's actual behavior.
+
+<PrivacyNote>
+Your privacy policy is one of the most common reasons for rejection. Make it accurate and specific.
+</PrivacyNote>
+
+### 4. Error Handling
+
+The reviewer will attempt to trigger errors by sending:
+
+- Unexpected commands
+- Very long messages
+- Empty messages
+- Special characters
+
+Your bot should handle all of these without crashing or exposing raw errors.
+
+### 5. Content Guidelines
+
+The reviewer checks compliance with content rules:
+
+- No hate speech
+- No harassment
+- No NSFW content in teen-safe bots
+- No spam behavior
+- No illegal content
+
+### 6. Security
+
+The reviewer verifies:
+
+- Webhook URL uses HTTPS
+- Error messages do not expose secrets
+- Bot does not ask users for passwords or tokens
+
+### 7. Teen Safety
+
+Bots marked as teen-safe receive additional review. The reviewer confirms that no path through your bot's functionality can produce inappropriate content for young users.
+
+<PrivacyNote>
+Bots marked as teen-safe get additional scrutiny. Any content safety issue results in rejection.
+</PrivacyNote>
+
+## Handling Rejection
+
+Rejection is not final. Many bots are rejected on the first submission.
+
+When rejected, you receive:
+
+- A **reason** explaining the issue.
+- **Review notes** with specific items to fix (up to 1,000 characters).
+- Instructions for **resubmission**.
+
+### Resubmission Process
+
+1. Read the review notes carefully.
+2. Fix every issue mentioned.
+3. Test your bot again.
+4. Update your bot's details in the Developer Portal if needed.
+5. Click **Submit for Review** again.
+
+There is no limit on resubmissions.
+
+## Handling Suspension
+
+Suspension applies to bots that were previously approved. A bot can be suspended for:
+
+- Content guideline violations
+- User reports of harmful behavior
+- Extended downtime or unresponsiveness
+- Security vulnerabilities
+- Inaccurate privacy policy
+
+### What Happens on Suspension
+
+- The bot stops working immediately.
+- New installations are blocked.
+- Existing installations stop receiving messages.
+- You receive a notification with the reason.
+
+### Resolving Suspension
+
+1. Read the suspension reason in the Developer Portal.
+2. Fix the underlying issue.
+3. Contact the review team through the Developer Portal.
+4. Explain what was fixed and how you will prevent recurrence.
+5. Wait for re-review.
+
+Repeated suspensions may result in developer account review.
+
+## Review Tips
+
+To improve your chances of first-time approval:
+
+- **Test every command** before submitting.
+- **Write a clear description** that matches your bot's behavior.
+- **Customize your privacy policy.** Do not submit an unedited template.
+- **Handle errors gracefully.** No raw errors in user-facing messages.
+- **Keep your bot online** during the review period.
+- **Set the teen-safe flag accurately.** Do not mark as teen-safe if it is not.
+
+## Review Notes
+
+When a reviewer finishes, they write notes explaining their decision. Notes can be up to **1,000 characters** and are visible in your Developer Portal. They list specific issues on rejection and may include improvement suggestions on approval.
+
+## What's Next
+
+Learn what to do after your bot is approved and live.
+
+**Next up:** [After Approval](/publishing/after-approval)

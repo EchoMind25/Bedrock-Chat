@@ -1,0 +1,185 @@
+---
+title: "After Approval"
+description: "What to do after your bot is approved and live on Bedrock Chat."
+---
+
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+import StepByStep from '../../../components/StepByStep.astro';
+
+## Your Bot Is Live
+
+After approval, your bot appears in the Bedrock Chat bot directory. Server owners can browse the directory and install your bot.
+
+What changes:
+
+- Your bot is **visible** to all Bedrock Chat users.
+- Server owners can **install** it on their servers.
+- Your bot's profile displays its name, description, and privacy policy.
+- Install count is visible in your Developer Portal.
+
+## Tracking Installs
+
+View your install count in the **Developer Portal** by clicking on your bot. This number reflects how many servers currently have your bot installed.
+
+## Updating Your Bot
+
+You can update your bot at any time after approval.
+
+### Updating via the Developer Portal
+
+<StepByStep title="Update via the Developer Portal">
+
+1. Go to the **Developer Portal**.
+2. Click on your bot.
+3. Modify the fields you want to update.
+4. Click **Save Changes**.
+
+</StepByStep>
+
+Some changes apply immediately. Others require re-review:
+
+| Change | Requires Re-review |
+|---|---|
+| Description | No |
+| Avatar/picture | No |
+| Privacy policy URL | No (keep it accurate) |
+| Bot name | Yes |
+| Webhook URL | Yes |
+| Scopes/permissions | Yes |
+| Teen-safe flag | Yes |
+
+Changes that require re-review set your bot's status to **pending**. Your bot continues to operate with its previous configuration while the review is in progress.
+
+### Updating via the API
+
+Update your bot with a PATCH request:
+
+```javascript
+// Replace BOT_ID with your actual bot ID
+const updateUrl = "https://bedrock.chat/api/platform/bots/YOUR_BOT_ID";
+
+const response = await fetch(updateUrl, {
+  method: "PATCH",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer your-auth-token"
+  },
+  body: JSON.stringify({
+    description: "My updated bot description."
+  })
+});
+
+const result = await response.json();
+console.log("Bot updated:", result);
+```
+
+Include only the fields you want to change.
+
+## Changing Your Webhook URL
+
+Webhook URL changes require verification and re-review.
+
+<StepByStep title="Change Your Webhook URL">
+
+1. Go to the **Developer Portal**.
+2. Click on your bot.
+3. Enter the new **webhook URL** (must be HTTPS).
+4. Click **Verify Webhook** to test the new URL.
+5. Click **Save Changes**.
+6. Wait for re-review.
+
+</StepByStep>
+
+Your bot continues using the old URL until the new one is approved. Do not disable the old URL until the change is approved.
+
+## Handling Suspension
+
+Approved bots can be suspended for policy violations. Common causes:
+
+- **Content violations.** Bot started producing content that breaks platform rules.
+- **User reports.** Multiple users reported the bot for harmful behavior.
+- **Extended downtime.** Bot stopped responding for a prolonged period.
+- **Security issues.** A vulnerability was discovered.
+- **Privacy violations.** Bot collected data it was not approved for.
+
+### Resolving Suspension
+
+<StepByStep title="Resolving a Suspension">
+
+1. Read the suspension notice in your Developer Portal.
+2. Identify the root cause.
+3. Fix the issue completely.
+4. Test the fix.
+5. Contact the review team through the Developer Portal.
+6. Explain the fix and your plan to prevent recurrence.
+7. Wait for re-review.
+
+</StepByStep>
+
+<PrivacyNote>
+Privacy violation suspensions may require you to delete improperly collected data. The review team will specify what is needed. Repeated privacy violations can result in permanent removal.
+</PrivacyNote>
+
+## Ongoing Responsibilities
+
+### Uptime
+
+Server owners depend on your bot. Minimize downtime. If maintenance is necessary, keep it brief.
+
+### Privacy Policy Maintenance
+
+Update your privacy policy whenever your bot's data practices change. The policy must always reflect current behavior.
+
+### Issue Response
+
+Address user reports promptly. Bots with unresolved issues may be suspended.
+
+### Rate Limits
+
+Stay within platform rate limits:
+
+- **1 message per second** per webhook
+- **15 webhooks maximum** per server
+
+Contact the Bedrock Chat team if you need higher limits.
+
+### Content Guidelines
+
+Content rules apply permanently, not just during review:
+
+- No hate speech
+- No harassment
+- No NSFW content in teen-safe servers
+- No spam
+- No illegal content
+
+### Error Monitoring
+
+Check your bot's logs regularly. Fix errors before they are reported by users.
+
+## Removing Your Bot
+
+To remove your bot from the directory, go to the Developer Portal, click on your bot, and select **Remove from Directory**.
+
+This action:
+
+- Removes your bot from the directory
+- Uninstalls it from all servers
+- Stops all webhook messages
+
+Removal is permanent. Returning to the directory requires a new submission and review.
+
+## Quick Reference
+
+| Task | Frequency |
+|---|---|
+| Check install count | As needed |
+| Monitor logs for errors | Weekly |
+| Update privacy policy | When bot behavior changes |
+| Respond to user reports | As soon as possible |
+| Test after code changes | After every deploy |
+| Review content guidelines | Periodically |
+
+## What's Next
+
+This is the final page in the Publishing section. For a full reference of the platform's privacy model and technical constraints, revisit the [Privacy and Rules](/privacy-and-rules/our-privacy-promise) section.

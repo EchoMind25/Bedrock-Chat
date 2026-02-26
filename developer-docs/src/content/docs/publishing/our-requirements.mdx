@@ -1,0 +1,190 @@
+---
+title: "Our Requirements"
+description: "What your bot needs before it can be published on Bedrock Chat."
+---
+
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+import WhatThisMeans from '../../../components/WhatThisMeans.astro';
+
+## Pre-Submission Requirements
+
+Before your bot can go live, it must pass a review. Every item below is checked during the review process. Address each one before submitting.
+
+### Checklist
+
+- [ ] Clear bot name (2 to 100 characters)
+- [ ] Description (up to 500 characters)
+- [ ] Privacy policy URL
+- [ ] DPA accepted
+- [ ] Teen-safe flag set correctly
+- [ ] HTTPS webhook URL (for webhook bots)
+- [ ] No personal information collection
+- [ ] 5-second command response time
+- [ ] Graceful error handling
+- [ ] Content guidelines compliance
+- [ ] No hardcoded secrets or API keys
+- [ ] 48 hours of testing without issues
+
+---
+
+## Bot Name
+
+Your bot needs a clear, descriptive name between 2 and 100 characters.
+
+**Good names:** "Weather Helper", "Quiz Night Bot", "Daily Reminder"
+
+**Names that will be rejected:** single characters, random strings, offensive or misleading names.
+
+## Description
+
+Write a description of what your bot does in up to **500 characters**. Cover what the bot does, who it is for, and what commands it supports.
+
+## Privacy Policy URL
+
+Provide a link to your privacy policy. This must be a working web page (not a file download or blank page) that explains:
+
+- What data your bot can see
+- What data your bot stores, if any
+- How long you retain data
+- How users can request data deletion
+
+<PrivacyNote>
+Every bot must have a privacy policy, even if it collects nothing. In that case, your policy states that no personal data is collected.
+</PrivacyNote>
+
+## DPA Acceptance
+
+You must accept the Data Processing Agreement before submitting.
+
+<WhatThisMeans term="DPA">
+A **Data Processing Agreement** (DPA) is a legally binding agreement about how you handle user data. Accepting it is required by privacy laws in many countries.
+</WhatThisMeans>
+
+The DPA is accepted via a checkbox during the submission process. You cannot submit without it.
+
+## Teen-Safe Flag
+
+Set the teen-safe flag based on your bot's content:
+
+- **true** -- Your bot is safe for users under 18.
+- **false** -- Your bot contains adult content.
+
+<PrivacyNote>
+Bots that interact with users under 13 must follow COPPA rules. Bots not marked as teen-safe are restricted from servers with young members.
+</PrivacyNote>
+
+<WhatThisMeans term="COPPA">
+**COPPA** (Children's Online Privacy Protection Act) is a United States law that protects children under 13 online. It limits what data can be collected from minors.
+</WhatThisMeans>
+
+Set this flag accurately. Incorrect settings can result in suspension.
+
+## HTTPS Webhook URL
+
+If your bot uses webhooks, provide an HTTPS URL. HTTP is not accepted.
+
+<WhatThisMeans term="HTTPS">
+**HTTPS** is the secure version of HTTP. All data sent between your bot and Bedrock Chat is encrypted in transit.
+</WhatThisMeans>
+
+Requirements:
+- Starts with `https://`
+- Resolves to a live endpoint
+- Responds within 5 seconds
+- Available continuously (for always-on bots)
+
+Hosting platforms like Railway and Render provide HTTPS URLs by default.
+
+## No Personal Information Collection
+
+Your bot must not collect personal information from users, including:
+
+- Real names
+- Email addresses
+- Phone numbers
+- Home addresses
+- School names
+- Photos of users
+
+<PrivacyNote>
+If your bot needs some user data to function (such as a username for a leaderboard), document exactly what you collect in your privacy policy. Collect only what is necessary and delete it when no longer needed.
+</PrivacyNote>
+
+## 5-Second Response Time
+
+Your bot must respond to commands within **5 seconds**. For longer operations, send an acknowledgment message (e.g., "Processing...") immediately, then follow up with the full response.
+
+## Graceful Error Handling
+
+Your bot must not display raw error messages to users.
+
+**Rejected:** `Error: ECONNREFUSED 127.0.0.1:5432 - connection refused`
+
+**Accepted:** `Something went wrong. Please try again later.`
+
+Log errors on your end for debugging. Display a user-friendly message.
+
+## Content Guidelines
+
+Your bot must comply with platform content guidelines:
+
+- **No hate speech** of any kind
+- **No harassment** or bullying
+- **No NSFW content** in teen-safe channels
+- **No spam** or unsolicited mass messages
+- **No illegal content** of any kind
+- **No impersonation** of real people or other bots
+
+Violations result in immediate suspension.
+
+## No Hardcoded Secrets
+
+Never include secrets directly in your code:
+
+- API keys
+- Webhook tokens
+- Database passwords
+- Private keys
+
+Use environment variables instead.
+
+<WhatThisMeans term="environment variable">
+An **environment variable** is a configuration value stored outside your code, read at runtime. This prevents secrets from appearing in source files. Most hosting platforms provide a way to set them.
+</WhatThisMeans>
+
+## 48 Hours of Testing
+
+Test your bot for at least **48 hours** before submitting. During this period, verify:
+
+- No crashes
+- No raw error messages shown to users
+- All commands respond correctly
+- Response times stay under 5 seconds
+- Unexpected inputs are handled without failures
+
+Test on a private server first. Invite others to try edge cases.
+
+---
+
+## Quick Reference
+
+| Requirement | Specification |
+|---|---|
+| Name | 2-100 characters, descriptive |
+| Description | Up to 500 characters |
+| Privacy policy | Working URL |
+| DPA | Accepted |
+| Teen-safe flag | Set correctly for your content |
+| HTTPS URL | Secure webhook URL (webhook bots) |
+| No PII collection | No personal information collected |
+| Response time | Under 5 seconds |
+| Error handling | User-friendly messages only |
+| Content guidelines | No hate, harassment, spam, or illegal content |
+| No hardcoded secrets | Use environment variables |
+| Testing | 48 hours minimum |
+
+## What's Next
+
+Once every item is complete, submit your bot for review.
+
+**Next up:** [Submitting for Review](/publishing/submitting-for-review)

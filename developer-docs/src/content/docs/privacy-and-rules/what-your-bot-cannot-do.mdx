@@ -1,0 +1,124 @@
+---
+title: "What Your Bot Cannot Do"
+description: "Hard limits on bot access that protect user privacy."
+---
+
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+
+## Platform Restrictions
+
+Some data is permanently off-limits to bots. No scope, permission, or workaround can change these restrictions. They are enforced at the server level. Requests for blocked data return an error automatically.
+
+<PrivacyNote>
+Every restriction on this page is **enforced by the platform infrastructure**. These are technical boundaries, not honor-system rules.
+</PrivacyNote>
+
+## Family and Parenting Data
+
+Bedrock Chat includes a Family Accounts feature for parental oversight. All family data is invisible to bots.
+
+### Family Settings
+
+Family account settings are stored in protected tables. Your bot cannot access monitoring levels, family member lists, or family preferences.
+
+<PrivacyNote>
+All tables prefixed with `family_` are inaccessible to bots. No API endpoint or scope can reach them.
+</PrivacyNote>
+
+### Parental Consent Records
+
+When a parent provides consent for a child to use the platform, that record is private. Bots cannot access consent records.
+
+### Keyword Alert Matches
+
+Parents can configure keyword alerts for their children. Your bot cannot see these alerts or the configured keywords.
+
+### Screen Time Data
+
+Bedrock Chat tracks session duration for parental screen time management. This data is not available to bots.
+
+## Private Conversations
+
+### Direct Messages
+
+Direct messages are private conversations between two users. Bots cannot read them. There is no DM scope.
+
+<PrivacyNote>
+The `direct_messages` table is completely blocked from bot access. Even server-wide bot installations do not grant DM access.
+</PrivacyNote>
+
+### Block Lists
+
+When a user blocks another user, that action is private. Bots cannot see who blocked whom.
+
+### Reports
+
+User reports and their details are confidential. Bots cannot access report data.
+
+## Personal Identity Information
+
+### Email Addresses and Phone Numbers
+
+User contact information is stored in the `auth.users` table, which is invisible to bots. No scope exposes it.
+
+<PrivacyNote>
+The `auth.users` table (containing emails and phone numbers) has no bot-accessible API endpoint.
+</PrivacyNote>
+
+### Dates of Birth
+
+User birth dates are used for age verification only. Bots cannot access this field.
+
+### IP Addresses
+
+IP addresses appear in system security logs only. Bots cannot access them.
+
+## Voice Data
+
+### Audio Streams
+
+Bots receive voice metadata (join/leave events) but never receive audio streams. There is no configuration to enable audio access for bots.
+
+<PrivacyNote>
+Bots receive **voice metadata only**. Audio streams are never transmitted to the bot API.
+</PrivacyNote>
+
+## Platform Logs
+
+### Audit Logs
+
+Internal platform audit logs are restricted to platform staff. Bots cannot access them.
+
+## Enforcement
+
+These restrictions have no exceptions. There is no premium tier, special permission, or alternative API that bypasses them.
+
+If your bot requires data from this list, you need to redesign your approach. The review team can suggest alternatives.
+
+## Violation Handling
+
+If a bot attempts to access blocked data, the request is denied and logged. The data is never transmitted. Repeated unauthorized access attempts may result in bot suspension.
+
+## Quick Reference
+
+| Data | Bot Access | Reason |
+|---|---|---|
+| Public channel messages | Yes (with scope) | -- |
+| Direct messages | **No** | Private conversations |
+| Family settings | **No** | Protected parenting data |
+| Parental consent | **No** | Minor protection |
+| Keyword alerts | **No** | Private safety tool |
+| Screen time | **No** | Family management data |
+| Block lists | **No** | Safety tool |
+| Reports | **No** | Confidential |
+| Emails and phone numbers | **No** | Personal contact information |
+| Dates of birth | **No** | Age identification |
+| IP addresses | **No** | Location identification |
+| Voice audio | **No** | No audio access for bots |
+| Audit logs | **No** | Platform staff only |
+
+## What's Next
+
+Learn the rules for protecting young users on Bedrock Chat.
+
+**Next up:** [Protecting Young Users](/privacy-and-rules/protecting-young-users)

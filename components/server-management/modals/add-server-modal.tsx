@@ -158,7 +158,26 @@ export function AddServerModal() {
         console.error("Error creating channels:", chError);
       }
 
-      // 4. Audit log (non-critical, don't block creation)
+      // 4. Create default roles in DB so they persist across reloads
+      const defaultRoles = generateDefaultRoles(serverId);
+      const roleInserts = defaultRoles.map((role) => ({
+        id: role.id,
+        server_id: serverId,
+        name: role.name,
+        color: role.color,
+        permissions: role.permissions,
+        position: role.position,
+        mentionable: role.mentionable,
+        is_default: role.isDefault,
+      }));
+      const { error: roleError } = await supabase
+        .from("server_roles")
+        .insert(roleInserts);
+      if (roleError) {
+        console.error("Error creating default roles:", roleError);
+      }
+
+      // 5. Audit log (non-critical, don't block creation)
       try {
         await supabase.from("audit_log").insert({
           server_id: serverId,
@@ -172,7 +191,7 @@ export function AddServerModal() {
         // Audit log failure is non-critical
       }
 
-      // 5. Build local server and add to store
+      // 6. Build local server and add to store
       const categories = (categoriesData || []).map((cat) => ({
         id: cat.id,
         name: cat.name,

@@ -1,0 +1,192 @@
+---
+title: "Submitting for Review"
+description: "How to submit your bot for approval on Bedrock Chat."
+---
+
+import StepByStep from '../../../components/StepByStep.astro';
+import WhatThisMeans from '../../../components/WhatThisMeans.astro';
+import CodeExplainer from '../../../components/CodeExplainer.astro';
+import PrivacyNote from '../../../components/PrivacyNote.astro';
+import TryIt from '../../../components/TryIt.astro';
+
+## Before You Start
+
+Confirm you have the following ready:
+
+- Bot **name** (2 to 100 characters)
+- **Description** (up to 500 characters)
+- **Privacy policy URL** (working web page)
+- **HTTPS webhook URL** (for webhook bots)
+- At least **48 hours of testing** completed
+
+If anything is missing, see the [requirements page](/publishing/our-requirements) first.
+
+---
+
+## Submitting Through the Developer Portal
+
+<StepByStep title="Submit Your Bot">
+
+### Step 1: Open the Developer Portal
+
+Log into Bedrock Chat. Click your **profile picture** in the bottom left, then click **Developer Portal**.
+
+You need the **developer role** to access this option. If it is not visible, apply for developer access first.
+
+### Step 2: Select Your Bot
+
+You will see a list of your bots. Click the one you want to submit. If you have not created one yet, click **Create New Bot** first.
+
+### Step 3: Complete All Required Fields
+
+Fill in every field:
+
+- **Name** -- A clear name for your bot.
+- **Description** -- What your bot does.
+- **Bot type** -- The category of bot.
+- **Webhook URL** -- Your HTTPS webhook address (for webhook bots).
+- **Privacy policy URL** -- Link to your privacy policy.
+- **Teen-safe** -- Whether your bot is safe for users under 18.
+- **Scopes** -- What permissions your bot needs.
+
+Double-check everything. Errors here delay the review.
+
+### Step 4: Accept the DPA
+
+Check the box to accept the **Data Processing Agreement**. This is required.
+
+<WhatThisMeans term="DPA">
+The **Data Processing Agreement** is your legally binding commitment to handle user data responsibly. It incorporates GDPR and COPPA requirements.
+</WhatThisMeans>
+
+### Step 5: Verify Your Webhook (If Applicable)
+
+For webhook bots, verify your webhook URL by clicking **Verify Webhook**. The verification process:
+
+1. Bedrock Chat sends a **challenge** to your webhook URL.
+2. Your bot responds with the same challenge value.
+3. The request includes an `X-Bedrock-Signature` header.
+4. If the response matches, verification passes.
+
+<WhatThisMeans term="challenge">
+A **challenge** is a verification test. Bedrock Chat sends your bot a random value, and your bot returns the same value. This confirms your bot is listening at the declared URL.
+</WhatThisMeans>
+
+You can retry verification up to **3 times per minute**. If it fails, confirm your bot is running and the URL is correct.
+
+### Step 6: Click Submit for Review
+
+Once everything is complete and verified, click **Submit for Review**. Your bot's status changes to **pending**.
+
+</StepByStep>
+
+<PrivacyNote>
+Ensure your privacy policy accurately reflects your bot's behavior before submitting. Reviewers check for consistency. A mismatch results in rejection.
+</PrivacyNote>
+
+---
+
+## Submitting Through the API
+
+You can also submit your bot programmatically.
+
+<CodeExplainer title="Register a bot via the API">
+  <Fragment slot="code">
+```javascript
+// The API endpoint for bot registration
+const API_URL = "https://bedrock.chat/api/platform/bots";
+
+// All the details about your bot
+const botDetails = {
+  // Your bot's display name (2-100 characters)
+  name: "My Awesome Bot",
+  // What your bot does (up to 500 characters)
+  description: "Posts daily fun facts to your server.",
+  // The type of bot you are creating
+  botType: "webhook",
+  // Your bot's webhook URL (must be HTTPS)
+  webhookUrl: "https://my-bot.example.com/webhook",
+  // What permissions your bot needs
+  scopes: ["messages.send"],
+  // Link to your privacy policy page
+  privacyPolicyUrl: "https://my-bot.example.com/privacy",
+  // You accept the Data Processing Agreement
+  dpaAccepted: true,
+  // Is your bot safe for teens?
+  isTeenSafe: true
+};
+
+// Send the registration request
+const response = await fetch(API_URL, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    // Your developer auth token
+    "Authorization": "Bearer your-auth-token"
+  },
+  body: JSON.stringify(botDetails)
+});
+
+// Check the result
+const result = await response.json();
+console.log("Bot registered:", result.bot);
+```
+  </Fragment>
+  <Fragment slot="explanation">
+    This code sends your bot details to the Bedrock Chat API. On success, you receive a bot object with **pending** status. This endpoint has a rate limit of 5 requests per minute.
+  </Fragment>
+</CodeExplainer>
+
+### Verifying Your Webhook via API
+
+After registration, verify your webhook:
+
+```javascript
+// Replace BOT_ID with your actual bot ID
+const verifyUrl = "https://bedrock.chat/api/platform/bots/YOUR_BOT_ID/verify";
+
+const response = await fetch(verifyUrl, {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer your-auth-token"
+  }
+});
+
+const result = await response.json();
+console.log("Verification result:", result);
+```
+
+Ensure your bot is running before triggering verification.
+
+---
+
+## After Submission
+
+Your bot enters the review queue. Here is what to expect:
+
+- Status changes to **pending**.
+- A human reviewer evaluates your bot.
+- You receive a notification when the review is complete.
+- The reviewer will **approve**, **reject**, or request changes.
+
+Keep your bot online during review. The reviewer will test it.
+
+<TryIt>
+  While waiting for review, run through your bot's functionality one more time. The reviewer will test the same things you tested.
+</TryIt>
+
+## Common Rejection Reasons
+
+| Reason | Details |
+|---|---|
+| Missing privacy policy | URL was broken or page was empty |
+| Webhook not responding | Bot was offline during review |
+| Poor error handling | Raw error messages shown to users |
+| Vague description | Description did not explain what the bot does |
+| Incorrect teen-safe flag | Content did not match the flag setting |
+
+## What's Next
+
+Learn what happens during the review process and how long it takes.
+
+**Next up:** [The Review Process](/publishing/the-review-process)
