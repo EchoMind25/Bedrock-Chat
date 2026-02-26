@@ -27,6 +27,8 @@ export function ServerThemePrompt({
 
 	const handleReject = () => {
 		setServerThemeDecision(serverId, "rejected");
+		// Switch to force_personal so the user's personal settings (including bubble mode) take effect
+		useThemeStore.getState().setOverrideMode("force_personal");
 		onClose();
 	};
 

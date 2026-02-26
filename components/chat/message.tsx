@@ -19,6 +19,7 @@ import { usePresenceStore } from '@/store/presence.store';
 import { useAuthStore } from '@/store/auth.store';
 import { useServerStore } from '@/store/server.store';
 import { useSettingsStore } from '@/store/settings.store';
+import { useThemeStore } from '@/store/theme.store';
 import { useMemberStore } from '@/store/member.store';
 import type { MemberWithProfile } from '@/store/member.store';
 import { useServerEmojiStore } from '@/store/server-emoji.store';
@@ -45,9 +46,12 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 	const showAvatars = useSettingsStore((state) => state.settings?.show_avatars ?? true);
 	const showTimestamps = useSettingsStore((state) => state.settings?.show_timestamps ?? true);
 	const timestampFormat = useSettingsStore((state) => state.settings?.timestamp_format ?? "relative");
-	const messageStyle = useSettingsStore((state) => state.settings?.message_style ?? "flat");
-	const isBubble = messageStyle === "bubble";
-	const isMinimal = messageStyle === "minimal";
+	const rawMessageStyle = useSettingsStore((state) => state.settings?.message_style ?? "flat");
+	const overrideMode = useThemeStore((s) => s.preferences.overrideMode);
+	// In server channels, only apply personal message style when user chose "Force personal theme"
+	const effectiveStyle = overrideMode === "force_personal" ? rawMessageStyle : "flat";
+	const isBubble = effectiveStyle === "bubble";
+	const isMinimal = effectiveStyle === "minimal";
 
 	// Presence-aware status: only re-renders when THIS author's status changes
 	const authorPresenceStatus = usePresenceStore(

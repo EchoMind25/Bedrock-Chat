@@ -708,28 +708,6 @@ body {
   font-family: var(--app-font-family);
 }
 
-/* ── Message style variants ──────────────────────────────── */
-
-[data-message-style="bubble"] .message-content-wrapper {
-  border-radius: 18px;
-  padding: 8px 14px;
-  background: oklch(0.18 0.02 250 / 0.6);
-  max-width: 80%;
-  width: fit-content;
-}
-
-[data-message-style="bubble"] .message-content-wrapper.own-message {
-  background: var(--color-primary);
-  margin-left: auto;
-  color: white;
-}
-
-[data-message-style="minimal"] .message-content-wrapper {
-  border: none;
-  background: transparent;
-  padding: 2px 0;
-}
-
 /* ── Color blind mode filters ────────────────────────────── */
 /* Applied to html so portaled modals/toasts are also filtered */
 
