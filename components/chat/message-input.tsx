@@ -9,6 +9,7 @@ import { usePresenceStore } from '@/store/presence.store';
 import { useAuthStore } from '@/store/auth.store';
 import { uploadFile } from '@/lib/supabase/storage';
 import { toast } from '@/lib/stores/toast-store';
+import { useAnalytics } from '@/hooks/useAnalytics';
 
 interface MessageInputProps {
 	channelId: string;
@@ -27,6 +28,7 @@ export function MessageInput({ channelId, channelName }: MessageInputProps) {
 	const sendMessage = useMessageStore((s) => s.sendMessage);
 	const broadcastTyping = usePresenceStore((s) => s.broadcastTyping);
 	const user = useAuthStore((s) => s.user);
+	const { trackFeature } = useAnalytics();
 
 	// Auto-resize textarea
 	useEffect(() => {
@@ -65,6 +67,7 @@ export function MessageInput({ channelId, channelName }: MessageInputProps) {
 		}
 
 		sendMessage(channelId, content || '', attachmentData);
+		trackFeature('TEXT_MESSAGE_SEND');
 		setContent('');
 
 		// Reset textarea height

@@ -5,7 +5,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
 	title: "Cookie Policy | Bedrock Chat",
 	description:
-		"Learn how Bedrock Chat uses cookies and local storage. We use no third-party tracking, analytics, or advertising cookies.",
+		"Learn how Bedrock Chat uses cookies and local storage. We use no third-party tracking or advertising cookies. Anonymous analytics uses sessionStorage only.",
 };
 
 export default function CookiePolicyPage() {
@@ -31,7 +31,7 @@ export default function CookiePolicyPage() {
 							Cookie Policy
 						</h1>
 						<p className="text-slate-400 text-sm mb-8">
-							Last updated: February 16, 2026
+							Last updated: February 27, 2026
 						</p>
 
 						<h2>1. What Are Cookies and Local Storage?</h2>
@@ -195,6 +195,27 @@ export default function CookiePolicyPage() {
 											Until manual deletion
 										</td>
 									</tr>
+									<tr>
+										<td className="font-mono text-blue-300/60 text-xs">
+											bedrock_analytics_session
+										</td>
+										<td className="text-slate-300">
+											sessionStorage
+										</td>
+										<td className="text-slate-300">
+											A randomly generated anonymous ID
+											(e.g., <code className="text-xs">7f3a9b2c-...</code>)
+											used to group anonymous usage events
+											within a single browser session. This
+											ID is never linked to your account.
+											It is automatically deleted when you
+											close the tab.
+										</td>
+										<td className="text-slate-300">
+											Tab/session only &mdash; deleted on
+											tab close
+										</td>
+									</tr>
 								</tbody>
 							</table>
 						</div>
@@ -211,8 +232,17 @@ export default function CookiePolicyPage() {
 							</li>
 							<li>
 								<strong>Analytics cookies</strong> &mdash; we do
-								not track your behavior across pages or sessions
-								for analytics purposes
+								not use cookies for analytics. We use
+								sessionStorage (which resets when you close the
+								tab) for anonymous usage tracking. Anonymous
+								events cannot be linked to your account. See our{" "}
+								<Link
+									href="/privacy-policy"
+									className="text-primary hover:underline"
+								>
+									Privacy Policy &mdash; Section&nbsp;9
+								</Link>{" "}
+								for full details.
 							</li>
 							<li>
 								<strong>Advertising cookies</strong> &mdash; we

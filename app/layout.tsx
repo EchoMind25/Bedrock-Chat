@@ -4,6 +4,7 @@ import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register"
 import { ConsentBanner } from "@/components/consent/consent-banner";
 import { GlobalEntranceTransition } from "@/components/transitions/global-entrance-transition";
 import { BugReportWidgetWrapper } from "@/components/widget/bug-report-wrapper";
+import { AnalyticsProvider } from "@/providers/AnalyticsProvider";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -58,7 +59,9 @@ export default function RootLayout({
       </head>
       <body className="antialiased touch-manipulation">
         <ServiceWorkerRegister />
-        {children}
+        <AnalyticsProvider>
+          {children}
+        </AnalyticsProvider>
         <ConsentBanner />
         <BugReportWidgetWrapper />
         <GlobalEntranceTransition />

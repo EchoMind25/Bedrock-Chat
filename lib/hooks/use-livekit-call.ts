@@ -5,11 +5,13 @@ import { Room } from "livekit-client";
 import { useVoiceStore } from "@/store/voice.store";
 import { voiceRoomOptions } from "@/lib/voice/livekit-options";
 import { setPrewarmedRoom } from "@/lib/voice/room-ref";
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 export function useLiveKitCall() {
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const roomRef = useRef<Room | null>(null);
+  const { trackFeature } = useAnalytics();
 
   const joinVoiceChannel = useCallback(
     async (
@@ -55,6 +57,7 @@ export function useLiveKitCall() {
           roomName,
           capabilities,
         });
+        trackFeature('VOICE_CHANNEL_JOIN');
       } catch (e) {
         // Clean up pre-warmed room on error
         if (roomRef.current) {
@@ -71,11 +74,13 @@ export function useLiveKitCall() {
         setIsJoining(false);
       }
     },
-    [],
+    [trackFeature],
   );
 
   const leaveVoiceChannel = useCallback(
     async (channelId: string, hadVideo = false, hadScreenShare = false) => {
+      trackFeature('VOICE_CHANNEL_LEAVE');
+
       // Log leave event — non-blocking
       fetch("/api/voice/leave", {
         method: "POST",
@@ -94,7 +99,7 @@ export function useLiveKitCall() {
       document.body.style.overflow = "";
       document.body.style.pointerEvents = "";
     },
-    [],
+    [trackFeature],
   );
 
   return { joinVoiceChannel, leaveVoiceChannel, isJoining, error };

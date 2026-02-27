@@ -21,7 +21,7 @@ export default function TermsOfServicePage() {
 							Terms of Service
 						</h1>
 						<p className="text-slate-400 text-sm mb-8">
-							Last updated: February 16, 2026
+							Last updated: February 27, 2026
 						</p>
 
 						<p>
@@ -55,7 +55,7 @@ export default function TermsOfServicePage() {
 								U.S. law (COPPA).
 							</li>
 							<li>
-								<strong>Ages 13--17:</strong> You can create
+								<strong>Ages 13&ndash;17:</strong> You can create
 								your own account. We strongly encourage using a
 								Family Account so your parents can help keep you
 								safe.
@@ -82,10 +82,10 @@ export default function TermsOfServicePage() {
 						<ul>
 							<li>
 								Provide accurate information (you don&apos;t
-								need a government ID -- just a valid email and a
+								need a government ID &mdash; just a valid email and a
 								birthdate for age verification)
 							</li>
-							<li>One account per person -- no sharing accounts</li>
+							<li>One account per person &mdash; no sharing accounts</li>
 							<li>
 								Choose a strong password and keep it private
 							</li>
@@ -119,21 +119,21 @@ export default function TermsOfServicePage() {
 						</p>
 						<ul>
 							<li>
-								<strong>Be respectful</strong> -- disagree
+								<strong>Be respectful</strong> &mdash; disagree
 								without being cruel
 							</li>
 							<li>
-								<strong>Follow the law</strong> -- don&apos;t
+								<strong>Follow the law</strong> &mdash; don&apos;t
 								use Bedrock Chat to do anything illegal where
 								you live
 							</li>
 							<li>
-								<strong>Respect server rules</strong> -- server
+								<strong>Respect server rules</strong> &mdash; server
 								owners set their own community standards, and
 								you should follow them
 							</li>
 							<li>
-								<strong>Don&apos;t game the system</strong> --
+								<strong>Don&apos;t game the system</strong> &mdash;
 								don&apos;t try to bypass security measures, rate
 								limits, or moderation tools
 							</li>
@@ -141,7 +141,7 @@ export default function TermsOfServicePage() {
 						<p>
 							We respect gaming culture. Friendly trash talk and
 							competitive banter are part of the experience. But
-							there&apos;s a line between banter and harassment --
+							there&apos;s a line between banter and harassment &mdash;
 							and you know where it is.
 						</p>
 
@@ -157,16 +157,16 @@ export default function TermsOfServicePage() {
 									Sharing child sexual abuse material (CSAM)
 									or exploiting minors
 								</strong>{" "}
-								in any way -- this results in permanent ban and
+								in any way &mdash; this results in permanent ban and
 								a report to law enforcement
 							</li>
 							<li>
 								<strong>Harassment, bullying, or threats</strong>{" "}
-								-- targeted abuse, hate speech, or threats of
+								&mdash; targeted abuse, hate speech, or threats of
 								violence against any person or group
 							</li>
 							<li>
-								<strong>Doxxing</strong> -- sharing
+								<strong>Doxxing</strong> &mdash; sharing
 								someone&apos;s private information (real name,
 								address, phone number, etc.) without their
 								consent
@@ -175,35 +175,35 @@ export default function TermsOfServicePage() {
 								<strong>
 									Self-harm or suicide encouragement
 								</strong>{" "}
-								-- content that promotes or glorifies self-harm
+								&mdash; content that promotes or glorifies self-harm
 							</li>
 							<li>
-								<strong>Illegal sales</strong> -- drugs,
+								<strong>Illegal sales</strong> &mdash; drugs,
 								weapons, stolen goods, or any other illegal
 								transactions
 							</li>
 							<li>
-								<strong>Scams, spam, or phishing</strong> --
+								<strong>Scams, spam, or phishing</strong> &mdash;
 								tricking people into giving up personal
 								information or money
 							</li>
 							<li>
-								<strong>Malware or hacking</strong> --
+								<strong>Malware or hacking</strong> &mdash;
 								distributing harmful software or attempting to
 								exploit vulnerabilities in Bedrock Chat or other
 								users&apos; systems
 							</li>
 							<li>
-								<strong>Impersonation</strong> -- pretending to
+								<strong>Impersonation</strong> &mdash; pretending to
 								be another user, a Bedrock employee, or any
 								other real person
 							</li>
 							<li>
-								<strong>Ban evasion</strong> -- creating new
+								<strong>Ban evasion</strong> &mdash; creating new
 								accounts to get around a suspension or ban
 							</li>
 							<li>
-								<strong>Unauthorized bots</strong> -- running
+								<strong>Unauthorized bots</strong> &mdash; running
 								automated tools or bots without explicit
 								permission
 							</li>
@@ -271,7 +271,7 @@ export default function TermsOfServicePage() {
 						<h3>5.3 What Parents Cannot Do</h3>
 						<ul>
 							<li>
-								<strong>Monitor secretly</strong> -- a badge is
+								<strong>Monitor secretly</strong> &mdash; a badge is
 								always visible to the teen and their friends
 								showing that monitoring is active
 							</li>
@@ -282,7 +282,7 @@ export default function TermsOfServicePage() {
 								with others or use it for non-safety purposes
 							</li>
 							<li>
-								<strong>Prevent dissolution</strong> -- when the
+								<strong>Prevent dissolution</strong> &mdash; when the
 								teen turns 18, they can dissolve the Family
 								Account on their own
 							</li>
@@ -292,7 +292,7 @@ export default function TermsOfServicePage() {
 						<ul>
 							<li>
 								<strong>Transparency:</strong> You always know
-								your monitoring level -- it&apos;s visible in
+								your monitoring level &mdash; it&apos;s visible in
 								your Settings
 							</li>
 							<li>
@@ -318,6 +318,21 @@ export default function TermsOfServicePage() {
 							data at any time. We do not serve ads to children or
 							collect data beyond what&apos;s needed to provide
 							the service.
+						</p>
+						<p>
+							<strong>Anonymous analytics is completely disabled
+							for users under 13.</strong> No usage events, no
+							session tokens, no collection of any kind. For users
+							ages 13&ndash;15, only anonymized page views are
+							collected (no feature tracking, no performance
+							metrics tied to their sessions). See our{" "}
+							<Link
+								href="/privacy-policy"
+								className="text-primary hover:underline"
+							>
+								Privacy Policy
+							</Link>{" "}
+							for full details.
 						</p>
 
 						<h2>6. Content &amp; Intellectual Property</h2>
@@ -375,7 +390,7 @@ export default function TermsOfServicePage() {
 						<ul>
 							<li>
 								<strong>End-to-end encryption:</strong> Your
-								private messages are encrypted using AES-GCM --
+								private messages are encrypted using AES-GCM &mdash;
 								we cannot read them
 							</li>
 							<li>
@@ -386,6 +401,12 @@ export default function TermsOfServicePage() {
 								<strong>No ad trackers:</strong> We don&apos;t
 								use advertising pixels, hidden trackers, or
 								surveillance technology
+							</li>
+							<li>
+								<strong>Anonymous analytics:</strong> We collect
+								anonymous usage patterns to improve the app &mdash;
+								data that cannot identify you. You can opt out
+								anytime in Settings &rarr; Privacy &amp; Analytics
 							</li>
 							<li>
 								<strong>Data minimization:</strong> We only
@@ -409,33 +430,103 @@ export default function TermsOfServicePage() {
 							</li>
 						</ul>
 						<p>
-							No government IDs. No facial scans. No tracking.
-							That&apos;s the Bedrock promise.
+							No government IDs. No facial scans. No personal
+							tracking. That&apos;s the Bedrock promise.
 						</p>
 
-						<h2>8. Voice Chat &amp; Communications</h2>
+						<h2>8. Anonymous Analytics &amp; Improvement Data</h2>
+						<p>
+							We collect anonymous usage data to improve Bedrock
+							Chat. This data:
+						</p>
+						<ul>
+							<li>
+								<strong>Cannot identify you</strong> or any
+								specific user &mdash; every session uses a random ID
+								that disappears when you close your browser
+							</li>
+							<li>
+								Is <strong>automatically deleted after 30 days</strong>{" "}
+								(only statistical summaries are kept after that)
+							</li>
+							<li>
+								Is <strong>never shared with third parties</strong>{" "}
+								&mdash; it lives exclusively on our own servers
+							</li>
+							<li>
+								Can be <strong>turned off anytime</strong> in
+								Settings &rarr; Privacy &amp; Analytics, with no
+								impact on your access to the service
+							</li>
+							<li>
+								Is <strong>completely disabled for users under
+								13</strong>
+							</li>
+							<li>
+								Is <strong>limited to page views only for users
+								ages 13&ndash;15</strong>
+							</li>
+						</ul>
+						<p>
+							By using Bedrock Chat, you acknowledge this anonymous
+							data collection. You may opt out at any time without
+							any impact on your use of the service. For complete
+							details, see our{" "}
+							<Link
+								href="/privacy-policy"
+								className="text-primary hover:underline"
+							>
+								Privacy Policy &mdash; Section&nbsp;9
+							</Link>
+							.
+						</p>
+
+						<h2>9. Bug Reports</h2>
+						<p>
+							You may submit bug reports to help improve the
+							service. Bug reports are{" "}
+							<strong>anonymous by default</strong>. You may
+							optionally attach your display name and account ID
+							to a report to enable follow-up &mdash; this is OFF by
+							default and you must actively turn it on. You see
+							exactly what will be shared before you submit.
+						</p>
+						<p>
+							See our{" "}
+							<Link
+								href="/privacy-policy"
+								className="text-primary hover:underline"
+							>
+								Privacy Policy &mdash; Section&nbsp;10
+							</Link>{" "}
+							for complete details on bug report data handling,
+							including what&apos;s included automatically and what
+							requires your opt-in.
+						</p>
+
+						<h2>10. Voice Chat &amp; Communications</h2>
 						<p>
 							Voice chat follows what we call the &ldquo;gamer
-							code&rdquo; -- parents get safety information, but
+							code&rdquo; &mdash; parents get safety information, but
 							what you actually say stays between you and the
 							people in the call.
 						</p>
 
-						<h3>8.1 What We Store</h3>
+						<h3>10.1 What We Store</h3>
 						<ul>
 							<li>Who was in the voice chat</li>
 							<li>When it started and ended</li>
 							<li>How long it lasted</li>
 						</ul>
 
-						<h3>8.2 What We Do NOT Store</h3>
+						<h3>10.2 What We Do NOT Store</h3>
 						<ul>
 							<li>Audio recordings</li>
 							<li>Voice transcriptions</li>
 							<li>Summaries of what was said</li>
 						</ul>
 
-						<h3>8.3 Parental Oversight for Minors</h3>
+						<h3>10.3 Parental Oversight for Minors</h3>
 						<p>
 							If you&apos;re on a Family Account, your parent can
 							see who you talked to and for how long. They cannot
@@ -443,7 +534,7 @@ export default function TermsOfServicePage() {
 							oversight without surveillance.
 						</p>
 
-						<h3>8.4 Recording</h3>
+						<h3>10.4 Recording</h3>
 						<p>
 							Bedrock Chat does not record voice calls. If you
 							choose to record a call using external software, you
@@ -452,14 +543,14 @@ export default function TermsOfServicePage() {
 							jurisdiction and will result in account action.
 						</p>
 
-						<h2>9. Moderation &amp; Enforcement</h2>
+						<h2>11. Moderation &amp; Enforcement</h2>
 						<p>
 							We don&apos;t scan all your messages looking for
 							content to flag. Our moderation approach respects
 							your privacy:
 						</p>
 
-						<h3>9.1 How Moderation Works</h3>
+						<h3>11.1 How Moderation Works</h3>
 						<ul>
 							<li>
 								<strong>User reports:</strong> Community members
@@ -473,7 +564,7 @@ export default function TermsOfServicePage() {
 							<li>
 								<strong>AI assistance (opt-in):</strong> Server
 								owners can enable AI-powered moderation to help
-								flag potentially harmful content -- this is
+								flag potentially harmful content &mdash; this is
 								always opt-in, never forced
 							</li>
 							<li>
@@ -482,7 +573,7 @@ export default function TermsOfServicePage() {
 							</li>
 						</ul>
 
-						<h3>9.2 What Happens When Rules Are Broken</h3>
+						<h3>11.2 What Happens When Rules Are Broken</h3>
 						<p>
 							Depending on the severity, we may take one or more
 							of the following actions:
@@ -496,7 +587,7 @@ export default function TermsOfServicePage() {
 							<li>Account termination (permanent)</li>
 						</ul>
 
-						<h3>9.3 Appeals</h3>
+						<h3>11.3 Appeals</h3>
 						<p>
 							If you believe a moderation action was unfair, you
 							can appeal by emailing{" "}
@@ -511,9 +602,9 @@ export default function TermsOfServicePage() {
 							business days.
 						</p>
 
-						<h2>10. Termination</h2>
+						<h2>12. Termination</h2>
 
-						<h3>10.1 You Can Leave Anytime</h3>
+						<h3>12.1 You Can Leave Anytime</h3>
 						<p>
 							You can delete your account at any time through your
 							account settings or by contacting{" "}
@@ -541,7 +632,7 @@ export default function TermsOfServicePage() {
 							</li>
 						</ul>
 
-						<h3>10.2 We Can Terminate for Violations</h3>
+						<h3>12.2 We Can Terminate for Violations</h3>
 						<p>
 							If you violate these Terms, we may suspend or
 							terminate your account. We&apos;ll try to notify you
@@ -550,15 +641,15 @@ export default function TermsOfServicePage() {
 							orders).
 						</p>
 
-						<h3>10.3 What Survives Termination</h3>
+						<h3>12.3 What Survives Termination</h3>
 						<p>
-							Sections 6 (Intellectual Property), 12
-							(Disclaimers), 13 (Indemnification), and 14
+							Sections 6 (Intellectual Property), 14
+							(Disclaimers), 15 (Indemnification), and 16
 							(Dispute Resolution) continue to apply after your
 							account is terminated.
 						</p>
 
-						<h2>11. Third-Party Services</h2>
+						<h2>13. Third-Party Services</h2>
 						<p>
 							We believe in being upfront about our
 							infrastructure. Right now, Bedrock Chat uses the
@@ -566,15 +657,15 @@ export default function TermsOfServicePage() {
 						</p>
 						<ul>
 							<li>
-								<strong>Supabase</strong> -- database,
+								<strong>Supabase</strong> &mdash; database,
 								authentication, and real-time messaging
 							</li>
 							<li>
-								<strong>LiveKit</strong> -- voice and video
+								<strong>LiveKit</strong> &mdash; voice and video
 								call infrastructure (WebRTC)
 							</li>
 							<li>
-								<strong>Vercel</strong> -- application hosting
+								<strong>Vercel</strong> &mdash; application hosting
 								and content delivery
 							</li>
 						</ul>
@@ -590,12 +681,15 @@ export default function TermsOfServicePage() {
 						</p>
 						<p>
 							We do not use any third-party advertising or
-							analytics services.
+							analytics services. Our analytics system is entirely
+							self-hosted &mdash; your usage data never goes to Google
+							Analytics, Mixpanel, Amplitude, or any other external
+							service.
 						</p>
 
-						<h2>12. Disclaimers &amp; Limitations of Liability</h2>
+						<h2>14. Disclaimers &amp; Limitations of Liability</h2>
 
-						<h3>12.1 The Service Is Provided &ldquo;As Is&rdquo;</h3>
+						<h3>14.1 The Service Is Provided &ldquo;As Is&rdquo;</h3>
 						<p>
 							We work hard to keep Bedrock Chat running smoothly,
 							but we can&apos;t guarantee it will always be
@@ -605,7 +699,7 @@ export default function TermsOfServicePage() {
 							kind, whether express or implied.
 						</p>
 
-						<h3>12.2 What We&apos;re Not Responsible For</h3>
+						<h3>14.2 What We&apos;re Not Responsible For</h3>
 						<ul>
 							<li>
 								Content posted by other users
@@ -627,7 +721,7 @@ export default function TermsOfServicePage() {
 							</li>
 						</ul>
 
-						<h3>12.3 Liability Cap</h3>
+						<h3>14.3 Liability Cap</h3>
 						<p>
 							To the maximum extent permitted by law, Bedrock AI
 							Systems&apos; total liability to you for any claims
@@ -636,7 +730,7 @@ export default function TermsOfServicePage() {
 							$100, whichever is greater.
 						</p>
 
-						<h3>12.4 Force Majeure</h3>
+						<h3>14.4 Force Majeure</h3>
 						<p>
 							We&apos;re not liable for delays or failures caused
 							by events outside our reasonable control, including
@@ -644,7 +738,7 @@ export default function TermsOfServicePage() {
 							actions, or cyberattacks.
 						</p>
 
-						<h2>13. Indemnification</h2>
+						<h2>15. Indemnification</h2>
 						<p>
 							In plain English: if you break these rules and
 							someone sues us because of it, you agree to cover
@@ -669,9 +763,9 @@ export default function TermsOfServicePage() {
 							</li>
 						</ul>
 
-						<h2>14. Dispute Resolution</h2>
+						<h2>16. Dispute Resolution</h2>
 
-						<h3>14.1 Let&apos;s Talk First</h3>
+						<h3>16.1 Let&apos;s Talk First</h3>
 						<p>
 							If you have a dispute with us, please email{" "}
 							<a
@@ -684,29 +778,29 @@ export default function TermsOfServicePage() {
 							within 30 days.
 						</p>
 
-						<h3>14.2 Formal Resolution</h3>
+						<h3>16.2 Formal Resolution</h3>
 						<p>
 							If we can&apos;t resolve it informally, disputes
 							will be settled through binding arbitration on an
 							individual basis. You agree that disputes will be
-							resolved individually -- not as part of a class
+							resolved individually &mdash; not as part of a class
 							action or representative proceeding.
 						</p>
 
-						<h3>14.3 Small Claims Court</h3>
+						<h3>16.3 Small Claims Court</h3>
 						<p>
 							Either party can bring claims in small claims court
 							if the claim qualifies.
 						</p>
 
-						<h3>14.4 Governing Law</h3>
+						<h3>16.4 Governing Law</h3>
 						<p>
 							These Terms are governed by the laws of the State of
 							Delaware, United States, without regard to conflict
 							of law principles.
 						</p>
 
-						<h2>15. General Provisions</h2>
+						<h2>17. General Provisions</h2>
 						<ul>
 							<li>
 								<strong>Entire agreement:</strong> These Terms,
@@ -744,7 +838,7 @@ export default function TermsOfServicePage() {
 							</li>
 						</ul>
 
-						<h2>16. Contact Us</h2>
+						<h2>18. Contact Us</h2>
 						<p>
 							We&apos;re real people, and we read our email.
 							Reach us at:

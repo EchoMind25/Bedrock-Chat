@@ -64,7 +64,10 @@ export function PrivacyTab() {
 				<SettingsRow label="Necessary" description="Authentication, security, and core functionality" disabled>
 					<Toggle checked disabled size="sm" aria-label="Necessary cookies" />
 				</SettingsRow>
-				<SettingsRow label="Analytics" description="Helps us understand usage to improve performance">
+				<SettingsRow
+					label="Analytics"
+					description="Help improve Bedrock Chat with anonymous usage data — which pages you visit, which features you use, app performance metrics. No personal information, message content, voice audio, or IP addresses are ever included."
+				>
 					<Toggle
 						checked={preferences.analytics}
 						onChange={(e) => savePreferences({ analytics: e.target.checked })}
@@ -89,12 +92,18 @@ export function PrivacyTab() {
 					/>
 				</SettingsRow>
 
-				<div className="pt-3">
+				<div className="pt-3 flex flex-col gap-2">
 					<Link
 						href="/privacy-policy"
 						className="text-sm text-primary hover:underline"
 					>
 						Read our Privacy Policy
+					</Link>
+					<Link
+						href="/report-bug"
+						className="text-sm text-slate-400 hover:text-slate-200 hover:underline transition-colors"
+					>
+						Report a bug or issue
 					</Link>
 				</div>
 			</SettingsSection>

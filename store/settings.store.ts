@@ -35,6 +35,64 @@ function clearLocalFallback() {
 	}
 }
 
+// ── Per-device appearance storage ─────────────────────────
+// Appearance settings are stored per-user per-device and survive logout.
+// On first login on a new device, DB values are used (initial sync).
+// Once a user changes any appearance setting, that device becomes independent.
+
+const APPEARANCE_KEYS: (keyof UserSettings)[] = [
+	"theme",
+	"accent_color",
+	"font_family",
+	"message_font_size",
+	"ui_font_size",
+	"line_height",
+	"message_style",
+	"message_density",
+	"compact_mode",
+	"chat_background",
+	"timestamp_format",
+	"bubble_color_sent",
+	"bubble_color_received",
+	"show_avatars",
+	"show_timestamps",
+	"larger_text",
+	"high_contrast",
+	"reduced_motion",
+	"animations_enabled",
+	"animation_speed",
+	"screen_reader_mode",
+	"color_blind_mode",
+	"dyslexia_font",
+	"focus_indicator",
+	"adaptive_theme",
+];
+
+function getDeviceAppearanceKey(userId: string): string {
+	return `bedrock-appearance-${userId}`;
+}
+
+function loadDeviceAppearance(userId: string): Partial<UserSettings> {
+	try {
+		const raw = localStorage.getItem(getDeviceAppearanceKey(userId));
+		return raw ? JSON.parse(raw) : {};
+	} catch {
+		return {};
+	}
+}
+
+function saveDeviceAppearance(userId: string, updates: Partial<UserSettings>) {
+	try {
+		const existing = loadDeviceAppearance(userId);
+		localStorage.setItem(
+			getDeviceAppearanceKey(userId),
+			JSON.stringify({ ...existing, ...updates }),
+		);
+	} catch {
+		// localStorage full or unavailable — silently ignore
+	}
+}
+
 // ── Types ──────────────────────────────────────────────────
 
 export interface UserSettings {
@@ -197,10 +255,14 @@ export const useSettingsStore = create<SettingsState>()(
 					// Grab localStorage fallback for columns not yet in DB
 					const fallback = loadLocalFallback();
 
+					// Device appearance overrides — survive logout and win over DB values
+					// once the user has changed appearance on this device.
+					const deviceAppearance = loadDeviceAppearance(user.id);
+
 					if (error && error.code === "PGRST116") {
 						// Row should exist via trigger. Use local defaults + localStorage fallback.
 						set({
-							settings: { user_id: user.id, ...DEFAULT_SETTINGS, ...fallback } as UserSettings,
+							settings: { user_id: user.id, ...DEFAULT_SETTINGS, ...fallback, ...deviceAppearance } as UserSettings,
 							isLoading: false,
 						});
 						return;
@@ -212,9 +274,10 @@ export const useSettingsStore = create<SettingsState>()(
 						return;
 					}
 
-					// Merge: defaults < DB data < localStorage fallback (for columns not yet in DB)
+					// Merge: defaults < DB data < localStorage fallback < device appearance
+					// deviceAppearance wins for appearance keys — keeps per-device themes independent
 					set({
-						settings: { ...DEFAULT_SETTINGS, ...data, ...fallback } as UserSettings,
+						settings: { ...DEFAULT_SETTINGS, ...data, ...fallback, ...deviceAppearance } as UserSettings,
 						isLoading: false,
 					});
 				} catch (err) {
@@ -235,6 +298,14 @@ export const useSettingsStore = create<SettingsState>()(
 
 				// Always persist to localStorage as fallback
 				saveLocalFallback(updates);
+
+				// Persist appearance changes per-device (survives logout)
+				const appearanceUpdates = Object.fromEntries(
+					Object.entries(updates).filter(([k]) => APPEARANCE_KEYS.includes(k as keyof UserSettings)),
+				) as Partial<UserSettings>;
+				if (Object.keys(appearanceUpdates).length > 0) {
+					saveDeviceAppearance(settings.user_id, appearanceUpdates);
+				}
 
 				try {
 					const supabase = createClient();
@@ -267,6 +338,9 @@ export const useSettingsStore = create<SettingsState>()(
 			clearSettings: () => {
 				clearLocalFallback();
 				set({ settings: null, isLoading: false, error: null });
+				// NOTE: bedrock-appearance-{userId} is intentionally NOT cleared here.
+				// Device appearance preferences survive logout so each device keeps
+				// its own theme independently after the user has customized it.
 			},
 		}),
 		{ name: "SettingsStore" },

@@ -10,6 +10,7 @@ import { useUIStore } from "@/store/ui.store";
 import { useAuthStore } from "@/store/auth.store";
 import { usePlatformRoleStore } from "@/store/platform-role.store";
 import { performFullLogout } from "@/lib/utils/logout";
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 import { ProfileTab } from "./tabs/profile-tab";
 import { AccountTab } from "./tabs/account-tab";
@@ -54,10 +55,18 @@ export function SettingsModal() {
 	const platformRoleLoaded = usePlatformRoleStore((s) => s.isLoaded);
 	const platformIsDeveloper = usePlatformRoleStore((s) => s.isDeveloper());
 	const platformIsStaff = usePlatformRoleStore((s) => s.isStaff());
+	const { trackFeature } = useAnalytics();
 
 	useEffect(() => {
 		setMounted(true);
 	}, []);
+
+	useEffect(() => {
+		if (isOpen) {
+			trackFeature('SETTINGS_OPEN');
+		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [isOpen]);
 
 	// Escape key handler
 	useEffect(() => {
