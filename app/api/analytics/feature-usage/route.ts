@@ -13,12 +13,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 		return NextResponse.json({ error: "start and end required" }, { status: 400 });
 	}
 
-	const { data, error } = await auth.service
-		.schema("analytics")
-		.from("daily_feature_usage")
-		.select("date, feature_name, feature_category, usage_count, unique_sessions, device_category")
-		.gte("date", start)
-		.lte("date", end);
+	const { data, error } = await auth.service.rpc("analytics_get_feature_usage", {
+		p_start: start,
+		p_end: end,
+	});
 
 	if (error) {
 		console.error("[analytics/feature-usage]", error.message, error.code);

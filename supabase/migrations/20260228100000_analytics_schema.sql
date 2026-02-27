@@ -402,3 +402,248 @@ BEGIN
   RETURN result;
 END;
 $$;
+
+-- ============================================================
+-- PUBLIC SCHEMA ACCESSOR FUNCTIONS
+-- Server-side API routes call these via service client .rpc()
+-- without needing 'analytics' schema exposed in PostgREST.
+-- SECURITY DEFINER: runs as function owner (postgres) so it
+-- can access analytics schema tables regardless of exposure.
+-- Each function verifies caller is service_role (server API)
+-- or a verified super_admin before returning data.
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.analytics_get_page_flows(p_start date, p_end date)
+RETURNS TABLE (
+  from_path TEXT,
+  to_path TEXT,
+  transition_count INTEGER,
+  unique_sessions INTEGER,
+  avg_time_on_from_seconds NUMERIC
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF auth.role() != 'service_role' THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND platform_role = 'super_admin'
+    ) THEN
+      RAISE EXCEPTION 'Permission denied';
+    END IF;
+  END IF;
+  RETURN QUERY
+    SELECT dpf.from_path, dpf.to_path, dpf.transition_count, dpf.unique_sessions, dpf.avg_time_on_from_seconds
+    FROM analytics.daily_page_flows dpf
+    WHERE dpf.date >= p_start AND dpf.date <= p_end
+    ORDER BY dpf.transition_count DESC
+    LIMIT 50;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.analytics_get_feature_usage(p_start date, p_end date)
+RETURNS TABLE (
+  date DATE,
+  feature_name TEXT,
+  feature_category TEXT,
+  usage_count INTEGER,
+  unique_sessions INTEGER,
+  device_category TEXT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF auth.role() != 'service_role' THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND platform_role = 'super_admin'
+    ) THEN
+      RAISE EXCEPTION 'Permission denied';
+    END IF;
+  END IF;
+  RETURN QUERY
+    SELECT dfu.date, dfu.feature_name, dfu.feature_category, dfu.usage_count, dfu.unique_sessions, dfu.device_category
+    FROM analytics.daily_feature_usage dfu
+    WHERE dfu.date >= p_start AND dfu.date <= p_end;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.analytics_get_performance(p_start date, p_end date)
+RETURNS TABLE (
+  date DATE,
+  metric_name TEXT,
+  page_path TEXT,
+  p50_ms NUMERIC,
+  p75_ms NUMERIC,
+  p95_ms NUMERIC,
+  p99_ms NUMERIC,
+  sample_count INTEGER,
+  error_count INTEGER
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF auth.role() != 'service_role' THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND platform_role = 'super_admin'
+    ) THEN
+      RAISE EXCEPTION 'Permission denied';
+    END IF;
+  END IF;
+  RETURN QUERY
+    SELECT dp.date, dp.metric_name, dp.page_path, dp.p50_ms, dp.p75_ms, dp.p95_ms, dp.p99_ms, dp.sample_count, dp.error_count
+    FROM analytics.daily_performance dp
+    WHERE dp.date >= p_start AND dp.date <= p_end;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.analytics_get_sessions(p_start date, p_end date)
+RETURNS TABLE (
+  date DATE,
+  total_sessions INTEGER,
+  avg_duration_seconds NUMERIC,
+  median_duration_seconds NUMERIC,
+  avg_pages_per_session NUMERIC,
+  bounce_rate NUMERIC,
+  device_category TEXT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF auth.role() != 'service_role' THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND platform_role = 'super_admin'
+    ) THEN
+      RAISE EXCEPTION 'Permission denied';
+    END IF;
+  END IF;
+  RETURN QUERY
+    SELECT ds.date, ds.total_sessions, ds.avg_duration_seconds, ds.median_duration_seconds, ds.avg_pages_per_session, ds.bounce_rate, ds.device_category
+    FROM analytics.daily_sessions ds
+    WHERE ds.date >= p_start AND ds.date <= p_end
+    ORDER BY ds.date ASC;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.analytics_get_hourly_sessions(p_start date, p_end date)
+RETURNS TABLE (
+  date DATE,
+  hour_utc SMALLINT,
+  active_sessions INTEGER
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF auth.role() != 'service_role' THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND platform_role = 'super_admin'
+    ) THEN
+      RAISE EXCEPTION 'Permission denied';
+    END IF;
+  END IF;
+  RETURN QUERY
+    SELECT has2.date, has2.hour_utc, has2.active_sessions
+    FROM analytics.hourly_active_sessions has2
+    WHERE has2.date >= p_start AND has2.date <= p_end;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.analytics_get_bug_reports(
+  p_severity text DEFAULT NULL,
+  p_category text DEFAULT NULL,
+  p_status text DEFAULT NULL
+)
+RETURNS TABLE (
+  id UUID,
+  session_token TEXT,
+  user_id UUID,
+  user_display_name TEXT,
+  title TEXT,
+  description TEXT,
+  category TEXT,
+  severity TEXT,
+  page_path TEXT,
+  device_category TEXT,
+  viewport_bucket TEXT,
+  browser_family TEXT,
+  os_family TEXT,
+  recent_errors JSONB,
+  screenshot_paths TEXT[],
+  status TEXT,
+  admin_notes TEXT,
+  resolved_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF auth.role() != 'service_role' THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND platform_role = 'super_admin'
+    ) THEN
+      RAISE EXCEPTION 'Permission denied';
+    END IF;
+  END IF;
+  RETURN QUERY
+    SELECT
+      br.id, br.session_token, br.user_id, br.user_display_name,
+      br.title, br.description, br.category, br.severity,
+      br.page_path, br.device_category, br.viewport_bucket,
+      br.browser_family, br.os_family, br.recent_errors,
+      br.screenshot_paths, br.status, br.admin_notes,
+      br.resolved_at, br.created_at
+    FROM analytics.bug_reports br
+    WHERE (p_severity IS NULL OR br.severity = p_severity)
+      AND (p_category IS NULL OR br.category = p_category)
+      AND (p_status IS NULL OR br.status = p_status)
+    ORDER BY br.created_at DESC
+    LIMIT 100;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.analytics_update_bug_report(
+  p_id uuid,
+  p_status text DEFAULT NULL,
+  p_admin_notes text DEFAULT NULL
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF auth.role() != 'service_role' THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND platform_role = 'super_admin'
+    ) THEN
+      RAISE EXCEPTION 'Permission denied';
+    END IF;
+  END IF;
+  UPDATE analytics.bug_reports
+  SET
+    status = COALESCE(p_status, status),
+    admin_notes = COALESCE(p_admin_notes, admin_notes),
+    resolved_at = CASE
+      WHEN p_status = 'resolved' THEN NOW()
+      ELSE resolved_at
+    END
+  WHERE id = p_id;
+END;
+$$;

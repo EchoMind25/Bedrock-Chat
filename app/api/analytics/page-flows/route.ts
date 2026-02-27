@@ -13,14 +13,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 		return NextResponse.json({ error: "start and end required" }, { status: 400 });
 	}
 
-	const { data, error } = await auth.service
-		.schema("analytics")
-		.from("daily_page_flows")
-		.select("from_path, to_path, transition_count, unique_sessions, avg_time_on_from_seconds")
-		.gte("date", start)
-		.lte("date", end)
-		.order("transition_count", { ascending: false })
-		.limit(50);
+	const { data, error } = await auth.service.rpc("analytics_get_page_flows", {
+		p_start: start,
+		p_end: end,
+	});
 
 	if (error) {
 		console.error("[analytics/page-flows]", error.message, error.code);
