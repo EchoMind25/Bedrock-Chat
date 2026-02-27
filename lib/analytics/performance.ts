@@ -88,7 +88,7 @@ export function initPerformanceObserver(track: TrackFn): () => void {
 				defer(() => track("inp", Math.round(interaction.duration)));
 			}
 		});
-		inpObserver.observe({ type: "event", durationThreshold: 40, buffered: true });
+		inpObserver.observe({ type: "event", durationThreshold: 40, buffered: true } as PerformanceObserverInit);
 		observers.push(inpObserver);
 	} catch {
 		// Not supported in all browsers
