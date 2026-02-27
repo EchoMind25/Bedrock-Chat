@@ -617,6 +617,20 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.analytics_run_aggregation(retention_days integer DEFAULT 30)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF auth.role() != 'service_role' THEN
+    RAISE EXCEPTION 'Permission denied: service_role required';
+  END IF;
+  RETURN analytics.aggregate_and_purge(retention_days);
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.analytics_update_bug_report(
   p_id uuid,
   p_status text DEFAULT NULL,

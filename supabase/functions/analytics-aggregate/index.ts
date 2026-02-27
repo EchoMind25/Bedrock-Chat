@@ -37,8 +37,7 @@ Deno.serve(async (_req: Request) => {
 	console.log("[analytics-aggregate] Starting daily aggregation...");
 
 	const { data, error } = await supabase
-		.schema("analytics")
-		.rpc("aggregate_and_purge", { retention_days: 30 });
+		.rpc("analytics_run_aggregation", { retention_days: 30 });
 
 	if (error) {
 		console.error("[analytics-aggregate] Aggregation failed:", error.message, error.code);
