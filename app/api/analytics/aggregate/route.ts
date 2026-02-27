@@ -5,38 +5,14 @@ export async function POST(): Promise<NextResponse> {
 	const auth = await requireSuperAdmin();
 	if (!auth.ok) return auth.response;
 
-	const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-	const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+	const { data, error } = await auth.service.rpc("analytics_run_aggregation", {
+		retention_days: 30,
+	});
 
-	if (!supabaseUrl || !serviceKey) {
-		return NextResponse.json({ error: "Missing configuration" }, { status: 500 });
+	if (error) {
+		console.error("[analytics/aggregate] Aggregation failed:", error.message, error.code);
+		return NextResponse.json({ error: error.message, code: error.code }, { status: 500 });
 	}
 
-	let res: Response;
-	try {
-		res = await fetch(`${supabaseUrl}/functions/v1/analytics-aggregate`, {
-			method: "POST",
-			headers: {
-				Authorization: `Bearer ${serviceKey}`,
-				"Content-Type": "application/json",
-			},
-		});
-	} catch (fetchError) {
-		console.error("[analytics/aggregate] Edge function unreachable:", fetchError);
-		return NextResponse.json({ error: "Edge function unreachable" }, { status: 502 });
-	}
-
-	let json: unknown;
-	try {
-		json = await res.json();
-	} catch {
-		json = {};
-	}
-
-	if (!res.ok) {
-		console.error("[analytics/aggregate] Edge function returned:", res.status, json);
-		return NextResponse.json({ error: "Aggregation failed", detail: json }, { status: 500 });
-	}
-
-	return NextResponse.json({ ok: true, result: json }, { status: 200 });
+	return NextResponse.json({ ok: true, result: data }, { status: 200 });
 }
