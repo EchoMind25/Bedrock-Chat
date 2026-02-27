@@ -344,7 +344,7 @@ BEGIN
   -- ===== AGGREGATE SESSIONS =====
   INSERT INTO analytics.daily_sessions (date, total_sessions, avg_duration_seconds, median_duration_seconds, avg_pages_per_session, bounce_rate, device_category)
   SELECT
-    DATE(MIN(created_at)) AS date,
+    session_date AS date,
     COUNT(DISTINCT session_token) AS total_sessions,
     AVG(session_duration) AS avg_duration,
     PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY session_duration) AS median_duration,
@@ -355,13 +355,14 @@ BEGIN
     SELECT
       session_token,
       device_category,
+      DATE(MIN(created_at)) AS session_date,
       EXTRACT(EPOCH FROM (MAX(created_at) - MIN(created_at))) AS session_duration,
       COUNT(*) FILTER (WHERE event_type = 'page_view') AS page_count
     FROM analytics.raw_events
     WHERE DATE(created_at) < CURRENT_DATE
     GROUP BY session_token, device_category
   ) session_stats
-  GROUP BY DATE, device_category
+  GROUP BY session_date, device_category
   ON CONFLICT (date, device_category)
   DO UPDATE SET
     total_sessions = EXCLUDED.total_sessions,
