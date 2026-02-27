@@ -43,10 +43,10 @@ export function ServerList() {
 	// Mobile: slide-over overlay pattern
 	if (isMobile) {
 		return (
-			<>
-				{/* Dark overlay backdrop */}
-				<AnimatePresence>
-					{isMobileServerListOpen && (
+			<AnimatePresence>
+				{isMobileServerListOpen && (
+					<>
+						{/* Dark overlay backdrop */}
 						<motion.div
 							className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
 							initial={{ opacity: 0 }}
@@ -55,12 +55,8 @@ export function ServerList() {
 							onClick={() => setMobileServerListOpen(false)}
 							aria-hidden="true"
 						/>
-					)}
-				</AnimatePresence>
 
-				{/* Slide-over panel */}
-				<AnimatePresence>
-					{isMobileServerListOpen && (
+						{/* Slide-over panel */}
 						<motion.div
 							className="fixed left-0 top-0 bottom-0 w-[72px] bg-[oklch(0.12_0.02_250)] z-50 flex flex-col items-center py-3 gap-2 overflow-y-auto scrollbar-hide"
 							style={{
@@ -164,9 +160,9 @@ export function ServerList() {
 								</svg>
 							</motion.button>
 						</motion.div>
-					)}
-				</AnimatePresence>
-			</>
+					</>
+				)}
+			</AnimatePresence>
 		);
 	}
 

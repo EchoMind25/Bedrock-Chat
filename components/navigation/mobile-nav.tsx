@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter, usePathname } from "next/navigation";
 import { useUIStore } from "@/store/ui.store";
@@ -43,23 +43,10 @@ export function MobileNav() {
   // Bottom sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const sheetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  // Close sheet on outside tap
-  useEffect(() => {
-    if (!sheetOpen) return;
-    const handlePointerDown = (e: PointerEvent) => {
-      if (sheetRef.current && !sheetRef.current.contains(e.target as Node)) {
-        setSheetOpen(false);
-      }
-    };
-    document.addEventListener("pointerdown", handlePointerDown);
-    return () => document.removeEventListener("pointerdown", handlePointerDown);
-  }, [sheetOpen]);
 
   // Close sheet on route change
   useEffect(() => {
@@ -212,23 +199,27 @@ export function MobileNav() {
         <AnimatePresence>
           {sheetOpen && (
             <>
-              {/* Backdrop */}
+              {/* Backdrop — onClick (not onPointerDown) so child button taps aren't intercepted */}
               <motion.div
                 className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs md:hidden"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
-                onPointerDown={() => setSheetOpen(false)}
+                onClick={() => setSheetOpen(false)}
               />
 
-              {/* Sheet */}
+              {/* Sheet
+                  overflow: clip instead of overflow: hidden — avoids the iOS Safari bug
+                  where overflow:hidden on a CSS-transformed element blocks touch events
+                  on its children. overflow:clip provides the same visual clipping without
+                  the stacking-context side-effects that cause the pointer-event blockage. */}
               <motion.div
-                ref={sheetRef}
-                className="fixed left-0 right-0 z-[61] bg-[oklch(0.18_0.02_250)] border-t border-white/10 rounded-t-2xl shadow-2xl overflow-hidden md:hidden"
+                className="fixed left-0 right-0 z-[61] bg-[oklch(0.18_0.02_250)] border-t border-white/10 rounded-t-2xl shadow-2xl md:hidden"
                 style={{
                   bottom: `calc(56px + env(safe-area-inset-bottom))`,
                   maxHeight: "75vh",
+                  overflow: "clip",
                 }}
                 initial={{ y: 300, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}

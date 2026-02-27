@@ -1,32 +1,35 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
+
+// On the server useLayoutEffect causes a warning, so fall back to useEffect.
+// On the client, useLayoutEffect runs synchronously before paint, which prevents
+// the flash of desktop UI that would otherwise appear on mobile before the media
+// query resolves.
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 /**
  * SSR-safe media query hook
- * Returns false during SSR to prevent hydration mismatch
- * Updates after mount on client with actual media query result
+ * Returns false during SSR to prevent hydration mismatch.
+ * On the client it resolves before the first paint (via useLayoutEffect)
+ * so mobile and desktop layouts never flash-swap on initial render.
  *
  * @param query - Media query string (e.g., "(max-width: 768px)")
  * @returns boolean - Whether the media query matches
  */
 export function useMediaQuery(query: string): boolean {
-  // Start with false during SSR to prevent hydration mismatch
   const [matches, setMatches] = useState(false);
 
-  useEffect(() => {
-    // Modern browsers support matchMedia
+  useIsomorphicLayoutEffect(() => {
     const mediaQuery = window.matchMedia(query);
 
-    // Set initial value
     setMatches(mediaQuery.matches);
 
-    // Handler for changes
     const handler = (event: MediaQueryListEvent) => {
       setMatches(event.matches);
     };
 
-    // Try modern addEventListener first, fallback to deprecated addListener
     if (mediaQuery.addEventListener) {
       mediaQuery.addEventListener("change", handler);
       return () => mediaQuery.removeEventListener("change", handler);
