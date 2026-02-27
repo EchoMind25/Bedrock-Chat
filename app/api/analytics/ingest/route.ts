@@ -181,7 +181,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 	// Insert using service role (bypasses RLS)
 	const supabase = createServiceClient();
 
-	const insertions: Promise<unknown>[] = [];
+	const insertions: PromiseLike<unknown>[] = [];
 
 	if (rows.length > 0) {
 		insertions.push(
