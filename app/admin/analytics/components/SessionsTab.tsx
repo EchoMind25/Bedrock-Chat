@@ -200,7 +200,7 @@ export function SessionsTab() {
 								</Pie>
 								<Tooltip
 									contentStyle={{ background: "oklch(0.15 0.02 285)", border: "1px solid oklch(0.25 0.02 285)", borderRadius: "8px", color: "white", fontSize: "12px" }}
-									formatter={(value: number) => [value.toLocaleString(), "Sessions"]}
+									formatter={(value: number | undefined) => [value?.toLocaleString() ?? "0", "Sessions"]}
 								/>
 								<Legend wrapperStyle={{ fontSize: "11px", color: "#94a3b8" }} />
 							</PieChart>

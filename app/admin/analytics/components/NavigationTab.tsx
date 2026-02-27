@@ -119,7 +119,7 @@ export function NavigationTab() {
 							link={{ stroke: "oklch(0.65 0.25 265 / 0.3)" }}
 						>
 							<Tooltip
-								formatter={(value: number) => [`${value} transitions`, "Count"]}
+								formatter={(value: number | undefined) => [`${value ?? 0} transitions`, "Count"]}
 								contentStyle={{
 									background: "oklch(0.15 0.02 285)",
 									border: "1px solid oklch(0.25 0.02 285)",
