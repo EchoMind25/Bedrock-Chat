@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Shield, UserPlus, UserMinus, Loader2, Bot, Check, X, ExternalLink, AlertTriangle, Rocket } from "lucide-react";
+import { Search, Shield, UserPlus, UserMinus, Loader2, Bot, Check, X, ExternalLink, AlertTriangle, Rocket, BarChart2 } from "lucide-react";
 import { usePlatformRoleStore } from "@/store/platform-role.store";
 import { Badge } from "@/components/ui/badge/badge";
 import { Button } from "@/components/ui/button/button";
@@ -35,6 +35,7 @@ export function AdminTab() {
 				Platform management, role assignment, and audit monitoring.
 			</p>
 
+			{isSuperAdmin && <AnalyticsLink />}
 			{isSuperAdmin && <RoleManagement />}
 			{isAdmin && <BotReviewQueue />}
 			{isSuperAdmin && <DeveloperApplicationQueue />}
@@ -500,6 +501,30 @@ function RecentAuditLog() {
 					</button>
 				</div>
 			)}
+		</SettingsSection>
+	);
+}
+
+function AnalyticsLink() {
+	return (
+		<SettingsSection title="Platform Analytics" description="View traffic, feature usage, performance, and bug reports.">
+			<div className="flex items-center gap-3 p-4 bg-slate-900/50 border border-slate-800/50 rounded-xl">
+				<div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+					<BarChart2 className="w-5 h-5 text-primary" />
+				</div>
+				<div className="min-w-0 flex-1">
+					<p className="text-sm font-medium text-white">Analytics Dashboard</p>
+					<p className="text-xs text-slate-400 mt-0.5">Sessions, navigation funnels, Web Vitals, and bug reports</p>
+				</div>
+				<button
+					type="button"
+					onClick={() => { window.location.href = "/admin/analytics"; }}
+					className="shrink-0 flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary/20 hover:bg-primary/30 border border-primary/30 rounded-lg transition-colors"
+				>
+					Open
+					<ExternalLink className="w-3.5 h-3.5" />
+				</button>
+			</div>
 		</SettingsSection>
 	);
 }
