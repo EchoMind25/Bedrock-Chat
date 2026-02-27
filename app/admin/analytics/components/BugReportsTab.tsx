@@ -2,7 +2,6 @@
 
 import { Fragment, useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { createClient } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils/cn";
 
@@ -58,20 +57,10 @@ export function BugReportsTab() {
 
 	const fetchReports = useCallback(async () => {
 		setIsLoading(true);
-		const supabase = createClient();
-		let query = supabase
-			.schema("analytics")
-			.from("bug_reports")
-			.select("*")
-			.order("created_at", { ascending: false })
-			.limit(100);
-
-		if (filterSeverity !== "all") query = query.eq("severity", filterSeverity);
-		if (filterCategory !== "all") query = query.eq("category", filterCategory);
-		if (filterStatus !== "all") query = query.eq("status", filterStatus);
-
-		const { data, error } = await query;
-		if (!error) setReports((data ?? []) as BugReport[]);
+		const params = new URLSearchParams({ severity: filterSeverity, category: filterCategory, status: filterStatus });
+		const res = await fetch(`/api/analytics/bug-reports?${params.toString()}`);
+		const { data } = (await res.json()) as { data?: BugReport[] };
+		setReports(data ?? []);
 		setIsLoading(false);
 	}, [filterSeverity, filterCategory, filterStatus]);
 
@@ -81,16 +70,11 @@ export function BugReportsTab() {
 
 	const updateReport = useCallback(async (id: string, updates: Partial<Pick<BugReport, "status" | "admin_notes">>) => {
 		setUpdatingId(id);
-		const supabase = createClient();
-		await supabase
-			.schema("analytics")
-			.from("bug_reports")
-			.update({
-				...updates,
-				...(updates.status === "resolved" ? { resolved_at: new Date().toISOString() } : {}),
-			})
-			.eq("id", id);
-
+		await fetch("/api/analytics/bug-reports", {
+			method: "PATCH",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ id, ...updates }),
+		});
 		setReports((prev) =>
 			prev.map((r) => (r.id === id ? { ...r, ...updates } : r)),
 		);

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import {
 	LineChart,
 	Line,
@@ -48,31 +47,17 @@ export function SessionsTab() {
 	const [isLoading, setIsLoading] = useState(true);
 
 	useEffect(() => {
-		const supabase = createClient();
 		setIsLoading(true);
-
-		const startStr = startDate.toISOString().split("T")[0];
-		const endStr = endDate.toISOString().split("T")[0];
-
-		Promise.all([
-			supabase
-				.schema("analytics")
-				.from("daily_sessions")
-				.select("date, total_sessions, avg_duration_seconds, median_duration_seconds, avg_pages_per_session, bounce_rate, device_category")
-				.gte("date", startStr)
-				.lte("date", endStr)
-				.order("date", { ascending: true }),
-			supabase
-				.schema("analytics")
-				.from("hourly_active_sessions")
-				.select("date, hour_utc, active_sessions")
-				.gte("date", startStr)
-				.lte("date", endStr),
-		]).then(([sessRes, hourRes]) => {
-			if (!sessRes.error) setSessions(sessRes.data ?? []);
-			if (!hourRes.error) setHourly(hourRes.data ?? []);
-			setIsLoading(false);
-		});
+		const start = startDate.toISOString().split("T")[0];
+		const end = endDate.toISOString().split("T")[0];
+		fetch(`/api/analytics/sessions?start=${start}&end=${end}`)
+			.then((r) => r.json())
+			.then(({ sessions: s, hourly: h }: { sessions?: DailySession[]; hourly?: HourlySession[] }) => {
+				setSessions(s ?? []);
+				setHourly(h ?? []);
+				setIsLoading(false);
+			})
+			.catch(() => setIsLoading(false));
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [startDate.toISOString(), endDate.toISOString()]);
 

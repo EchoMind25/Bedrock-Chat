@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import {
 	LineChart,
 	Line,
@@ -64,19 +63,16 @@ export function PerformanceTab() {
 	const [isLoading, setIsLoading] = useState(true);
 
 	useEffect(() => {
-		const supabase = createClient();
 		setIsLoading(true);
-
-		supabase
-			.schema("analytics")
-			.from("daily_performance")
-			.select("date, metric_name, page_path, p50_ms, p75_ms, p95_ms, p99_ms, sample_count, error_count")
-			.gte("date", startDate.toISOString().split("T")[0])
-			.lte("date", endDate.toISOString().split("T")[0])
-			.then(({ data, error }) => {
-				if (!error) setMetrics(data ?? []);
+		const start = startDate.toISOString().split("T")[0];
+		const end = endDate.toISOString().split("T")[0];
+		fetch(`/api/analytics/performance?start=${start}&end=${end}`)
+			.then((r) => r.json())
+			.then(({ data }: { data?: PerfMetric[] }) => {
+				setMetrics(data ?? []);
 				setIsLoading(false);
-			});
+			})
+			.catch(() => setIsLoading(false));
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [startDate.toISOString(), endDate.toISOString()]);
 

@@ -1,39 +1,42 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { createServiceClient } from "@/lib/supabase/service";
+import { requireSuperAdmin } from "../_auth";
 
 export async function POST(): Promise<NextResponse> {
-	// Require authentication
-	const serverClient = await createClient();
-	const {
-		data: { user },
-	} = await serverClient.auth.getUser();
+	const { error } = await requireSuperAdmin();
+	if (error) return error;
 
-	if (!user) {
-		return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+	const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+	const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+	if (!supabaseUrl || !serviceKey) {
+		return NextResponse.json({ error: "Missing configuration" }, { status: 500 });
 	}
 
-	// Require super_admin platform role
-	const service = createServiceClient();
-	const { data: profile } = await service
-		.from("profiles")
-		.select("platform_role")
-		.eq("id", user.id)
-		.single();
-
-	if (profile?.platform_role !== "super_admin") {
-		return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+	let res: Response;
+	try {
+		res = await fetch(`${supabaseUrl}/functions/v1/analytics-aggregate`, {
+			method: "POST",
+			headers: {
+				Authorization: `Bearer ${serviceKey}`,
+				"Content-Type": "application/json",
+			},
+		});
+	} catch (fetchError) {
+		console.error("[analytics/aggregate] Edge function unreachable:", fetchError);
+		return NextResponse.json({ error: "Edge function unreachable" }, { status: 502 });
 	}
 
-	// Run aggregation
-	const { data, error } = await service
-		.schema("analytics")
-		.rpc("aggregate_and_purge", { retention_days: 30 });
-
-	if (error) {
-		console.error("[analytics/aggregate] RPC failed:", error.message, error.code);
-		return NextResponse.json({ error: "Aggregation failed", code: error.code }, { status: 500 });
+	let json: unknown;
+	try {
+		json = await res.json();
+	} catch {
+		json = {};
 	}
 
-	return NextResponse.json({ ok: true, result: data }, { status: 200 });
+	if (!res.ok) {
+		console.error("[analytics/aggregate] Edge function returned:", res.status, json);
+		return NextResponse.json({ error: "Aggregation failed", detail: json }, { status: 500 });
+	}
+
+	return NextResponse.json({ ok: true, result: json }, { status: 200 });
 }

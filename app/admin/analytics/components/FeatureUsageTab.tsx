@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import {
 	BarChart,
 	Bar,
@@ -46,19 +45,16 @@ export function FeatureUsageTab() {
 	const [isLoading, setIsLoading] = useState(true);
 
 	useEffect(() => {
-		const supabase = createClient();
 		setIsLoading(true);
-
-		supabase
-			.schema("analytics")
-			.from("daily_feature_usage")
-			.select("date, feature_name, feature_category, usage_count, unique_sessions, device_category")
-			.gte("date", startDate.toISOString().split("T")[0])
-			.lte("date", endDate.toISOString().split("T")[0])
-			.then(({ data, error }) => {
-				if (!error) setUsage(data ?? []);
+		const start = startDate.toISOString().split("T")[0];
+		const end = endDate.toISOString().split("T")[0];
+		fetch(`/api/analytics/feature-usage?start=${start}&end=${end}`)
+			.then((r) => r.json())
+			.then(({ data }: { data?: FeatureUsage[] }) => {
+				setUsage(data ?? []);
 				setIsLoading(false);
-			});
+			})
+			.catch(() => setIsLoading(false));
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [startDate.toISOString(), endDate.toISOString()]);
 
