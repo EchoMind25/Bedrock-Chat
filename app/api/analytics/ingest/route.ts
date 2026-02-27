@@ -124,7 +124,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 		const sanitized: Record<string, unknown> = {};
 		for (const field of ALLOWED_EVENT_FIELDS) {
 			if (field in event) {
-				sanitized[field] = (event as Record<string, unknown>)[field];
+				sanitized[field] = (event as unknown as Record<string, unknown>)[field];
 			}
 		}
 
