@@ -143,7 +143,7 @@ export function FeatureUsageTab() {
 							/>
 							<Tooltip
 								contentStyle={{ background: "oklch(0.15 0.02 285)", border: "1px solid oklch(0.25 0.02 285)", borderRadius: "8px", color: "white", fontSize: "12px" }}
-								formatter={(value: number) => [value.toLocaleString(), "Uses"]}
+								formatter={(value: number | undefined) => [value?.toLocaleString() ?? "0", "Uses"]}
 							/>
 							<Bar dataKey="usage_count" fill="oklch(0.65 0.25 265)" radius={[0, 4, 4, 0]} />
 						</BarChart>
@@ -164,7 +164,7 @@ export function FeatureUsageTab() {
 							/>
 							<Tooltip
 								contentStyle={{ background: "oklch(0.15 0.02 285)", border: "1px solid oklch(0.25 0.02 285)", borderRadius: "8px", color: "white", fontSize: "12px" }}
-								formatter={(value: number) => [value.toLocaleString(), "Sessions"]}
+								formatter={(value: number | undefined) => [value?.toLocaleString() ?? "0", "Sessions"]}
 							/>
 							<Bar dataKey="unique_sessions" fill="oklch(0.70 0.20 145)" radius={[0, 4, 4, 0]} />
 						</BarChart>
@@ -197,7 +197,7 @@ export function FeatureUsageTab() {
 							</Pie>
 							<Tooltip
 								contentStyle={{ background: "oklch(0.15 0.02 285)", border: "1px solid oklch(0.25 0.02 285)", borderRadius: "8px", color: "white", fontSize: "12px" }}
-								formatter={(value: number) => [value.toLocaleString(), "Uses"]}
+								formatter={(value: number | undefined) => [value?.toLocaleString() ?? "0", "Uses"]}
 							/>
 						</PieChart>
 					</ResponsiveContainer>
