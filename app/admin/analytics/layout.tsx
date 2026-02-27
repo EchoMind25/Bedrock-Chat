@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/auth.store";
 import { cn } from "@/lib/utils/cn";
@@ -13,6 +13,98 @@ const NAV_TABS = [
 	{ id: "sessions", label: "Sessions & Engagement", icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" },
 	{ id: "bugs", label: "Bug Reports", icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" },
 ] as const;
+
+type AggregateStatus = "idle" | "loading" | "success" | "error";
+
+function RunAggregationButton() {
+	const [status, setStatus] = useState<AggregateStatus>("idle");
+	const [message, setMessage] = useState<string | null>(null);
+
+	async function handleRun() {
+		setStatus("loading");
+		setMessage(null);
+		try {
+			const res = await fetch("/api/analytics/aggregate", { method: "POST" });
+			const json = await res.json() as { ok?: boolean; result?: { aggregated_through?: string; raw_events_purged?: number }; error?: string };
+			if (!res.ok) {
+				setStatus("error");
+				setMessage(json.error ?? "Unknown error");
+			} else {
+				setStatus("success");
+				const r = json.result;
+				setMessage(
+					r?.aggregated_through
+						? `Done through ${r.aggregated_through} — ${r.raw_events_purged ?? 0} events purged`
+						: "Aggregation complete",
+				);
+			}
+		} catch {
+			setStatus("error");
+			setMessage("Network error");
+		}
+	}
+
+	return (
+		<div className="px-2 pb-2">
+			<button
+				type="button"
+				onClick={handleRun}
+				disabled={status === "loading"}
+				className={cn(
+					"w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
+					status === "loading"
+						? "bg-slate-800/50 text-slate-500 cursor-not-allowed"
+						: status === "success"
+							? "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+							: status === "error"
+								? "bg-red-500/10 text-red-400 hover:bg-red-500/20"
+								: "bg-slate-800/50 text-slate-400 hover:text-slate-200 hover:bg-slate-700/50",
+				)}
+			>
+				<svg
+					width="14"
+					height="14"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					strokeWidth="2"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+					className={cn(status === "loading" && "animate-spin")}
+				>
+					{status === "loading" ? (
+						<path d="M21 12a9 9 0 11-6.219-8.56" />
+					) : status === "success" ? (
+						<path d="M20 6L9 17l-5-5" />
+					) : status === "error" ? (
+						<>
+							<path d="M12 9v4M12 17h.01" />
+							<path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+						</>
+					) : (
+						<>
+							<path d="M5 12H19M19 12l-7-7M19 12l-7 7" />
+						</>
+					)}
+				</svg>
+				<span className="truncate">
+					{status === "loading"
+						? "Aggregating…"
+						: status === "success"
+							? "Aggregation done"
+							: status === "error"
+								? "Failed — retry?"
+								: "Run Aggregation"}
+				</span>
+			</button>
+			{message && (
+				<p className={cn("mt-1 px-3 text-[10px] leading-snug", status === "error" ? "text-red-400" : "text-slate-500")}>
+					{message}
+				</p>
+			)}
+		</div>
+	);
+}
 
 function AnalyticsSidebar({ userEmail }: { userEmail?: string }) {
 	const searchParams = useSearchParams();
@@ -57,6 +149,8 @@ function AnalyticsSidebar({ userEmail }: { userEmail?: string }) {
 					);
 				})}
 			</nav>
+
+			<RunAggregationButton />
 
 			<div className="p-3 border-t border-slate-800/50 space-y-1">
 				<Link href="/admin/bugs">
