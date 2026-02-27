@@ -92,8 +92,17 @@ export default function AdminAnalyticsLayout({
 	const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 	const user = useAuthStore((s) => s.user);
 	const isInitializing = useAuthStore((s) => s.isInitializing);
+	const initAuthListener = useAuthStore((s) => s.initAuthListener);
 
 	const isSuperAdmin = user?.platformRole === "super_admin";
+
+	// This page is outside the main (main) route group so auth is never
+	// initialized by layout-client. Start the listener here instead.
+	useEffect(() => {
+		const unsubscribe = initAuthListener();
+		return unsubscribe;
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
 
 	useEffect(() => {
 		if (isInitializing) return;
