@@ -1,8 +1,9 @@
 -- ============================================================
--- Analytics Schema Migration
+-- Analytics Schema
 -- Privacy-first analytics for Bedrock Chat
 -- 30-day raw event retention, indefinite aggregates
 -- All data isolated in 'analytics' schema with RLS
+-- Idempotent: safe to run multiple times
 -- ============================================================
 
 CREATE SCHEMA IF NOT EXISTS analytics;
@@ -10,35 +11,35 @@ CREATE SCHEMA IF NOT EXISTS analytics;
 -- ============================================================
 -- RAW EVENTS TABLE (purged after 30 days)
 -- ============================================================
-CREATE TABLE analytics.raw_events (
+CREATE TABLE IF NOT EXISTS analytics.raw_events (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  session_token TEXT NOT NULL,          -- anonymous, rotating per session
-  event_type TEXT NOT NULL              -- 'page_view' | 'feature_use' | 'performance' | 'session' | 'error'
+  session_token TEXT NOT NULL,
+  event_type TEXT NOT NULL
     CHECK (event_type IN ('page_view', 'feature_use', 'performance', 'session', 'error')),
-  event_name TEXT NOT NULL,             -- e.g. 'voice_channel_join', 'message_send'
-  event_data JSONB DEFAULT '{}',        -- structured payload (NEVER contains PII)
-  page_path TEXT,                       -- current route, stripped of IDs/params
-  referrer_path TEXT,                   -- previous internal route
-  device_category TEXT                  -- 'desktop' | 'tablet' | 'mobile'
+  event_name TEXT NOT NULL,
+  event_data JSONB DEFAULT '{}',
+  page_path TEXT,
+  referrer_path TEXT,
+  device_category TEXT
     CHECK (device_category IS NULL OR device_category IN ('desktop', 'tablet', 'mobile')),
-  viewport_bucket TEXT                  -- 'sm' | 'md' | 'lg' | 'xl'
+  viewport_bucket TEXT
     CHECK (viewport_bucket IS NULL OR viewport_bucket IN ('sm', 'md', 'lg', 'xl')),
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
-CREATE INDEX idx_raw_events_created ON analytics.raw_events (created_at);
-CREATE INDEX idx_raw_events_type ON analytics.raw_events (event_type, event_name);
-CREATE INDEX idx_raw_events_session ON analytics.raw_events (session_token);
-CREATE INDEX idx_raw_events_page ON analytics.raw_events (page_path);
+CREATE INDEX IF NOT EXISTS idx_raw_events_created ON analytics.raw_events (created_at);
+CREATE INDEX IF NOT EXISTS idx_raw_events_type ON analytics.raw_events (event_type, event_name);
+CREATE INDEX IF NOT EXISTS idx_raw_events_session ON analytics.raw_events (session_token);
+CREATE INDEX IF NOT EXISTS idx_raw_events_page ON analytics.raw_events (page_path);
 
 -- ============================================================
 -- AGGREGATE TABLES (kept indefinitely)
 -- ============================================================
 
-CREATE TABLE analytics.daily_page_flows (
+CREATE TABLE IF NOT EXISTS analytics.daily_page_flows (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   date DATE NOT NULL,
-  from_path TEXT,                        -- NULL = entry page
+  from_path TEXT,
   to_path TEXT NOT NULL,
   transition_count INTEGER DEFAULT 0,
   unique_sessions INTEGER DEFAULT 0,
@@ -46,7 +47,7 @@ CREATE TABLE analytics.daily_page_flows (
   UNIQUE(date, from_path, to_path)
 );
 
-CREATE TABLE analytics.daily_feature_usage (
+CREATE TABLE IF NOT EXISTS analytics.daily_feature_usage (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   date DATE NOT NULL,
   feature_name TEXT NOT NULL,
@@ -57,11 +58,11 @@ CREATE TABLE analytics.daily_feature_usage (
   UNIQUE(date, feature_name, device_category)
 );
 
-CREATE TABLE analytics.daily_performance (
+CREATE TABLE IF NOT EXISTS analytics.daily_performance (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   date DATE NOT NULL,
   metric_name TEXT NOT NULL,
-  page_path TEXT,                        -- NULL = global metric
+  page_path TEXT,
   p50_ms NUMERIC(10,2),
   p75_ms NUMERIC(10,2),
   p95_ms NUMERIC(10,2),
@@ -71,7 +72,7 @@ CREATE TABLE analytics.daily_performance (
   UNIQUE(date, metric_name, page_path)
 );
 
-CREATE TABLE analytics.daily_sessions (
+CREATE TABLE IF NOT EXISTS analytics.daily_sessions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   date DATE NOT NULL,
   total_sessions INTEGER DEFAULT 0,
@@ -83,7 +84,7 @@ CREATE TABLE analytics.daily_sessions (
   UNIQUE(date, device_category)
 );
 
-CREATE TABLE analytics.hourly_active_sessions (
+CREATE TABLE IF NOT EXISTS analytics.hourly_active_sessions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   date DATE NOT NULL,
   hour_utc SMALLINT NOT NULL CHECK (hour_utc >= 0 AND hour_utc <= 23),
@@ -94,49 +95,42 @@ CREATE TABLE analytics.hourly_active_sessions (
 -- ============================================================
 -- ERROR LOG (30-day retention)
 -- ============================================================
-CREATE TABLE analytics.error_events (
+CREATE TABLE IF NOT EXISTS analytics.error_events (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   session_token TEXT NOT NULL,
-  error_type TEXT NOT NULL              -- 'js_error' | 'api_error' | 'network_error' | 'voice_error'
+  error_type TEXT NOT NULL
     CHECK (error_type IN ('js_error', 'api_error', 'network_error', 'voice_error')),
-  error_message TEXT NOT NULL,          -- sanitized, no PII
-  error_stack TEXT,                     -- sanitized stack trace
+  error_message TEXT NOT NULL,
+  error_stack TEXT,
   page_path TEXT,
   event_data JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
-CREATE INDEX idx_error_events_created ON analytics.error_events (created_at);
-CREATE INDEX idx_error_events_session ON analytics.error_events (session_token);
+CREATE INDEX IF NOT EXISTS idx_error_events_created ON analytics.error_events (created_at);
+CREATE INDEX IF NOT EXISTS idx_error_events_session ON analytics.error_events (session_token);
 
 -- ============================================================
--- BUG REPORTS (separate from analytics events, user-initiated)
+-- BUG REPORTS (user-initiated, separate from analytics events)
 -- ============================================================
-CREATE TABLE analytics.bug_reports (
+CREATE TABLE IF NOT EXISTS analytics.bug_reports (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  -- Anonymous by default
   session_token TEXT,
-  -- Identity fields (populated ONLY if user explicitly toggles ON)
   user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   user_display_name TEXT,
-  -- Report content
   title TEXT NOT NULL,
   description TEXT NOT NULL,
   category TEXT NOT NULL
     CHECK (category IN ('bug', 'ui_issue', 'performance', 'voice_issue', 'other')),
   severity TEXT DEFAULT 'medium'
     CHECK (severity IN ('low', 'medium', 'high', 'critical')),
-  -- Automated context (always anonymous)
   page_path TEXT,
   device_category TEXT,
   viewport_bucket TEXT,
-  browser_family TEXT,                  -- 'chrome' | 'firefox' | 'safari' | 'edge' | 'other'
-  os_family TEXT,                       -- 'windows' | 'macos' | 'linux' | 'ios' | 'android'
-  -- Recent error context (auto-attached from error_events)
+  browser_family TEXT,
+  os_family TEXT,
   recent_errors JSONB DEFAULT '[]',
-  -- Screenshots (paths in Supabase Storage, NOT stored here)
   screenshot_paths TEXT[] DEFAULT '{}',
-  -- Admin workflow
   status TEXT DEFAULT 'new'
     CHECK (status IN ('new', 'triaging', 'investigating', 'resolved', 'wont_fix')),
   admin_notes TEXT,
@@ -144,9 +138,9 @@ CREATE TABLE analytics.bug_reports (
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
-CREATE INDEX idx_bug_reports_status ON analytics.bug_reports (status);
-CREATE INDEX idx_bug_reports_created ON analytics.bug_reports (created_at);
-CREATE INDEX idx_bug_reports_category ON analytics.bug_reports (category, severity);
+CREATE INDEX IF NOT EXISTS idx_bug_reports_status ON analytics.bug_reports (status);
+CREATE INDEX IF NOT EXISTS idx_bug_reports_created ON analytics.bug_reports (created_at);
+CREATE INDEX IF NOT EXISTS idx_bug_reports_category ON analytics.bug_reports (category, severity);
 
 -- ============================================================
 -- ROW LEVEL SECURITY
@@ -161,7 +155,8 @@ ALTER TABLE analytics.hourly_active_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE analytics.error_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE analytics.bug_reports ENABLE ROW LEVEL SECURITY;
 
--- Super admin read-only access to all analytics tables
+-- Drop and recreate policies so this file is safe to re-run
+DROP POLICY IF EXISTS "super_admin_read_raw_events" ON analytics.raw_events;
 CREATE POLICY "super_admin_read_raw_events" ON analytics.raw_events
   FOR SELECT USING (
     EXISTS (
@@ -171,6 +166,7 @@ CREATE POLICY "super_admin_read_raw_events" ON analytics.raw_events
     )
   );
 
+DROP POLICY IF EXISTS "super_admin_read_daily_page_flows" ON analytics.daily_page_flows;
 CREATE POLICY "super_admin_read_daily_page_flows" ON analytics.daily_page_flows
   FOR SELECT USING (
     EXISTS (
@@ -180,6 +176,7 @@ CREATE POLICY "super_admin_read_daily_page_flows" ON analytics.daily_page_flows
     )
   );
 
+DROP POLICY IF EXISTS "super_admin_read_daily_feature_usage" ON analytics.daily_feature_usage;
 CREATE POLICY "super_admin_read_daily_feature_usage" ON analytics.daily_feature_usage
   FOR SELECT USING (
     EXISTS (
@@ -189,6 +186,7 @@ CREATE POLICY "super_admin_read_daily_feature_usage" ON analytics.daily_feature_
     )
   );
 
+DROP POLICY IF EXISTS "super_admin_read_daily_performance" ON analytics.daily_performance;
 CREATE POLICY "super_admin_read_daily_performance" ON analytics.daily_performance
   FOR SELECT USING (
     EXISTS (
@@ -198,6 +196,7 @@ CREATE POLICY "super_admin_read_daily_performance" ON analytics.daily_performanc
     )
   );
 
+DROP POLICY IF EXISTS "super_admin_read_daily_sessions" ON analytics.daily_sessions;
 CREATE POLICY "super_admin_read_daily_sessions" ON analytics.daily_sessions
   FOR SELECT USING (
     EXISTS (
@@ -207,6 +206,7 @@ CREATE POLICY "super_admin_read_daily_sessions" ON analytics.daily_sessions
     )
   );
 
+DROP POLICY IF EXISTS "super_admin_read_hourly_active" ON analytics.hourly_active_sessions;
 CREATE POLICY "super_admin_read_hourly_active" ON analytics.hourly_active_sessions
   FOR SELECT USING (
     EXISTS (
@@ -216,6 +216,7 @@ CREATE POLICY "super_admin_read_hourly_active" ON analytics.hourly_active_sessio
     )
   );
 
+DROP POLICY IF EXISTS "super_admin_read_error_events" ON analytics.error_events;
 CREATE POLICY "super_admin_read_error_events" ON analytics.error_events
   FOR SELECT USING (
     EXISTS (
@@ -225,6 +226,7 @@ CREATE POLICY "super_admin_read_error_events" ON analytics.error_events
     )
   );
 
+DROP POLICY IF EXISTS "super_admin_read_bug_reports" ON analytics.bug_reports;
 CREATE POLICY "super_admin_read_bug_reports" ON analytics.bug_reports
   FOR SELECT USING (
     EXISTS (
@@ -234,11 +236,11 @@ CREATE POLICY "super_admin_read_bug_reports" ON analytics.bug_reports
     )
   );
 
--- Any authenticated user can INSERT bug reports
+DROP POLICY IF EXISTS "authenticated_insert_bug_reports" ON analytics.bug_reports;
 CREATE POLICY "authenticated_insert_bug_reports" ON analytics.bug_reports
   FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
--- Super admin can UPDATE bug reports (status, admin notes)
+DROP POLICY IF EXISTS "super_admin_update_bug_reports" ON analytics.bug_reports;
 CREATE POLICY "super_admin_update_bug_reports" ON analytics.bug_reports
   FOR UPDATE USING (
     EXISTS (
@@ -248,11 +250,10 @@ CREATE POLICY "super_admin_update_bug_reports" ON analytics.bug_reports
     )
   );
 
--- Service role key bypasses RLS — used by ingestion API and edge function cron
--- No explicit INSERT policies needed for raw_events / error_events; service role handles inserts
-
 -- ============================================================
 -- AGGREGATION FUNCTION
+-- Aggregates raw events into daily tables, then purges raw data
+-- older than retention_days. Runs nightly via edge function cron.
 -- ============================================================
 CREATE OR REPLACE FUNCTION analytics.aggregate_and_purge(retention_days INTEGER DEFAULT 30)
 RETURNS JSONB
@@ -288,7 +289,6 @@ BEGIN
   ) e2 ON TRUE
   WHERE e1.event_type = 'page_view'
     AND DATE(e1.created_at) < CURRENT_DATE
-    AND DATE(e1.created_at) <= cutoff_date
   GROUP BY DATE(e1.created_at), e1.page_path, e2.page_path
   ON CONFLICT (date, from_path, to_path)
   DO UPDATE SET
@@ -308,7 +308,6 @@ BEGIN
   FROM analytics.raw_events
   WHERE event_type = 'feature_use'
     AND DATE(created_at) < CURRENT_DATE
-    AND DATE(created_at) <= cutoff_date
   GROUP BY DATE(created_at), event_name, event_data->>'category', device_category
   ON CONFLICT (date, feature_name, device_category)
   DO UPDATE SET
@@ -332,7 +331,6 @@ BEGIN
   WHERE event_type = 'performance'
     AND event_data->>'duration_ms' IS NOT NULL
     AND DATE(created_at) < CURRENT_DATE
-    AND DATE(created_at) <= cutoff_date
   GROUP BY DATE(created_at), event_name, page_path
   ON CONFLICT (date, metric_name, page_path)
   DO UPDATE SET
@@ -361,7 +359,6 @@ BEGIN
       COUNT(*) FILTER (WHERE event_type = 'page_view') AS page_count
     FROM analytics.raw_events
     WHERE DATE(created_at) < CURRENT_DATE
-      AND DATE(created_at) <= cutoff_date
     GROUP BY session_token, device_category
   ) session_stats
   GROUP BY DATE, device_category
@@ -381,12 +378,11 @@ BEGIN
     COUNT(DISTINCT session_token) AS active_sessions
   FROM analytics.raw_events
   WHERE DATE(created_at) < CURRENT_DATE
-    AND DATE(created_at) <= cutoff_date
   GROUP BY DATE(created_at), EXTRACT(HOUR FROM created_at)
   ON CONFLICT (date, hour_utc)
   DO UPDATE SET active_sessions = EXCLUDED.active_sessions;
 
-  -- ===== PURGE RAW EVENTS =====
+  -- ===== PURGE RAW EVENTS (retention_days cutoff) =====
   DELETE FROM analytics.raw_events
   WHERE DATE(created_at) <= cutoff_date;
   GET DIAGNOSTICS purged_events_count = ROW_COUNT;
