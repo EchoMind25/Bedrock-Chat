@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { requireSuperAdmin } from "../_auth";
 
 export async function POST(): Promise<NextResponse> {
-	const { error } = await requireSuperAdmin();
-	if (error) return error;
+	const auth = await requireSuperAdmin();
+	if (!auth.ok) return auth.response;
 
 	const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 	const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
