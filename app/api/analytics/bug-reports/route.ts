@@ -2,15 +2,15 @@ import { type NextRequest, NextResponse } from "next/server";
 import { requireSuperAdmin } from "../_auth";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
-	const { service, error } = await requireSuperAdmin();
-	if (error) return error;
+	const auth = await requireSuperAdmin();
+	if (!auth.ok) return auth.response;
 
 	const { searchParams } = request.nextUrl;
 	const severity = searchParams.get("severity");
 	const category = searchParams.get("category");
 	const status = searchParams.get("status");
 
-	let query = service
+	let query = auth.service
 		.schema("analytics")
 		.from("bug_reports")
 		.select("*")
@@ -21,19 +21,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 	if (category && category !== "all") query = query.eq("category", category);
 	if (status && status !== "all") query = query.eq("status", status);
 
-	const { data, error: dbError } = await query;
+	const { data, error } = await query;
 
-	if (dbError) {
-		console.error("[analytics/bug-reports] Query failed:", dbError.message);
-		return NextResponse.json({ error: "Query failed" }, { status: 500 });
+	if (error) {
+		console.error("[analytics/bug-reports GET]", error.message, error.code);
+		return NextResponse.json({ error: error.message, code: error.code }, { status: 500 });
 	}
 
 	return NextResponse.json({ data: data ?? [] });
 }
 
 export async function PATCH(request: NextRequest): Promise<NextResponse> {
-	const { service, error } = await requireSuperAdmin();
-	if (error) return error;
+	const auth = await requireSuperAdmin();
+	if (!auth.ok) return auth.response;
 
 	let body: { id: string; status?: string; admin_notes?: string };
 	try {
@@ -51,15 +51,15 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
 	if (body.admin_notes !== undefined) updates.admin_notes = body.admin_notes;
 	if (body.status === "resolved") updates.resolved_at = new Date().toISOString();
 
-	const { error: dbError } = await service
+	const { error } = await auth.service
 		.schema("analytics")
 		.from("bug_reports")
 		.update(updates)
 		.eq("id", body.id);
 
-	if (dbError) {
-		console.error("[analytics/bug-reports] Update failed:", dbError.message);
-		return NextResponse.json({ error: "Update failed" }, { status: 500 });
+	if (error) {
+		console.error("[analytics/bug-reports PATCH]", error.message, error.code);
+		return NextResponse.json({ error: error.message, code: error.code }, { status: 500 });
 	}
 
 	return NextResponse.json({ ok: true });

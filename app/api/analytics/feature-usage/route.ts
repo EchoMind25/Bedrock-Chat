@@ -2,8 +2,8 @@ import { type NextRequest, NextResponse } from "next/server";
 import { requireSuperAdmin } from "../_auth";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
-	const { service, error } = await requireSuperAdmin();
-	if (error) return error;
+	const auth = await requireSuperAdmin();
+	if (!auth.ok) return auth.response;
 
 	const { searchParams } = request.nextUrl;
 	const start = searchParams.get("start");
@@ -13,16 +13,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 		return NextResponse.json({ error: "start and end required" }, { status: 400 });
 	}
 
-	const { data, error: dbError } = await service
+	const { data, error } = await auth.service
 		.schema("analytics")
 		.from("daily_feature_usage")
 		.select("date, feature_name, feature_category, usage_count, unique_sessions, device_category")
 		.gte("date", start)
 		.lte("date", end);
 
-	if (dbError) {
-		console.error("[analytics/feature-usage] Query failed:", dbError.message);
-		return NextResponse.json({ error: "Query failed" }, { status: 500 });
+	if (error) {
+		console.error("[analytics/feature-usage]", error.message, error.code);
+		return NextResponse.json({ error: error.message, code: error.code }, { status: 500 });
 	}
 
 	return NextResponse.json({ data: data ?? [] });
