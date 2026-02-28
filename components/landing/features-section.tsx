@@ -9,7 +9,7 @@ import {
   Code2,
   Baby,
 } from "lucide-react";
-import { motion } from "motion/react";
+import { motion, type Variants } from "motion/react";
 import { useRef, useState, type ReactNode, type MouseEvent } from "react";
 
 interface Feature {
@@ -64,7 +64,7 @@ const features: Feature[] = [
   },
 ];
 
-const cardVariants = {
+const cardVariants: Variants = {
   hidden: { opacity: 0, y: 50 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
 };
@@ -128,7 +128,7 @@ function FeatureCard({ feature }: { feature: Feature }) {
   );
 }
 
-const containerVariants = {
+const containerVariants: Variants = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.08 } },
 };
