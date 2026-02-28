@@ -27,6 +27,11 @@ yarn-error.log*
 .env*.local
 .env
 
+# audit files (may contain secrets or large output)
+audit/.env.audit
+audit/env.local
+audit/results/
+
 # vercel
 .vercel
 
