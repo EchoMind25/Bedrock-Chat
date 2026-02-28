@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { use, useCallback, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type TouchEvent } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { Phone, Video } from "lucide-react";
@@ -13,6 +13,7 @@ import { EmojiPicker } from "@/components/chat/emoji-picker";
 import { FriendProfileCard } from "@/components/friends/friend-profile-card";
 import { Avatar } from "@/components/ui/avatar/avatar";
 import { toast } from "@/lib/stores/toast-store";
+import { ContextMenu, type ContextMenuEntry } from "@/components/ui/context-menu/context-menu";
 import type { Message } from "@/lib/types/message";
 import type { Friend } from "@/lib/types/friend";
 
@@ -88,7 +89,7 @@ export default function DMPage({ params }: PageProps) {
 
 	if (isLoading || !hasLoaded) {
 		return (
-			<div className="flex-1 flex flex-col bg-[oklch(0.14_0.02_250)]">
+			<div className="flex-1 flex flex-col min-h-0 bg-[oklch(0.14_0.02_250)]">
 				<DMHeaderDisplay name={otherParticipant?.displayName} avatar={otherParticipant?.avatar} status={otherParticipant?.status} onProfileClick={handleProfileClick} recipientId={otherUserId} recipientName={otherParticipant?.displayName} recipientAvatar={otherParticipant?.avatar} />
 				<DMMessageSkeleton />
 			</div>
@@ -97,7 +98,7 @@ export default function DMPage({ params }: PageProps) {
 
 	if (hasError) {
 		return (
-			<div className="flex-1 flex flex-col bg-[oklch(0.14_0.02_250)]">
+			<div className="flex-1 flex flex-col min-h-0 bg-[oklch(0.14_0.02_250)]">
 				<DMHeaderDisplay name={otherParticipant?.displayName} avatar={otherParticipant?.avatar} status={otherParticipant?.status} onProfileClick={handleProfileClick} recipientId={otherUserId} recipientName={otherParticipant?.displayName} recipientAvatar={otherParticipant?.avatar} />
 				<div className="flex-1 flex items-center justify-center">
 					<div className="text-center space-y-2">
@@ -119,12 +120,12 @@ export default function DMPage({ params }: PageProps) {
 	}
 
 	return (
-		<div className="flex-1 flex flex-col bg-[oklch(0.14_0.02_250)]">
+		<div className="flex-1 flex flex-col min-h-0 bg-[oklch(0.14_0.02_250)]">
 			{/* Header */}
 			<DMHeaderDisplay name={otherParticipant?.displayName} avatar={otherParticipant?.avatar} status={otherParticipant?.status} onProfileClick={handleProfileClick} recipientId={otherUserId} recipientName={otherParticipant?.displayName} recipientAvatar={otherParticipant?.avatar} />
 
 			{/* Messages */}
-			<div className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-1">
+			<div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin p-4 space-y-1">
 				{messages.length === 0 ? (
 					<div className="flex-1 flex items-center justify-center h-full">
 						<div className="text-center">
@@ -352,6 +353,10 @@ function DMMessageBubble({
 	messageStyle: "flat" | "bubble" | "minimal";
 	onProfileClick?: () => void;
 }) {
+	const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+	const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+
 	const formatTime = (date: Date) =>
 		date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
@@ -359,35 +364,186 @@ function DMMessageBubble({
 	const isBubble = messageStyle === "bubble";
 	const isMinimal = messageStyle === "minimal";
 
+	// Desktop: right-click opens context menu
+	const handleContextMenu = useCallback((e: MouseEvent<HTMLDivElement>) => {
+		e.preventDefault();
+		setContextMenu({ x: e.clientX, y: e.clientY });
+	}, []);
+
+	// Mobile: long-press (500ms) opens context menu
+	const handleTouchStart = useCallback((e: TouchEvent<HTMLDivElement>) => {
+		const touch = e.touches[0];
+		touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+		longPressTimer.current = setTimeout(() => {
+			setContextMenu({ x: touch.clientX, y: touch.clientY });
+		}, 500);
+	}, []);
+
+	const cancelLongPress = useCallback(() => {
+		if (longPressTimer.current) {
+			clearTimeout(longPressTimer.current);
+			longPressTimer.current = null;
+		}
+		touchStartPos.current = null;
+	}, []);
+
+	const handleTouchMove = useCallback((e: TouchEvent<HTMLDivElement>) => {
+		if (!touchStartPos.current || !longPressTimer.current) return;
+		const touch = e.touches[0];
+		// Cancel if finger moves more than 10px — user is scrolling, not long-pressing
+		if (
+			Math.abs(touch.clientX - touchStartPos.current.x) > 10 ||
+			Math.abs(touch.clientY - touchStartPos.current.y) > 10
+		) {
+			cancelLongPress();
+		}
+	}, [cancelLongPress]);
+
+	const menuItems: ContextMenuEntry[] = [
+		{
+			id: "copy",
+			label: "Copy Text",
+			onClick: () => { navigator.clipboard.writeText(message.content); },
+		},
+		...(!isOwn ? [
+			{ id: "div-report", type: "divider" as const },
+			{
+				id: "report",
+				label: "Report Message",
+				variant: "danger" as const,
+				onClick: () => {
+					toast.info("Report Submitted", "This message has been flagged for review.");
+				},
+			},
+		] : []),
+	];
+
+	// Spread onto the outermost div of each render variant
+	const interactionProps = {
+		onContextMenu: handleContextMenu,
+		onTouchStart: handleTouchStart,
+		onTouchMove: handleTouchMove,
+		onTouchEnd: cancelLongPress,
+	};
+
+	const menuEl = (
+		<ContextMenu
+			items={menuItems}
+			position={contextMenu ?? { x: 0, y: 0 }}
+			isOpen={contextMenu !== null}
+			onClose={() => setContextMenu(null)}
+		/>
+	);
+
 	// ── Bubble mode: grouped message ──
 	if (isBubble && isGrouped) {
 		return (
-			<div className={`flex py-0.5 ${isOwn ? "justify-end" : "justify-start"} px-3`}>
-				<div
-					className="rounded-2xl px-3.5 py-1.5 max-w-[75%] w-fit break-words whitespace-pre-wrap"
-					style={{
-						backgroundColor: isOwn ? "var(--bubble-color-sent, oklch(0.55 0.20 265))" : "var(--bubble-color-received, oklch(0.30 0.04 250))",
-						color: isOwn ? "white" : "oklch(0.92 0.01 250)",
-						fontSize: "var(--message-font-size)",
-						lineHeight: "var(--message-line-height)",
-					}}
-				>
-					<p className="text-sm">{message.content}</p>
+			<>
+				<div className={`flex py-0.5 ${isOwn ? "justify-end" : "justify-start"} px-3`} {...interactionProps}>
+					<div
+						className="rounded-2xl px-3.5 py-1.5 max-w-[75%] w-fit break-words whitespace-pre-wrap"
+						style={{
+							backgroundColor: isOwn ? "var(--bubble-color-sent, oklch(0.55 0.20 265))" : "var(--bubble-color-received, oklch(0.30 0.04 250))",
+							color: isOwn ? "white" : "oklch(0.92 0.01 250)",
+							fontSize: "var(--message-font-size)",
+							lineHeight: "var(--message-line-height)",
+						}}
+					>
+						<p className="text-sm">{message.content}</p>
+					</div>
 				</div>
-			</div>
+				{menuEl}
+			</>
 		);
 	}
 
 	// ── Bubble mode: full message ──
 	if (isBubble) {
 		return (
-			<div className={`flex pt-2 pb-0.5 ${isOwn ? "justify-end" : "justify-start"} px-3`}>
-				<div className="flex flex-col max-w-[75%]">
-					{/* Sender name for non-own messages */}
-					{!isOwn && (
+			<>
+				<div className={`flex pt-2 pb-0.5 ${isOwn ? "justify-end" : "justify-start"} px-3`} {...interactionProps}>
+					<div className="flex flex-col max-w-[75%]">
+						{/* Sender name for non-own messages */}
+						{!isOwn && (
+							<span
+								className={`text-xs font-semibold mb-0.5 ml-1 ${clickable ? "cursor-pointer hover:underline" : ""}`}
+								style={{ color: message.author.roleColor || "oklch(0.7 0.15 250)" }}
+								role={clickable ? "button" : undefined}
+								tabIndex={clickable ? 0 : undefined}
+								onClick={clickable ? onProfileClick : undefined}
+								onKeyDown={clickable ? (e) => {
+									if (e.key === "Enter" || e.key === " ") {
+										e.preventDefault();
+										onProfileClick!();
+									}
+								} : undefined}
+							>
+								{message.author.displayName}
+							</span>
+						)}
+						<div
+							className="rounded-2xl px-3.5 py-2 w-fit break-words whitespace-pre-wrap"
+							style={{
+								backgroundColor: isOwn ? "var(--bubble-color-sent, oklch(0.55 0.20 265))" : "var(--bubble-color-received, oklch(0.30 0.04 250))",
+								color: isOwn ? "white" : "oklch(0.92 0.01 250)",
+								fontSize: "var(--message-font-size)",
+								lineHeight: "var(--message-line-height)",
+							}}
+						>
+							<p className="text-sm">{message.content}</p>
+						</div>
+						{showTimestamps && (
+							<span className={`text-[10px] text-white/40 mt-0.5 ${isOwn ? "text-right mr-1" : "ml-1"}`}>
+								{formatTime(message.timestamp)}
+							</span>
+						)}
+					</div>
+				</div>
+				{menuEl}
+			</>
+		);
+	}
+
+	// ── Flat / Minimal mode: grouped message ──
+	if (isGrouped) {
+		return (
+			<>
+				<div className={`${showAvatars ? "pl-14" : "pl-0"} ${isMinimal ? "py-0" : "py-0.5"} hover:bg-white/[0.02] rounded-sm`} {...interactionProps}>
+					<p className="text-sm text-white/90" style={{ fontSize: "var(--message-font-size)", lineHeight: "var(--message-line-height)" }}>{message.content}</p>
+				</div>
+				{menuEl}
+			</>
+		);
+	}
+
+	// ── Flat / Minimal mode: full message ──
+	return (
+		<>
+			<div className={`flex gap-3 ${isMinimal ? "pt-1 pb-0.5" : "pt-2 pb-0.5"} hover:bg-white/[0.02] rounded-sm`} {...interactionProps}>
+				{showAvatars && (
+					<div
+						className={clickable ? "cursor-pointer rounded-full hover:opacity-80 transition-opacity focus-visible:ring-2 focus-visible:ring-[oklch(0.5_0.12_250)] focus-visible:outline-hidden" : ""}
+						role={clickable ? "button" : undefined}
+						tabIndex={clickable ? 0 : undefined}
+						onClick={clickable ? onProfileClick : undefined}
+						onKeyDown={clickable ? (e) => {
+							if (e.key === "Enter" || e.key === " ") {
+								e.preventDefault();
+								onProfileClick!();
+							}
+						} : undefined}
+					>
+						<Avatar
+							src={message.author.avatar}
+							fallback={message.author.displayName.slice(0, 2)}
+							size="sm"
+						/>
+					</div>
+				)}
+				<div className="flex-1 min-w-0">
+					<div className="flex items-baseline gap-2">
 						<span
-							className={`text-xs font-semibold mb-0.5 ml-1 ${clickable ? "cursor-pointer hover:underline" : ""}`}
-							style={{ color: message.author.roleColor || "oklch(0.7 0.15 250)" }}
+							className={`text-sm font-semibold ${isOwn ? "text-primary" : "text-white"} ${clickable ? "cursor-pointer hover:underline" : ""}`}
 							role={clickable ? "button" : undefined}
 							tabIndex={clickable ? 0 : undefined}
 							onClick={clickable ? onProfileClick : undefined}
@@ -400,83 +556,15 @@ function DMMessageBubble({
 						>
 							{message.author.displayName}
 						</span>
-					)}
-					<div
-						className="rounded-2xl px-3.5 py-2 w-fit break-words whitespace-pre-wrap"
-						style={{
-							backgroundColor: isOwn ? "var(--bubble-color-sent, oklch(0.55 0.20 265))" : "var(--bubble-color-received, oklch(0.30 0.04 250))",
-							color: isOwn ? "white" : "oklch(0.92 0.01 250)",
-							fontSize: "var(--message-font-size)",
-							lineHeight: "var(--message-line-height)",
-						}}
-					>
-						<p className="text-sm">{message.content}</p>
+						{showTimestamps && (
+							<span className="text-[10px] text-white/40">{formatTime(message.timestamp)}</span>
+						)}
 					</div>
-					{showTimestamps && (
-						<span className={`text-[10px] text-white/40 mt-0.5 ${isOwn ? "text-right mr-1" : "ml-1"}`}>
-							{formatTime(message.timestamp)}
-						</span>
-					)}
+					<p className="text-sm text-white/90" style={{ fontSize: "var(--message-font-size)", lineHeight: "var(--message-line-height)" }}>{message.content}</p>
 				</div>
 			</div>
-		);
-	}
-
-	// ── Flat / Minimal mode: grouped message ──
-	if (isGrouped) {
-		return (
-			<div className={`${showAvatars ? "pl-14" : "pl-0"} ${isMinimal ? "py-0" : "py-0.5"} hover:bg-white/[0.02] rounded-sm`}>
-				<p className="text-sm text-white/90" style={{ fontSize: "var(--message-font-size)", lineHeight: "var(--message-line-height)" }}>{message.content}</p>
-			</div>
-		);
-	}
-
-	// ── Flat / Minimal mode: full message ──
-	return (
-		<div className={`flex gap-3 ${isMinimal ? "pt-1 pb-0.5" : "pt-2 pb-0.5"} hover:bg-white/[0.02] rounded-sm`}>
-			{showAvatars && (
-				<div
-					className={clickable ? "cursor-pointer rounded-full hover:opacity-80 transition-opacity focus-visible:ring-2 focus-visible:ring-[oklch(0.5_0.12_250)] focus-visible:outline-hidden" : ""}
-					role={clickable ? "button" : undefined}
-					tabIndex={clickable ? 0 : undefined}
-					onClick={clickable ? onProfileClick : undefined}
-					onKeyDown={clickable ? (e) => {
-						if (e.key === "Enter" || e.key === " ") {
-							e.preventDefault();
-							onProfileClick!();
-						}
-					} : undefined}
-				>
-					<Avatar
-						src={message.author.avatar}
-						fallback={message.author.displayName.slice(0, 2)}
-						size="sm"
-					/>
-				</div>
-			)}
-			<div className="flex-1 min-w-0">
-				<div className="flex items-baseline gap-2">
-					<span
-						className={`text-sm font-semibold ${isOwn ? "text-primary" : "text-white"} ${clickable ? "cursor-pointer hover:underline" : ""}`}
-						role={clickable ? "button" : undefined}
-						tabIndex={clickable ? 0 : undefined}
-						onClick={clickable ? onProfileClick : undefined}
-						onKeyDown={clickable ? (e) => {
-							if (e.key === "Enter" || e.key === " ") {
-								e.preventDefault();
-								onProfileClick!();
-							}
-						} : undefined}
-					>
-						{message.author.displayName}
-					</span>
-					{showTimestamps && (
-						<span className="text-[10px] text-white/40">{formatTime(message.timestamp)}</span>
-					)}
-				</div>
-				<p className="text-sm text-white/90" style={{ fontSize: "var(--message-font-size)", lineHeight: "var(--message-line-height)" }}>{message.content}</p>
-			</div>
-		</div>
+			{menuEl}
+		</>
 	);
 }
 
