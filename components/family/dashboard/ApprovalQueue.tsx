@@ -5,6 +5,16 @@ import { Server, Users, Check, X, Calendar, UserCheck } from "lucide-react";
 import { useFamilyStore } from "@/store/family.store";
 import { createClient } from "@/lib/supabase/client";
 
+function ServerIcon({ icon, size = 24 }: { icon: string | null; size?: number }) {
+	if (icon?.startsWith("http")) {
+		return <img src={icon} alt="" className="w-full h-full rounded-xl object-cover" />;
+	}
+	if (icon) {
+		return <span className="text-2xl leading-none">{icon}</span>;
+	}
+	return <Server size={size} style={{ color: "var(--pd-text-muted)" }} />;
+}
+
 interface ApprovalQueueProps {
 	onCountChange?: (count: number) => void;
 }
@@ -102,10 +112,10 @@ export function ApprovalQueue({ onCountChange }: ApprovalQueueProps) {
 					<div className="flex flex-col sm:flex-row sm:items-center gap-4">
 						<div className="flex items-start gap-3 flex-1">
 							<div
-								className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl shrink-0"
+								className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0 overflow-hidden"
 								style={{ background: "var(--pd-bg-secondary)" }}
 							>
-								{approval.server.icon || <Server size={24} style={{ color: "var(--pd-text-muted)" }} />}
+								<ServerIcon icon={approval.server.icon} size={24} />
 							</div>
 							<div>
 								<h3 className="font-semibold" style={{ color: "var(--pd-text)" }}>
@@ -211,10 +221,10 @@ export function ApprovalQueue({ onCountChange }: ApprovalQueueProps) {
 							<div key={approval.id} className="pd-card p-3 flex items-center justify-between">
 								<div className="flex items-center gap-3">
 									<div
-										className="w-8 h-8 rounded-lg flex items-center justify-center text-lg"
+										className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden"
 										style={{ background: "var(--pd-bg-secondary)" }}
 									>
-										{approval.server.icon || <Server size={14} />}
+										<ServerIcon icon={approval.server.icon} size={14} />
 									</div>
 									<span className="text-sm" style={{ color: "var(--pd-text)" }}>
 										{approval.server.name}

@@ -1,27 +1,65 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useFamilyStore } from "@/store/family.store";
-import { useServerStore } from "@/store/server.store";
 import {
 	Server,
 	Users,
 	Ban,
 	Unlock,
 	Shield,
+	Loader2,
 } from "lucide-react";
 import { ApprovalQueue } from "@/components/family/dashboard/ApprovalQueue";
 
 type Tab = "active" | "restricted" | "pending";
 
+interface TeenServer {
+	id: string;
+	name: string;
+	description: string | null;
+	icon: string | null;
+	memberCount: number;
+}
+
+function ServerIcon({ icon, size = 20, fallback }: { icon: string | null; size?: number; fallback?: React.ReactNode }) {
+	if (icon?.startsWith("http")) {
+		return <img src={icon} alt="" className="w-full h-full rounded-xl object-cover" />;
+	}
+	if (icon) {
+		return <span className="text-2xl leading-none">{icon}</span>;
+	}
+	return <>{fallback ?? <Server size={size} style={{ color: "var(--pd-text-muted)" }} />}</>;
+}
+
 export default function ServersPage() {
 	const getSelectedTeenAccount = useFamilyStore((s) => s.getSelectedTeenAccount);
 	const restrictServer = useFamilyStore((s) => s.restrictServer);
 	const unrestrictServer = useFamilyStore((s) => s.unrestrictServer);
-	const servers = useServerStore((s) => s.servers);
 	const teenAccount = getSelectedTeenAccount();
 	const [activeTab, setActiveTab] = useState<Tab>("active");
 	const [pendingCount, setPendingCount] = useState(0);
+	const [teenServers, setTeenServers] = useState<TeenServer[]>([]);
+	const [loading, setLoading] = useState(false);
+
+	// Fetch the teen's actual server memberships when the selected teen changes
+	useEffect(() => {
+		if (!teenAccount) return;
+		const teenUserId = teenAccount.user.id;
+		setLoading(true);
+		fetch(`/api/family/teen-servers?teenId=${teenUserId}`)
+			.then((res) => res.json())
+			.then((data: { servers?: TeenServer[] }) => {
+				setTeenServers(data.servers ?? []);
+			})
+			.catch(() => {
+				setTeenServers([]);
+			})
+			.finally(() => {
+				setLoading(false);
+			});
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [teenAccount?.user.id]);
 
 	const restrictedServerIds = useMemo(
 		() => new Set(teenAccount?.restrictions.restrictedServers || []),
@@ -29,13 +67,13 @@ export default function ServersPage() {
 	);
 
 	const activeServers = useMemo(
-		() => servers.filter((s) => s.id !== "home" && !restrictedServerIds.has(s.id)),
-		[servers, restrictedServerIds],
+		() => teenServers.filter((s) => !restrictedServerIds.has(s.id)),
+		[teenServers, restrictedServerIds],
 	);
 
 	const restrictedServers = useMemo(
-		() => servers.filter((s) => restrictedServerIds.has(s.id)),
-		[servers, restrictedServerIds],
+		() => teenServers.filter((s) => restrictedServerIds.has(s.id)),
+		[teenServers, restrictedServerIds],
 	);
 
 	if (!teenAccount) {
@@ -97,15 +135,20 @@ export default function ServersPage() {
 			{/* Active servers */}
 			{activeTab === "active" && (
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					{activeServers.length > 0 ? (
+					{loading ? (
+						<div className="pd-card p-8 text-center col-span-2 flex items-center justify-center gap-2">
+							<Loader2 size={20} className="animate-spin" style={{ color: "var(--pd-text-muted)" }} />
+							<p style={{ color: "var(--pd-text-muted)" }}>Loading servers…</p>
+						</div>
+					) : activeServers.length > 0 ? (
 						activeServers.map((server) => (
 							<div key={server.id} className="pd-card p-4">
 								<div className="flex items-start gap-3">
 									<div
-										className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0"
+										className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 overflow-hidden"
 										style={{ background: "var(--pd-bg-secondary)" }}
 									>
-										{server.icon || <Server size={20} style={{ color: "var(--pd-text-muted)" }} />}
+										<ServerIcon icon={server.icon} size={20} />
 									</div>
 									<div className="flex-1 min-w-0">
 										<h3 className="font-semibold truncate" style={{ color: "var(--pd-text)" }}>
@@ -127,7 +170,7 @@ export default function ServersPage() {
 									<button
 										type="button"
 										onClick={() => restrictServer(teenAccount.id, server.id, server.name)}
-										className="text-xs font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors"
+										className="text-xs font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
 										style={{ color: "var(--pd-danger)", background: "var(--pd-danger-light)" }}
 									>
 										<Ban size={12} />
@@ -148,7 +191,12 @@ export default function ServersPage() {
 			{/* Restricted servers */}
 			{activeTab === "restricted" && (
 				<div className="space-y-3">
-					{restrictedServers.length > 0 ? (
+					{loading ? (
+						<div className="pd-card p-8 text-center flex items-center justify-center gap-2">
+							<Loader2 size={20} className="animate-spin" style={{ color: "var(--pd-text-muted)" }} />
+							<p style={{ color: "var(--pd-text-muted)" }}>Loading servers…</p>
+						</div>
+					) : restrictedServers.length > 0 ? (
 						restrictedServers.map((server) => (
 							<div
 								key={server.id}
@@ -157,10 +205,14 @@ export default function ServersPage() {
 							>
 								<div className="flex items-center gap-3">
 									<div
-										className="w-10 h-10 rounded-lg flex items-center justify-center text-xl"
+										className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden"
 										style={{ background: "var(--pd-danger-light)" }}
 									>
-										{server.icon || <Ban size={18} style={{ color: "var(--pd-danger)" }} />}
+										<ServerIcon
+											icon={server.icon}
+											size={18}
+											fallback={<Ban size={18} style={{ color: "var(--pd-danger)" }} />}
+										/>
 									</div>
 									<div>
 										<h3 className="font-medium text-sm" style={{ color: "var(--pd-text)" }}>
@@ -174,7 +226,7 @@ export default function ServersPage() {
 								<button
 									type="button"
 									onClick={() => unrestrictServer(teenAccount.id, server.id, server.name)}
-									className="text-xs font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors"
+									className="text-xs font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
 									style={{ color: "var(--pd-success)", background: "var(--pd-success-light)" }}
 								>
 									<Unlock size={12} />
