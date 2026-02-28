@@ -3,7 +3,6 @@
 import { useMemo, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useFamilyStore } from "@/store/family.store";
-import { useAuthStore } from "@/store/auth.store";
 import { MONITORING_LEVELS } from "@/lib/types/family";
 import { Avatar } from "@/components/ui/avatar/avatar";
 import { usePresenceStore } from "@/store/presence.store";
@@ -32,7 +31,6 @@ const StatsChart = dynamic(
 export default function OverviewPage() {
 	const router = useRouter();
 	const getSelectedTeenAccount = useFamilyStore((s) => s.getSelectedTeenAccount);
-	const user = useAuthStore((s) => s.user);
 	const teenAccount = getSelectedTeenAccount();
 	const [showAddTeen, setShowAddTeen] = useState(false);
 
@@ -88,10 +86,8 @@ export default function OverviewPage() {
 
 	const handleTeenAdded = () => {
 		setShowAddTeen(false);
-		// Re-run init directly so the newly created teen loads without a full page reset
-		if (user) {
-			useFamilyStore.getState().init(user.id, "parent");
-		}
+		// Clear isInitialized so the layout's useEffect re-calls init() and fetches the new teen
+		useFamilyStore.setState({ isInitialized: false });
 	};
 
 	// ── Empty state: no teens yet ─────────────────────────────────────────────
