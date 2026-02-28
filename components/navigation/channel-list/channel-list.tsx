@@ -228,7 +228,7 @@ export function ChannelList() {
 					<button
 						type="button"
 						onClick={() => setMobileChannelListOpen(false)}
-						className="p-2 -ml-2 text-white/60 hover:text-white/80 hover:bg-white/5 rounded-lg transition-colors touch-manipulation focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
+						className="min-h-[44px] min-w-[44px] -ml-2 flex items-center justify-center text-white/60 hover:text-white/80 hover:bg-white/5 rounded-lg transition-colors touch-manipulation focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
 						aria-label="Close channel list"
 					>
 						<X className="w-5 h-5" />

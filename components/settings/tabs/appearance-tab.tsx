@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef } from "react";
+import { haptics } from "@/lib/utils/haptics";
 import { useThemeStore } from "@/store/theme.store";
 import { useSettingsStore } from "@/store/settings.store";
 import { Toggle } from "@/components/ui/toggle/toggle";
@@ -456,9 +457,23 @@ export function AppearanceTab() {
 							<Toggle
 								checked={settings?.screen_reader_mode ?? false}
 								onChange={(e) => updateSettings({ screen_reader_mode: e.target.checked })}
+						/>
+					</SettingsRow>
+					{haptics.isSupported() && (
+						<SettingsRow
+							label="Haptic Feedback"
+							description="Vibration feedback on taps and interactions. Not available on iOS."
+						>
+							<Toggle
+								checked={settings?.haptic_feedback ?? true}
+								onChange={(e) => {
+									haptics.setEnabled(e.target.checked);
+									updateSettings({ haptic_feedback: e.target.checked });
+								}}
 							/>
 						</SettingsRow>
-					</SettingsSection>
+					)}
+				</SettingsSection>
 
 					{/* ── Display ─────────────────────────────────── */}
 					<SettingsSection title="Display">

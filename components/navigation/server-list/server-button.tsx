@@ -125,12 +125,12 @@ export function ServerButton({
 
 	return (
 		<div className="relative">
-			{/* Active Indicator Pill */}
+			{/* Active Indicator Pill — scaleY is GPU-composited, avoids layout thrashing from animating height */}
 			<motion.div
-				className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-1 bg-white rounded-r-full"
+				className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-1 h-10 bg-white rounded-r-full origin-center"
 				initial={false}
 				animate={{
-					height: isActive ? 40 : hasUnread ? 8 : 0,
+					scaleY: isActive ? 1 : hasUnread ? 0.2 : 0,
 					opacity: isActive || hasUnread ? 1 : 0,
 				}}
 				transition={{

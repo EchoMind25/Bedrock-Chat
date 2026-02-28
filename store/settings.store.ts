@@ -62,6 +62,7 @@ const APPEARANCE_KEYS: (keyof UserSettings)[] = [
 	"animations_enabled",
 	"animation_speed",
 	"screen_reader_mode",
+	"haptic_feedback",
 	"color_blind_mode",
 	"dyslexia_font",
 	"focus_indicator",
@@ -129,6 +130,7 @@ export interface UserSettings {
 	animations_enabled: boolean;
 	animation_speed: number;
 	screen_reader_mode: boolean;
+	haptic_feedback: boolean;
 	color_blind_mode: "none" | "protanopia" | "deuteranopia" | "tritanopia";
 	dyslexia_font: boolean;
 	focus_indicator: "default" | "high-visibility" | "outline-only";
@@ -189,6 +191,7 @@ const DEFAULT_SETTINGS: Omit<UserSettings, "user_id"> = {
 	animations_enabled: true,
 	animation_speed: 1.0,
 	screen_reader_mode: false,
+	haptic_feedback: true,
 	color_blind_mode: "none",
 	dyslexia_font: false,
 	focus_indicator: "default",
