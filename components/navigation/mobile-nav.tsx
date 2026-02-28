@@ -16,6 +16,7 @@ import { Home, Hash, Users, Bell } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { useHaptics } from "@/hooks/useHaptics";
+import { SettingsModal } from "@/components/settings/settings-modal";
 
 /**
  * Mobile bottom navigation bar.
@@ -310,7 +311,7 @@ export function MobileNav() {
                     className="w-full px-3 py-2.5 text-sm text-left text-white/80 hover:bg-white/5 active:bg-white/10 rounded-lg transition-colors flex items-center gap-3 touch-manipulation"
                     onClick={() => handleSheetItem(() => {
                       setSheetOpen(false);
-                      router.push("/friends");
+                      router.push("/dms");
                     })}
                   >
                     <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -514,6 +515,11 @@ export function MobileNav() {
         </AnimatePresence>,
         document.body
       )}
+
+      {/* Settings modal — UserPanel (desktop-only) owns this on desktop; we render
+          it here so openSettings() works on mobile too. Only one is ever in the
+          tree at a time because UserPanel is hidden on mobile. */}
+      <SettingsModal />
     </>
   );
 }
