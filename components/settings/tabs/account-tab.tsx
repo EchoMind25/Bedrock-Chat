@@ -11,6 +11,8 @@ import { Modal } from "@/components/ui/modal/modal";
 import { SettingsSection } from "../settings-section";
 import { SettingsRow } from "../settings-row";
 import { toast } from "@/lib/stores/toast-store";
+import { ConvertToParentCard } from "@/components/family/ConvertToParentCard";
+import { TeenSettingsPanel } from "@/components/family/teen-settings-panel";
 
 function maskEmail(email: string): string {
 	const [local, domain] = email.split("@");
@@ -192,6 +194,18 @@ export function AccountTab() {
 					</Button>
 				</SettingsRow>
 			</SettingsSection>
+
+			{user.accountType === "standard" && (
+				<SettingsSection title="Family Controls">
+					<ConvertToParentCard />
+				</SettingsSection>
+			)}
+
+			{user.accountType === "teen" && (
+				<SettingsSection title="Family Monitoring">
+					<TeenSettingsPanel />
+				</SettingsSection>
+			)}
 
 			<SettingsSection title="Danger Zone">
 				<div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4">

@@ -17,191 +17,14 @@ import {
 	UserPlus,
 	ArrowRight,
 	X,
-	Check,
-	Loader2,
 } from "lucide-react";
 import dynamic from "next/dynamic";
+import { AddTeenModal } from "@/components/family/dashboard/AddTeenModal";
 
 const StatsChart = dynamic(
 	() => import("@/components/parent-dashboard/stats-chart").then((mod) => mod.StatsChart),
 	{ ssr: false },
 );
-
-// ── Add Teen Form ────────────────────────────────────────────────────────────
-
-function AddTeenForm({ onSuccess, onCancel }: { onSuccess: (username: string) => void; onCancel?: () => void }) {
-	const [username, setUsername] = useState("");
-	const [password, setPassword] = useState("");
-	const [confirm, setConfirm] = useState("");
-	const [isCreating, setIsCreating] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-	const [success, setSuccess] = useState(false);
-
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-		setError(null);
-
-		if (username.length < 3) { setError("Username must be at least 3 characters"); return; }
-		if (password.length < 8) { setError("Password must be at least 8 characters"); return; }
-		if (password !== confirm) { setError("Passwords do not match"); return; }
-
-		setIsCreating(true);
-		try {
-			const res = await fetch("/api/parent/create-teen", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ username, password }),
-			});
-			const data = await res.json();
-
-			if (!res.ok) {
-				setError(data.error ?? "Something went wrong");
-				return;
-			}
-
-			setSuccess(true);
-			setTimeout(() => onSuccess(username), 1200);
-		} catch {
-			setError("Network error — please try again");
-		} finally {
-			setIsCreating(false);
-		}
-	};
-
-	if (success) {
-		return (
-			<div className="flex flex-col items-center gap-3 py-6">
-				<div
-					className="w-12 h-12 rounded-full flex items-center justify-center"
-					style={{ background: "var(--pd-success-light)" }}
-				>
-					<Check size={22} style={{ color: "var(--pd-success)" }} />
-				</div>
-				<p className="font-semibold" style={{ color: "var(--pd-success)" }}>
-					@{username} account created!
-				</p>
-				<p className="text-sm text-center" style={{ color: "var(--pd-text-muted)" }}>
-					Refreshing dashboard…
-				</p>
-			</div>
-		);
-	}
-
-	return (
-		<form onSubmit={handleSubmit} className="space-y-4">
-			<div>
-				<label
-					htmlFor="teen-username"
-					className="block text-sm font-medium mb-1.5"
-					style={{ color: "var(--pd-text)" }}
-				>
-					Username
-				</label>
-				<input
-					id="teen-username"
-					type="text"
-					value={username}
-					onChange={(e) => setUsername(e.target.value.trim())}
-					placeholder="coolteen123"
-					autoComplete="off"
-					minLength={3}
-					required
-					className="w-full px-3 py-2.5 rounded-lg text-sm outline-none focus:ring-2"
-					style={{
-						background: "var(--pd-bg-secondary)",
-						color: "var(--pd-text)",
-						border: "1px solid var(--pd-border)",
-					}}
-				/>
-				<p className="text-xs mt-1" style={{ color: "var(--pd-text-muted)" }}>
-					No email needed — teen logs in with username + password only
-				</p>
-			</div>
-
-			<div>
-				<label
-					htmlFor="teen-password"
-					className="block text-sm font-medium mb-1.5"
-					style={{ color: "var(--pd-text)" }}
-				>
-					Password
-				</label>
-				<input
-					id="teen-password"
-					type="password"
-					value={password}
-					onChange={(e) => setPassword(e.target.value)}
-					placeholder="••••••••"
-					autoComplete="new-password"
-					minLength={8}
-					required
-					className="w-full px-3 py-2.5 rounded-lg text-sm outline-none focus:ring-2"
-					style={{
-						background: "var(--pd-bg-secondary)",
-						color: "var(--pd-text)",
-						border: "1px solid var(--pd-border)",
-					}}
-				/>
-			</div>
-
-			<div>
-				<label
-					htmlFor="teen-confirm"
-					className="block text-sm font-medium mb-1.5"
-					style={{ color: "var(--pd-text)" }}
-				>
-					Confirm Password
-				</label>
-				<input
-					id="teen-confirm"
-					type="password"
-					value={confirm}
-					onChange={(e) => setConfirm(e.target.value)}
-					placeholder="••••••••"
-					autoComplete="new-password"
-					required
-					className="w-full px-3 py-2.5 rounded-lg text-sm outline-none focus:ring-2"
-					style={{
-						background: "var(--pd-bg-secondary)",
-						color: "var(--pd-text)",
-						border: "1px solid var(--pd-border)",
-					}}
-				/>
-			</div>
-
-			{error && (
-				<p className="text-sm px-3 py-2 rounded-lg" style={{ background: "var(--pd-danger-light)", color: "var(--pd-danger)" }}>
-					{error}
-				</p>
-			)}
-
-			<div className="flex gap-3 pt-1">
-				<button
-					type="submit"
-					disabled={isCreating}
-					className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white disabled:opacity-60 transition-opacity"
-					style={{ background: "var(--pd-primary)" }}
-				>
-					{isCreating ? (
-						<><Loader2 size={15} className="animate-spin" /> Creating…</>
-					) : (
-						<><UserPlus size={15} /> Create Account</>
-					)}
-				</button>
-				{onCancel && (
-					<button
-						type="button"
-						onClick={onCancel}
-						className="px-4 py-2.5 rounded-lg text-sm font-medium"
-						style={{ background: "var(--pd-bg-secondary)", color: "var(--pd-text-muted)" }}
-					>
-						Cancel
-					</button>
-				)}
-			</div>
-		</form>
-	);
-}
 
 // ── Overview Page ────────────────────────────────────────────────────────────
 
@@ -262,6 +85,12 @@ export default function OverviewPage() {
 		};
 	}, [teenAccount]);
 
+	const handleTeenAdded = () => {
+		setShowAddTeen(false);
+		reinit();
+		router.refresh();
+	};
+
 	// ── Empty state: no teens yet ─────────────────────────────────────────────
 	if (!teenAccount || !stats) {
 		return (
@@ -284,14 +113,22 @@ export default function OverviewPage() {
 						</div>
 					</div>
 
-					<AddTeenForm
-						onSuccess={() => {
-							// Reset the family store so it re-fetches the new teen
-							reinit();
-							router.refresh();
-						}}
-					/>
+					<button
+						type="button"
+						onClick={() => setShowAddTeen(true)}
+						className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium"
+						style={{ background: "var(--pd-primary)", color: "#fff" }}
+					>
+						<UserPlus size={15} />
+						Add Teen Account
+					</button>
 				</div>
+
+				<AddTeenModal
+					isOpen={showAddTeen}
+					onClose={() => setShowAddTeen(false)}
+					onSuccess={handleTeenAdded}
+				/>
 			</div>
 		);
 	}
@@ -336,22 +173,12 @@ export default function OverviewPage() {
 				</button>
 			</div>
 
-			{/* Add teen inline panel */}
-			{showAddTeen && (
-				<div className="pd-card p-5">
-					<h2 className="text-base font-semibold mb-4" style={{ color: "var(--pd-text)" }}>
-						Add Another Teen Account
-					</h2>
-					<AddTeenForm
-						onSuccess={() => {
-							setShowAddTeen(false);
-							reinit();
-							router.refresh();
-						}}
-						onCancel={() => setShowAddTeen(false)}
-					/>
-				</div>
-			)}
+			{/* Add Teen Modal */}
+			<AddTeenModal
+				isOpen={showAddTeen}
+				onClose={() => setShowAddTeen(false)}
+				onSuccess={handleTeenAdded}
+			/>
 
 			{/* Teen summary card */}
 			<div className="pd-card p-5">

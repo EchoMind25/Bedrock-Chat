@@ -18,16 +18,14 @@ import { motion, AnimatePresence } from "motion/react";
 
 export default function FamilyDashboardPage() {
 	const router = useRouter();
-	const {
-		teenAccounts,
-		selectedTeenId,
-		setSelectedTeen,
-		getSelectedTeenAccount,
-		setMonitoringLevel,
-		viewServers,
-		viewFriends,
-		viewFlags,
-	} = useFamilyStore();
+	const teenAccounts = useFamilyStore((s) => s.teenAccounts);
+	const selectedTeenId = useFamilyStore((s) => s.selectedTeenId);
+	const setSelectedTeen = useFamilyStore((s) => s.setSelectedTeen);
+	const getSelectedTeenAccount = useFamilyStore((s) => s.getSelectedTeenAccount);
+	const setMonitoringLevel = useFamilyStore((s) => s.setMonitoringLevel);
+	const viewServers = useFamilyStore((s) => s.viewServers);
+	const viewFriends = useFamilyStore((s) => s.viewFriends);
+	const viewFlags = useFamilyStore((s) => s.viewFlags);
 
 	const teenAccount = getSelectedTeenAccount();
 	const [showLevelSelector, setShowLevelSelector] = useState(false);

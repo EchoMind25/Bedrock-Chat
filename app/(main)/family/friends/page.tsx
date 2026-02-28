@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useFamilyStore } from "@/store/family.store";
 import {
 	Card,
@@ -13,10 +14,11 @@ import { Avatar } from "@/components/ui/avatar/avatar";
 import { motion } from "motion/react";
 
 export default function FamilyFriendsPage() {
-	const { getSelectedTeenAccount, approveFriend, denyFriend } =
-		useFamilyStore();
+	const getSelectedTeenAccount = useFamilyStore((s) => s.getSelectedTeenAccount);
+	const loadApprovals = useFamilyStore((s) => s.loadApprovals);
 
 	const teenAccount = getSelectedTeenAccount();
+	const [actingOn, setActingOn] = useState<string | null>(null);
 
 	if (!teenAccount) {
 		return (
@@ -26,10 +28,25 @@ export default function FamilyFriendsPage() {
 		);
 	}
 
-	const { pendingFriends } = teenAccount;
-	const pending = pendingFriends.filter((f) => f.status === "pending");
-	const approved = pendingFriends.filter((f) => f.status === "approved");
-	const denied = pendingFriends.filter((f) => f.status === "denied");
+	const pending = teenAccount.pendingFriends.filter((f) => f.status === "pending");
+	const approved = teenAccount.pendingFriends.filter((f) => f.status === "approved");
+	const denied = teenAccount.pendingFriends.filter((f) => f.status === "denied");
+
+	const handleAction = async (approvalId: string, action: "approve" | "deny") => {
+		setActingOn(approvalId);
+		try {
+			const res = await fetch("/api/family/approve", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ approval_id: approvalId, approval_type: "friend", action }),
+			});
+			if (res.ok) {
+				await loadApprovals();
+			}
+		} finally {
+			setActingOn(null);
+		}
+	};
 
 	return (
 		<div className="h-full overflow-y-auto bg-[oklch(0.12_0.02_250)]">
@@ -93,18 +110,16 @@ export default function FamilyFriendsPage() {
 												<Button
 													variant="primary"
 													size="sm"
-													onClick={() =>
-														approveFriend(teenAccount.id, approval.id)
-													}
+													disabled={actingOn === approval.id}
+													onClick={() => handleAction(approval.id, "approve")}
 												>
-													✓ Approve
+													{actingOn === approval.id ? "Saving…" : "✓ Approve"}
 												</Button>
 												<Button
 													variant="danger"
 													size="sm"
-													onClick={() =>
-														denyFriend(teenAccount.id, approval.id)
-													}
+													disabled={actingOn === approval.id}
+													onClick={() => handleAction(approval.id, "deny")}
 												>
 													✗ Deny
 												</Button>

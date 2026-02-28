@@ -33,16 +33,14 @@ const DEFAULT_CATEGORIES = [
 ];
 
 export default function SafetyPage() {
-	const {
-		getSelectedTeenAccount,
-		addKeywordAlert,
-		removeKeywordAlert,
-		toggleKeywordAlert,
-		dismissKeywordMatch,
-		setTimeLimit,
-		removeTimeLimit,
-		toggleBlockedCategory,
-	} = useFamilyStore();
+	const getSelectedTeenAccount = useFamilyStore((s) => s.getSelectedTeenAccount);
+	const addKeywordAlert = useFamilyStore((s) => s.addKeywordAlert);
+	const removeKeywordAlert = useFamilyStore((s) => s.removeKeywordAlert);
+	const toggleKeywordAlert = useFamilyStore((s) => s.toggleKeywordAlert);
+	const dismissKeywordMatch = useFamilyStore((s) => s.dismissKeywordMatch);
+	const setTimeLimit = useFamilyStore((s) => s.setTimeLimit);
+	const removeTimeLimit = useFamilyStore((s) => s.removeTimeLimit);
+	const toggleBlockedCategory = useFamilyStore((s) => s.toggleBlockedCategory);
 
 	const teenAccount = getSelectedTeenAccount();
 	const [activeTab, setActiveTab] = useState<Tab>("keywords");

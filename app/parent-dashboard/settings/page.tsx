@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useParentDashboardStore } from "@/store/parent-dashboard.store";
 import { useAuthStore } from "@/store/auth.store";
+import { useFamilyStore } from "@/store/family.store";
 import {
 	Bell,
 	Mail,
@@ -15,12 +17,19 @@ import {
 	Download,
 	ExternalLink,
 	Check,
+	Trash2,
+	UserMinus,
+	AlertTriangle,
 } from "lucide-react";
 
 export default function SettingsPage() {
+	const router = useRouter();
 	const darkMode = useParentDashboardStore((s) => s.darkMode);
 	const toggleDarkMode = useParentDashboardStore((s) => s.toggleDarkMode);
 	const user = useAuthStore((s) => s.user);
+	const getSelectedTeenAccount = useFamilyStore((s) => s.getSelectedTeenAccount);
+	const reset = useFamilyStore((s) => s.reset);
+	const teenAccount = getSelectedTeenAccount();
 
 	const [emailNotifications, setEmailNotifications] = useState(true);
 	const [pushNotifications, setPushNotifications] = useState(false);
@@ -33,10 +42,55 @@ export default function SettingsPage() {
 	const [autoDelete, setAutoDelete] = useState(true);
 
 	const [saved, setSaved] = useState(false);
+	const [isDissolvingFamily, setIsDissolvingFamily] = useState(false);
+	const [isRemovingTeen, setIsRemovingTeen] = useState(false);
+	const [confirmDissolve, setConfirmDissolve] = useState(false);
+	const [dangerError, setDangerError] = useState<string | null>(null);
 
 	const handleSave = () => {
 		setSaved(true);
 		setTimeout(() => setSaved(false), 2000);
+	};
+
+	const handleRemoveTeen = async () => {
+		if (!teenAccount) return;
+		setDangerError(null);
+		setIsRemovingTeen(true);
+		try {
+			const teenUid = useFamilyStore.getState()._teenUserIdMap[teenAccount.id];
+			if (!teenUid) { setDangerError("Could not resolve teen account ID"); return; }
+			const res = await fetch("/api/family/remove-teen", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ teen_user_id: teenUid }),
+			});
+			const data = await res.json();
+			if (!res.ok) { setDangerError(data.error ?? "Failed to remove teen"); return; }
+			reset();
+			router.push("/parent-dashboard/overview");
+		} finally {
+			setIsRemovingTeen(false);
+		}
+	};
+
+	const handleDissolveFamily = async () => {
+		if (!confirmDissolve) { setConfirmDissolve(true); return; }
+		setDangerError(null);
+		setIsDissolvingFamily(true);
+		try {
+			const res = await fetch("/api/family/dissolve", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ confirm: true }),
+			});
+			const data = await res.json();
+			if (!res.ok) { setDangerError(data.error ?? "Failed to dissolve family"); return; }
+			reset();
+			router.push("/");
+		} finally {
+			setIsDissolvingFamily(false);
+			setConfirmDissolve(false);
+		}
 	};
 
 	return (
@@ -244,6 +298,68 @@ export default function SettingsPage() {
 						<Check size={16} /> Saved
 					</span>
 				)}
+			</div>
+
+			{/* Danger Zone */}
+			<div className="pd-card p-5 space-y-4" style={{ borderColor: "var(--pd-danger)", borderWidth: "1px" }}>
+				<div className="flex items-center gap-2">
+					<AlertTriangle size={18} style={{ color: "var(--pd-danger)" }} />
+					<h2 className="text-base font-semibold" style={{ color: "var(--pd-danger)" }}>
+						Danger Zone
+					</h2>
+				</div>
+
+				{dangerError && (
+					<p className="text-sm px-3 py-2 rounded-lg" style={{ background: "var(--pd-danger-light)", color: "var(--pd-danger)" }}>
+						{dangerError}
+					</p>
+				)}
+
+				{/* Remove teen */}
+				{teenAccount && (
+					<div className="flex items-start justify-between gap-4 py-3" style={{ borderTop: "1px solid var(--pd-border)" }}>
+						<div>
+							<p className="text-sm font-medium" style={{ color: "var(--pd-text)" }}>
+								Remove Teen Account
+							</p>
+							<p className="text-xs mt-0.5" style={{ color: "var(--pd-text-muted)" }}>
+								Removes {teenAccount.user.displayName} from your family. Their account reverts to standard.
+							</p>
+						</div>
+						<button
+							type="button"
+							disabled={isRemovingTeen}
+							onClick={handleRemoveTeen}
+							className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium shrink-0 disabled:opacity-60"
+							style={{ background: "var(--pd-danger-light)", color: "var(--pd-danger)" }}
+						>
+							<UserMinus size={14} />
+							{isRemovingTeen ? "Removing…" : "Remove"}
+						</button>
+					</div>
+				)}
+
+				{/* Dissolve family */}
+				<div className="flex items-start justify-between gap-4 py-3" style={{ borderTop: "1px solid var(--pd-border)" }}>
+					<div>
+						<p className="text-sm font-medium" style={{ color: "var(--pd-text)" }}>
+							Dissolve Family Account
+						</p>
+						<p className="text-xs mt-0.5" style={{ color: "var(--pd-text-muted)" }}>
+							Permanently removes the family. All teen accounts revert to standard. This cannot be undone.
+						</p>
+					</div>
+					<button
+						type="button"
+						disabled={isDissolvingFamily}
+						onClick={handleDissolveFamily}
+						className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium shrink-0 disabled:opacity-60"
+						style={{ background: "var(--pd-danger)", color: "white" }}
+					>
+						<Trash2 size={14} />
+						{isDissolvingFamily ? "Dissolving…" : confirmDissolve ? "Confirm Dissolve" : "Dissolve"}
+					</button>
+				</div>
 			</div>
 		</div>
 	);

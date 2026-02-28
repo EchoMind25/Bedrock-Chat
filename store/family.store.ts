@@ -15,6 +15,7 @@ import type {
 } from "@/lib/types/family";
 import type { User } from "@/store/auth.store";
 import { createClient } from "@/lib/supabase/client";
+import { dbLevelToNumeric } from "@/lib/family/monitoring";
 import {
 	persistTransparencyLogEntry,
 	updateMonitoringLevel as updateMonitoringLevelDb,
@@ -95,6 +96,9 @@ interface FamilyState {
 	// Actions - Parent (logging)
 	viewVoiceMetadata: (teenId: string) => void;
 	logExportActivity: (teenId: string) => void;
+
+	// Actions - Parent (approvals)
+	loadApprovals: () => Promise<void>;
 
 	// Actions - Teen
 	getMyTransparencyLog: () => TransparencyLogEntry[];
@@ -194,7 +198,7 @@ export const useFamilyStore = create<FamilyState>()(
 												settings: { theme: "dark", notifications: true, reducedMotion: false },
 											},
 											parentId: userId,
-											monitoringLevel: ((family.monitoring_level as number) || 1) as MonitoringLevel,
+											monitoringLevel: dbLevelToNumeric(family.monitoring_level as string),
 											activity: { messagesSent7Days: 0, serversJoined: 0, friendsAdded: 0, timeSpent7Days: 0, dailyActivity: [] },
 											contentFlags: [], pendingServers: [], pendingFriends: [],
 											transparencyLog: (logs || []).map(log => ({
@@ -246,6 +250,9 @@ export const useFamilyStore = create<FamilyState>()(
 									_familyId: familyId,
 									_teenUserIdMap: teenUserIdMap,
 								});
+
+								// Load pending approvals from new tables (fire-and-forget)
+								get().loadApprovals().catch(() => {});
 							} catch (err) {
 								console.error("Error loading parent data:", err);
 								set({ isParent: true, isTeen: false, teenAccounts: [], isInitialized: true });
@@ -286,7 +293,7 @@ export const useFamilyStore = create<FamilyState>()(
 											accountType: "parent", hasEmail: true, createdAt: new Date(parentProfile.created_at),
 											settings: { theme: "dark", notifications: true, reducedMotion: false },
 										} : null,
-										myMonitoringLevel: ((family.monitoring_level as number) || 1) as MonitoringLevel,
+										myMonitoringLevel: dbLevelToNumeric(family.monitoring_level as string),
 										myTransparencyLog: (logs || []).map(log => ({
 											id: log.id, action: log.activity_type,
 											details: JSON.stringify(log.details),
@@ -1085,6 +1092,52 @@ export const useFamilyStore = create<FamilyState>()(
 					if (familyId && parentUserId) {
 						persistTransparencyLogEntry(familyId, parentUserId, "exported_activity_log", {});
 					}
+				},
+
+				// Parent: Load pending approvals from DB
+				loadApprovals: async () => {
+					const familyId = get()._familyId;
+					if (!familyId) return;
+					const supabase = createClient();
+					const [{ data: serverRows }, { data: friendRows }] = await Promise.all([
+						supabase
+							.from("family_server_approvals")
+							.select("*")
+							.eq("family_id", familyId)
+							.eq("status", "pending"),
+						supabase
+							.from("family_friend_approvals")
+							.select("*")
+							.eq("family_id", familyId)
+							.eq("status", "pending"),
+					]);
+
+					// Group by teen and inject into teenAccounts
+					set((state) => ({
+						teenAccounts: state.teenAccounts.map((ta) => {
+							const teenUid = state._teenUserIdMap[ta.id];
+							if (!teenUid) return ta;
+							const pendingServers: ServerApproval[] = (serverRows || [])
+								.filter((r: Record<string, unknown>) => r.teen_user_id === teenUid)
+								.map((r: Record<string, unknown>) => ({
+									id: r.id as string,
+									server: { id: r.server_id as string, name: r.server_name as string, icon: (r.server_icon as string | null) ?? null, memberCount: (r.server_member_count as number) ?? 0 },
+									status: r.status as "pending" | "approved" | "denied",
+									requestedAt: new Date(r.requested_at as string),
+									resolvedAt: r.resolved_at ? new Date(r.resolved_at as string) : undefined,
+								}));
+							const pendingFriends: FriendApproval[] = (friendRows || [])
+								.filter((r: Record<string, unknown>) => r.teen_user_id === teenUid)
+								.map((r: Record<string, unknown>) => ({
+									id: r.id as string,
+									friend: { id: r.friend_user_id as string, username: r.friend_username as string, displayName: (r.friend_display_name as string) ?? (r.friend_username as string), avatar: (r.friend_avatar as string) ?? "" },
+									status: r.status as "pending" | "approved" | "denied",
+									requestedAt: new Date(r.requested_at as string),
+									resolvedAt: r.resolved_at ? new Date(r.resolved_at as string) : undefined,
+								}));
+							return { ...ta, pendingServers, pendingFriends };
+						}),
+					}));
 				},
 
 				// Teen: Get my transparency log

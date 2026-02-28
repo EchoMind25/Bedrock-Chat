@@ -4,6 +4,8 @@ import { useEffect, useState, lazy, Suspense } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence, MotionConfig } from "motion/react";
 import { useAuthStore } from "@/store/auth.store";
+import { useFamilyStore } from "@/store/family.store";
+import { useNotificationStore } from "@/store/notification.store";
 import { useServerStore } from "@/store/server.store";
 import { useFriendsStore } from "@/store/friends.store";
 import { useDMStore } from "@/store/dm.store";
@@ -34,6 +36,7 @@ import { logError } from "@/lib/utils/error-logger";
 import { subscribeToPush } from "@/lib/utils/push-subscribe";
 import { AnalyticsProvider } from "@/providers/AnalyticsProvider";
 import { BugReportWidgetWrapper } from "@/components/widget/bug-report-wrapper";
+import { MonitoringBadge } from "@/components/family/MonitoringBadge";
 
 const MemberListPanel = lazy(() =>
 	import("@/components/navigation/member-list/member-list-panel").then((m) => ({
@@ -157,6 +160,15 @@ export function MainLayoutClient({
 					// Step 2: Only init data stores if authenticated
 					const { isAuthenticated: authed } = useAuthStore.getState();
 					if (!authed) return "done";
+
+					// Step 2.4: Initialize family store for parent/teen accounts (fire-and-forget)
+					const { user: authedUser } = useAuthStore.getState();
+					if (authedUser && (authedUser.accountType === "parent" || authedUser.accountType === "teen")) {
+						useFamilyStore.getState().init(authedUser.id, authedUser.accountType);
+					}
+					if (authedUser?.id) {
+						useNotificationStore.getState().init(authedUser.id).catch(() => {});
+					}
 
 					// Step 2.5: DEV MODE - Ensure user is member of all servers (fire-and-forget to not block init)
 					if (process.env.NODE_ENV !== "production") {
@@ -290,6 +302,8 @@ export function MainLayoutClient({
 			useVoicePresenceStore.getState().destroy();
 			useDMStore.getState().unsubscribeFromDms();
 			useFriendsStore.getState().unsubscribeFromFriendRequests();
+			useFamilyStore.getState().reset();
+			useNotificationStore.getState().reset();
 		};
 	}, []);
 
@@ -404,6 +418,7 @@ export function MainLayoutClient({
 							: undefined
 					}
 				>
+					<MonitoringBadge />
 					{children}
 				</main>
 			</ErrorBoundary>

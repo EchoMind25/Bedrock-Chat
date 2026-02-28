@@ -6,13 +6,11 @@ import { useServerStore } from "@/store/server.store";
 import {
 	Server,
 	Users,
-	Check,
-	X,
 	Ban,
 	Unlock,
 	Shield,
-	Calendar,
 } from "lucide-react";
+import { ApprovalQueue } from "@/components/family/dashboard/ApprovalQueue";
 
 type Tab = "active" | "restricted" | "pending";
 
@@ -20,11 +18,10 @@ export default function ServersPage() {
 	const getSelectedTeenAccount = useFamilyStore((s) => s.getSelectedTeenAccount);
 	const restrictServer = useFamilyStore((s) => s.restrictServer);
 	const unrestrictServer = useFamilyStore((s) => s.unrestrictServer);
-	const approveServer = useFamilyStore((s) => s.approveServer);
-	const denyServer = useFamilyStore((s) => s.denyServer);
 	const servers = useServerStore((s) => s.servers);
 	const teenAccount = getSelectedTeenAccount();
 	const [activeTab, setActiveTab] = useState<Tab>("active");
+	const [pendingCount, setPendingCount] = useState(0);
 
 	const restrictedServerIds = useMemo(
 		() => new Set(teenAccount?.restrictions.restrictedServers || []),
@@ -41,9 +38,6 @@ export default function ServersPage() {
 		[servers, restrictedServerIds],
 	);
 
-	const pendingApprovals = teenAccount?.pendingServers.filter((s) => s.status === "pending") || [];
-	const resolvedApprovals = teenAccount?.pendingServers.filter((s) => s.status !== "pending") || [];
-
 	if (!teenAccount) {
 		return (
 			<div className="flex items-center justify-center h-full">
@@ -55,7 +49,7 @@ export default function ServersPage() {
 	const tabs: { id: Tab; label: string; count: number }[] = [
 		{ id: "active", label: "Active", count: activeServers.length },
 		{ id: "restricted", label: "Restricted", count: restrictedServers.length },
-		{ id: "pending", label: "Pending", count: pendingApprovals.length },
+		{ id: "pending", label: "Pending", count: pendingCount },
 	];
 
 	return (
@@ -197,104 +191,9 @@ export default function ServersPage() {
 				</div>
 			)}
 
-			{/* Pending approvals */}
+			{/* Pending approvals — realtime via ApprovalQueue */}
 			{activeTab === "pending" && (
-				<div className="space-y-4">
-					{pendingApprovals.length > 0 ? (
-						pendingApprovals.map((approval) => (
-							<div key={approval.id} className="pd-card p-5">
-								<div className="flex flex-col sm:flex-row sm:items-center gap-4">
-									<div className="flex items-start gap-3 flex-1">
-										<div
-											className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl shrink-0"
-											style={{ background: "var(--pd-bg-secondary)" }}
-										>
-											{approval.server.icon || <Server size={24} style={{ color: "var(--pd-text-muted)" }} />}
-										</div>
-										<div>
-											<h3 className="font-semibold" style={{ color: "var(--pd-text)" }}>
-												{approval.server.name}
-											</h3>
-											{approval.server.description && (
-												<p className="text-sm mt-0.5" style={{ color: "var(--pd-text-muted)" }}>
-													{approval.server.description}
-												</p>
-											)}
-											<div className="flex items-center gap-3 mt-1.5">
-												<span className="text-xs flex items-center gap-1" style={{ color: "var(--pd-text-muted)" }}>
-													<Users size={12} /> {approval.server.memberCount} members
-												</span>
-												<span className="text-xs flex items-center gap-1" style={{ color: "var(--pd-text-muted)" }}>
-													<Calendar size={12} /> {new Date(approval.requestedAt).toLocaleDateString()}
-												</span>
-											</div>
-										</div>
-									</div>
-									<div className="flex gap-2 shrink-0">
-										<button
-											type="button"
-											onClick={() => approveServer(teenAccount.id, approval.id)}
-											className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 text-white"
-											style={{ background: "var(--pd-success)" }}
-										>
-											<Check size={16} />
-											Approve
-										</button>
-										<button
-											type="button"
-											onClick={() => denyServer(teenAccount.id, approval.id)}
-											className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5"
-											style={{ background: "var(--pd-danger-light)", color: "var(--pd-danger)" }}
-										>
-											<X size={16} />
-											Deny
-										</button>
-									</div>
-								</div>
-							</div>
-						))
-					) : (
-						<div className="pd-card p-8 text-center">
-							<Check size={32} className="mx-auto mb-3" style={{ color: "var(--pd-success)" }} />
-							<p style={{ color: "var(--pd-text-muted)" }}>No pending server approvals</p>
-						</div>
-					)}
-
-					{/* Resolved approvals */}
-					{resolvedApprovals.length > 0 && (
-						<div className="mt-6">
-							<h3 className="text-sm font-semibold mb-3" style={{ color: "var(--pd-text-secondary)" }}>
-								Resolved
-							</h3>
-							<div className="space-y-2">
-								{resolvedApprovals.map((approval) => (
-									<div key={approval.id} className="pd-card p-3 flex items-center justify-between">
-										<div className="flex items-center gap-3">
-											<div
-												className="w-8 h-8 rounded-lg flex items-center justify-center text-lg"
-												style={{ background: "var(--pd-bg-secondary)" }}
-											>
-												{approval.server.icon || <Server size={14} />}
-											</div>
-											<span className="text-sm" style={{ color: "var(--pd-text)" }}>
-												{approval.server.name}
-											</span>
-										</div>
-										<span
-											className="text-xs font-medium px-2 py-1 rounded-full"
-											style={{
-												background: approval.status === "approved" ? "var(--pd-success-light)" : "var(--pd-danger-light)",
-												color: approval.status === "approved" ? "var(--pd-success)" : "var(--pd-danger)",
-											}}
-										>
-											{approval.status === "approved" ? "Approved" : "Denied"}
-										</span>
-									</div>
-								))}
-							</div>
-						</div>
-					)}
-				</div>
+				<ApprovalQueue onCountChange={setPendingCount} />
 			)}
 
 			{/* Privacy notice */}

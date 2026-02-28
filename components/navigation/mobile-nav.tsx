@@ -8,6 +8,7 @@ import { useAuthStore } from "@/store/auth.store";
 import type { UserStatus } from "@/store/auth.store";
 import { usePresenceStore } from "@/store/presence.store";
 import { useFamilyStore } from "@/store/family.store";
+import { useNotificationStore } from "@/store/notification.store";
 import { usePlatformRoleStore } from "@/store/platform-role.store";
 import { performFullLogout } from "@/lib/utils/logout";
 import { Avatar } from "@/components/ui/avatar/avatar";
@@ -40,6 +41,7 @@ export function MobileNav() {
   const updateUser = useAuthStore((s) => s.updateUser);
   const setPresenceStatus = usePresenceStore((s) => s.setStatus);
   const monitoringLevel = useFamilyStore((s) => s.myMonitoringLevel);
+  const unreadNotifications = useNotificationStore((s) => s.unreadCount);
   const isParent = useFamilyStore((s) => s.isParent);
   const isTeen = useFamilyStore((s) => s.isTeen);
   const platformIsDeveloper = usePlatformRoleStore((s) => s.isDeveloper());
@@ -179,7 +181,18 @@ export function MobileNav() {
                 aria-label={item.label}
                 aria-current={item.isActive ? "page" : undefined}
               >
-                <Icon className="w-5 h-5 mb-0.5" aria-hidden="true" />
+                <div className="relative">
+                  <Icon className="w-5 h-5 mb-0.5" aria-hidden="true" />
+                  {item.id === "notifications" && unreadNotifications > 0 && (
+                    <span
+                      className="absolute -top-1 -right-1 min-w-[14px] h-3.5 flex items-center justify-center rounded-full text-[9px] font-bold text-white px-0.5"
+                      style={{ background: "oklch(0.63 0.21 25)" }}
+                      aria-label={`${unreadNotifications} unread notifications`}
+                    >
+                      {unreadNotifications > 9 ? "9+" : unreadNotifications}
+                    </span>
+                  )}
+                </div>
                 <span className="text-[10px] font-medium">{item.label}</span>
               </motion.button>
             );

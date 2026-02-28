@@ -8,6 +8,8 @@ import { useMemberStore } from "@/store/member.store";
 import { useThemeStore } from "@/store/theme.store";
 import { hasAcceptedNsfw } from "@/lib/utils/nsfw-gate";
 import { usePointsStore } from "@/store/points.store";
+import { useFamilyStore } from "@/store/family.store";
+import { ChatMonitoringNotice } from "@/components/family/ChatMonitoringNotice";
 
 // Lazy load heavy chat components (includes @tanstack/react-virtual)
 const ChannelHeader = lazy(() =>
@@ -55,6 +57,8 @@ export default function ChannelPage({ params }: PageProps) {
 	const servers = useServerStore((s) => s.servers);
 	const isInitialized = useServerStore((s) => s.isInitialized);
 	const accountType = useAuthStore((s) => s.user?.accountType);
+	const isTeen = useFamilyStore((s) => s.isTeen);
+	const myMonitoringLevel = useFamilyStore((s) => s.myMonitoringLevel);
 
 	// NSFW acceptance state - initialized from sessionStorage (function initializer, no useEffect needed)
 	const [nsfwAccepted, setNsfwAccepted] = useState(() => hasAcceptedNsfw());
@@ -200,6 +204,11 @@ export default function ChannelPage({ params }: PageProps) {
 			<Suspense fallback={<ChannelLoadingSkeleton />}>
 				{/* Channel Header */}
 				<ChannelHeader channel={channel} memberCount={liveMemberCount} />
+
+				{/* Family monitoring notice for teens (level 2+) */}
+				{isTeen && myMonitoringLevel && myMonitoringLevel >= 2 && (
+					<ChatMonitoringNotice channelName={channel.name} />
+				)}
 
 				{/* Message List */}
 				<MessageList channelId={channelId} />
