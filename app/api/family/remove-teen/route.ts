@@ -78,13 +78,15 @@ export async function POST(request: NextRequest) {
   }
 
   // ── 6. Log to transparency BEFORE removing (cascade will delete log) ──────
-  await adminClient.from("family_activity_log").insert({
-    family_id: parentMembership.family_id,
-    user_id: user.id,
-    activity_type: "teen_removed",
-    details: { teen_user_id: teenUserId },
-    visible_to_child: true,
-  }).catch(() => {});
+  try {
+    await adminClient.from("family_activity_log").insert({
+      family_id: parentMembership.family_id,
+      user_id: user.id,
+      activity_type: "teen_removed",
+      details: { teen_user_id: teenUserId },
+      visible_to_child: true,
+    });
+  } catch { /* non-fatal */ }
 
   // ── 7. Remove teen from family ────────────────────────────────────────────
   await adminClient

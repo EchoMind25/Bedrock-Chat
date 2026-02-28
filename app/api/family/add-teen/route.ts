@@ -227,22 +227,26 @@ export async function POST(request: NextRequest) {
   }
 
   // ── 9. Record COPPA consent ───────────────────────────────────────────────
-  await adminClient.from("parental_consent").insert({
-    parent_user_id: user.id,
-    child_user_id: teenId,
-    consent_method: "signed_form",
-    verified: true,
-    verified_at: new Date().toISOString(),
-  }).catch(() => {}); // non-fatal
+  try {
+    await adminClient.from("parental_consent").insert({
+      parent_user_id: user.id,
+      child_user_id: teenId,
+      consent_method: "signed_form",
+      verified: true,
+      verified_at: new Date().toISOString(),
+    });
+  } catch { /* non-fatal */ }
 
   // ── 10. Log to transparency log ───────────────────────────────────────────
-  await adminClient.from("family_activity_log").insert({
-    family_id: familyId,
-    user_id: user.id,
-    activity_type: "account_converted",
-    details: { action: "added_teen", teen_username: body.username, teen_age: teenAge },
-    visible_to_child: true,
-  }).catch(() => {});
+  try {
+    await adminClient.from("family_activity_log").insert({
+      family_id: familyId,
+      user_id: user.id,
+      activity_type: "account_converted",
+      details: { action: "added_teen", teen_username: body.username, teen_age: teenAge },
+      visible_to_child: true,
+    });
+  } catch { /* non-fatal */ }
 
   return NextResponse.json({
     success: true,

@@ -103,19 +103,21 @@ export async function PATCH(request: NextRequest) {
     .eq("id", teenMembership.id);
 
   // ── 8. Log to transparency log ────────────────────────────────────────────
-  await adminClient.from("family_activity_log").insert({
-    family_id: parentMembership.family_id,
-    user_id: user.id,
-    activity_type: "changed_monitoring_level",
-    details: {
-      teen_user_id: teenUserId,
-      old_level: oldLevelStr,
-      new_level: newLevelStr,
-      old_level_numeric: oldLevel,
-      new_level_numeric: level,
-    },
-    visible_to_child: true,
-  }).catch(() => {});
+  try {
+    await adminClient.from("family_activity_log").insert({
+      family_id: parentMembership.family_id,
+      user_id: user.id,
+      activity_type: "changed_monitoring_level",
+      details: {
+        teen_user_id: teenUserId,
+        old_level: oldLevelStr,
+        new_level: newLevelStr,
+        old_level_numeric: oldLevel,
+        new_level_numeric: level,
+      },
+      visible_to_child: true,
+    });
+  } catch { /* non-fatal */ }
 
   return NextResponse.json({ success: true, level: newLevelStr });
 }

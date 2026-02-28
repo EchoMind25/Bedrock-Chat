@@ -127,22 +127,26 @@ export async function POST(request: NextRequest) {
   });
 
   // ── 8. Record parental consent ────────────────────────────────────────────
-  await adminClient.from("parental_consent").insert({
-    parent_user_id: user.id,
-    child_user_id: user.id, // self-declaration for age verification
-    consent_method: "signed_form",
-    verified: true,
-    verified_at: new Date().toISOString(),
-  }).catch(() => {}); // non-fatal if consent table schema differs
+  try {
+    await adminClient.from("parental_consent").insert({
+      parent_user_id: user.id,
+      child_user_id: user.id, // self-declaration for age verification
+      consent_method: "signed_form",
+      verified: true,
+      verified_at: new Date().toISOString(),
+    });
+  } catch { /* non-fatal if consent table schema differs */ }
 
   // ── 9. Log to transparency log ────────────────────────────────────────────
-  await adminClient.from("family_activity_log").insert({
-    family_id: newFamily.id,
-    user_id: user.id,
-    activity_type: "account_converted",
-    details: { from: "standard", to: "parent" },
-    visible_to_child: true,
-  }).catch(() => {});
+  try {
+    await adminClient.from("family_activity_log").insert({
+      family_id: newFamily.id,
+      user_id: user.id,
+      activity_type: "account_converted",
+      details: { from: "standard", to: "parent" },
+      visible_to_child: true,
+    });
+  } catch { /* non-fatal */ }
 
   return NextResponse.json({
     success: true,

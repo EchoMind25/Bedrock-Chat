@@ -128,17 +128,19 @@ export async function POST(request: NextRequest) {
         ? `Your friend request for ${approvalRow.friend_username} was approved`
         : `Your friend request for ${approvalRow.friend_username} was denied`;
 
-  await adminClient.from("notifications").insert({
-    user_id: teenUserId,
-    type: notificationType,
-    title: body.action === "approve" ? "Request Approved" : "Request Denied",
-    body: notificationBody,
-    data: {
-      approval_id: body.approval_id,
-      approval_type: body.approval_type,
-      action: body.action,
-    },
-  }).catch(() => {});
+  try {
+    await adminClient.from("notifications").insert({
+      user_id: teenUserId,
+      type: notificationType,
+      title: body.action === "approve" ? "Request Approved" : "Request Denied",
+      body: notificationBody,
+      data: {
+        approval_id: body.approval_id,
+        approval_type: body.approval_type,
+        action: body.action,
+      },
+    });
+  } catch { /* non-fatal */ }
 
   // ── 9. Log to transparency log ────────────────────────────────────────────
   const activityType =
@@ -151,13 +153,15 @@ export async function POST(request: NextRequest) {
       ? { server_id: approvalRow.server_id, server_name: approvalRow.server_name }
       : { friend_user_id: approvalRow.friend_user_id, friend_username: approvalRow.friend_username };
 
-  await adminClient.from("family_activity_log").insert({
-    family_id: parentMembership.family_id,
-    user_id: user.id,
-    activity_type: activityType,
-    details: logDetails,
-    visible_to_child: true,
-  }).catch(() => {});
+  try {
+    await adminClient.from("family_activity_log").insert({
+      family_id: parentMembership.family_id,
+      user_id: user.id,
+      activity_type: activityType,
+      details: logDetails,
+      visible_to_child: true,
+    });
+  } catch { /* non-fatal */ }
 
   return NextResponse.json({ success: true, status: newStatus });
 }

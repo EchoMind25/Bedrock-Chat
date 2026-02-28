@@ -77,17 +77,19 @@ export async function POST(request: NextRequest) {
   const teenIds = (teenMembers ?? []).map((m) => m.user_id as string);
 
   // ── 7. Log BEFORE cascade delete ─────────────────────────────────────────
-  await adminClient.from("family_activity_log").insert({
-    family_id: familyId,
-    user_id: user.id,
-    activity_type: "family_dissolved",
-    details: {
-      parent_user_id: user.id,
-      teen_count: teenIds.length,
-      teen_user_ids: teenIds,
-    },
-    visible_to_child: true,
-  }).catch(() => {});
+  try {
+    await adminClient.from("family_activity_log").insert({
+      family_id: familyId,
+      user_id: user.id,
+      activity_type: "family_dissolved",
+      details: {
+        parent_user_id: user.id,
+        teen_count: teenIds.length,
+        teen_user_ids: teenIds,
+      },
+      visible_to_child: true,
+    });
+  } catch { /* non-fatal */ }
 
   // ── 8. Convert teens back to standard ────────────────────────────────────
   for (const teenId of teenIds) {
