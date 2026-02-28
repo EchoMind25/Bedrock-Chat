@@ -14,12 +14,14 @@ import {
 import Link from "next/link";
 
 interface TeenSettingsPanelProps {
-	teenAccountId: string;
+	teenAccountId?: string;
 }
 
 export function TeenSettingsPanel({ teenAccountId }: TeenSettingsPanelProps) {
 	const teenAccounts = useFamilyStore((s) => s.teenAccounts);
-	const teenAccount = teenAccounts.find((ta) => ta.id === teenAccountId);
+	const teenAccount = teenAccountId
+		? teenAccounts.find((ta) => ta.id === teenAccountId)
+		: teenAccounts[0];
 
 	if (!teenAccount) {
 		return null;
