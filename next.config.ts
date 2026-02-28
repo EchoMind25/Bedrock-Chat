@@ -37,6 +37,8 @@ const nextConfig: NextConfig = {
     // CSS chunks being preloaded for dynamically-imported components
     // (e.g. Hero3DScene via next/dynamic) that load after the preload timeout.
     cssChunking: false,
+    // Tree-shake icon/component packages more aggressively at the module level
+    optimizePackageImports: ["lucide-react", "@react-three/drei", "motion"],
   },
 
   // Performance: Disable source maps in development for faster builds

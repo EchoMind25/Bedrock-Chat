@@ -32,6 +32,8 @@ import { RewardToasts } from "@/components/rewards/reward-toast";
 import { EasterEggDetectors } from "@/components/rewards/easter-egg-detectors";
 import { logError } from "@/lib/utils/error-logger";
 import { subscribeToPush } from "@/lib/utils/push-subscribe";
+import { AnalyticsProvider } from "@/providers/AnalyticsProvider";
+import { BugReportWidgetWrapper } from "@/components/widget/bug-report-wrapper";
 
 const MemberListPanel = lazy(() =>
 	import("@/components/navigation/member-list/member-list-panel").then((m) => ({
@@ -341,6 +343,7 @@ export function MainLayoutClient({
 	}
 
 	return (
+		<AnalyticsProvider>
 		<MotionConfig reducedMotion={reducedMotion ? "always" : "never"}>
 		<div
 			className="flex h-screen overflow-hidden bg-[oklch(0.12_0.02_250)]"
@@ -470,6 +473,8 @@ export function MainLayoutClient({
 			<PerformanceDashboard />
 		</div>
 		</MotionConfig>
+		<BugReportWidgetWrapper />
+		</AnalyticsProvider>
 	);
 }
 

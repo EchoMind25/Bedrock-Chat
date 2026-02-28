@@ -16,17 +16,29 @@ const Hero3DScene = dynamic(() => import("./hero-3d-scene"), {
 });
 
 export function HeroSection() {
-  // TEMPORARY: Force high tier to always show 3D scene for testing
-  const [tier, setTier] = useState<PerformanceTier>("high");
+  // Conservative default — auto-detected on mount, never guessed
+  const [tier, setTier] = useState<PerformanceTier>("low");
   const [mounted, setMounted] = useState(false);
+  // Set to true only after idle callback fires on high-tier devices
+  const [load3D, setLoad3D] = useState(false);
   // True after 3+ WebGL context losses — permanently skip the 3D scene
   const [permanentFallback, setPermanentFallback] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    // Force high tier for now - remove this to use auto-detection
-    setTier("high");
-    // setTier(getPerformanceTier()); // Uncomment to restore auto-detection
+    const detectedTier = getPerformanceTier();
+    setTier(detectedTier);
+
+    if (detectedTier !== "high") return; // never load Three.js on low/mid-tier devices
+
+    // Defer Three.js load until the browser is idle — don't compete with LCP paint
+    const schedule =
+      "requestIdleCallback" in window
+        ? (cb: () => void) =>
+            (window as unknown as { requestIdleCallback: (cb: () => void, opts: { timeout: number }) => void }).requestIdleCallback(cb, { timeout: 3000 })
+        : (cb: () => void) => setTimeout(cb, 2000);
+
+    schedule(() => setLoad3D(true));
   }, []);
 
   const scrollToFeatures = () => {
@@ -37,14 +49,14 @@ export function HeroSection() {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-background-dark">
       {/* Background layer - progressive enhancement */}
-      {mounted && tier === "high" && !permanentFallback ? (
+      {load3D && !permanentFallback ? (
         <Suspense fallback={<HeroFallback />}>
           <Hero3DScene onPermanentFallback={() => setPermanentFallback(true)} />
           {/* Gradient overlay for text readability on 3D */}
           <div className="absolute inset-0 z-1 bg-linear-to-b from-transparent via-transparent to-background-dark/80 pointer-events-none" />
         </Suspense>
       ) : (
-        <HeroFallback parallax={mounted && tier === "medium" && !permanentFallback} />
+        <HeroFallback parallax={mounted && tier === "medium"} />
       )}
 
       {/* Content overlay - always SSR rendered for fast LCP */}

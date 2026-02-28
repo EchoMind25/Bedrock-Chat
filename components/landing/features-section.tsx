@@ -9,7 +9,7 @@ import {
   Code2,
   Baby,
 } from "lucide-react";
-import { motion, useInView } from "motion/react";
+import { motion } from "motion/react";
 import { useRef, useState, type ReactNode, type MouseEvent } from "react";
 
 interface Feature {
@@ -64,9 +64,13 @@ const features: Feature[] = [
   },
 ];
 
-function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
+const cardVariants = {
+  hidden: { opacity: 0, y: 50 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
+};
+
+function FeatureCard({ feature }: { feature: Feature }) {
   const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
   const [rotateX, setRotateX] = useState(0);
   const [rotateY, setRotateY] = useState(0);
 
@@ -88,19 +92,13 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
 
   return (
     <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 50 }}
-      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
-      transition={{
-        duration: 0.6,
-        delay: index * 0.1,
-        ease: "easeOut",
-      }}
+      variants={cardVariants}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       style={{ perspective: "1000px" }}
     >
       <motion.div
+        ref={ref}
         animate={{ rotateX, rotateY }}
         transition={{
           type: "spring",
@@ -130,21 +128,23 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
   );
 }
 
-export function FeaturesSection() {
-  const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
+const containerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.08 } },
+};
 
+export function FeaturesSection() {
   return (
     <section
       id="features"
-      ref={ref}
       className="py-24 px-6 bg-linear-to-b from-background-dark to-background-dark/95"
     >
       <div className="max-w-7xl mx-auto">
         <motion.div
           className="text-center mb-16"
           initial={{ opacity: 0, y: 30 }}
-          animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.6 }}
         >
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
@@ -156,11 +156,17 @@ export function FeaturesSection() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((feature, index) => (
-            <FeatureCard key={feature.title} feature={feature} index={index} />
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+          variants={containerVariants}
+        >
+          {features.map((feature) => (
+            <FeatureCard key={feature.title} feature={feature} />
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   );

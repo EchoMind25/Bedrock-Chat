@@ -72,7 +72,7 @@ function Portal() {
   return (
     <group>
       <mesh ref={meshRef}>
-        <torusGeometry args={[2.2, 0.35, 64, 128]} />
+        <torusGeometry args={[2.2, 0.35, 32, 64]} />
         <MeshDistortMaterial
           color={COLORS.primary}
           emissive={COLORS.portalCore}
@@ -87,7 +87,7 @@ function Portal() {
       </mesh>
       {/* Inner glow ring */}
       <mesh>
-        <torusGeometry args={[2.2, 0.08, 32, 128]} />
+        <torusGeometry args={[2.2, 0.08, 16, 64]} />
         <meshBasicMaterial
           color={COLORS.portalCore}
           transparent
@@ -96,7 +96,7 @@ function Portal() {
       </mesh>
       {/* Portal center fill - subtle disc */}
       <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[1.9, 64]} />
+        <circleGeometry args={[1.9, 32]} />
         <meshBasicMaterial
           color={COLORS.primary}
           transparent
@@ -212,7 +212,7 @@ function ParticleField() {
     <Stars
       radius={15}
       depth={50}
-      count={1500}
+      count={500}
       factor={3}
       saturation={0.5}
       fade
@@ -343,13 +343,15 @@ export default function Hero3DScene({ onPermanentFallback }: Hero3DSceneProps) {
       <Canvas
         camera={{ position: [0, 0, 7], fov: 55 }}
         gl={{
-          antialias: true,
+          antialias: false,
           alpha: true,
           // low-power saves battery and reduces GPU memory pressure
           powerPreference: "low-power",
+          // Abort gracefully on devices that can't handle WebGL without degradation
+          failIfMajorPerformanceCaveat: true,
         }}
-        // Cap pixel ratio at 2 — higher ratios waste GPU memory with minimal visual gain
-        dpr={[1, 2]}
+        // Cap pixel ratio at 1.5 — higher ratios waste GPU memory with minimal visual gain
+        dpr={[1, 1.5]}
         style={{ background: "transparent" }}
       >
         <Scene
