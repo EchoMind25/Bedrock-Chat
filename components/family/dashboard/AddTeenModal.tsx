@@ -200,7 +200,7 @@ export function AddTeenModal({ isOpen, onClose, onSuccess }: AddTeenModalProps) 
                 type="text"
                 autoComplete="off"
                 value={username}
-                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                onChange={(e) => setUsername(e.target.value)}
                 placeholder="coolteen123"
                 disabled={isSubmitting}
                 className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-60"

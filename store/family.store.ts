@@ -134,127 +134,113 @@ export const useFamilyStore = create<FamilyState>()(
 					if (accountType === "parent") {
 						const loadParentData = async () => {
 							try {
-								const supabase = createClient();
-								const { data: families } = await supabase
-									.from("family_members")
-									.select(`family_id, family:family_accounts(id, name, monitoring_level)`)
-									.eq("user_id", userId)
-									.eq("role", "parent");
+								// Use server-side API route with admin client to bypass RLS and
+								// avoid browser session timing issues (auth.uid() returning null).
+								const res = await fetch("/api/family/init-parent-data");
+								if (!res.ok) {
+									console.error("[FamilyStore] init-parent-data returned", res.status);
+									set({ isParent: true, isTeen: false, teenAccounts: [], isInitialized: true });
+									return;
+								}
+
+								const data = await res.json() as {
+									familyId: string | null;
+									teens: Array<{
+										userId: string;
+										monitoringLevelOverride: string | null;
+										defaultMonitoringLevel: string;
+										username: string;
+										displayName: string;
+										avatarUrl: string;
+										keywords: Record<string, unknown>[];
+										timeLimit: Record<string, unknown> | null;
+										blockedCategories: Record<string, unknown>[];
+										restrictedServers: string[];
+										logs: Array<{ id: string; action: string; details: string; occurredAt: string; metadata: Record<string, unknown> }>;
+									}>;
+								};
 
 								const teenAccounts: TeenAccount[] = [];
 								const teenUserIdMap: Record<string, string> = {};
-								const familyId = (families && families.length > 0) ? families[0].family_id : null;
 
-								for (const fam of families || []) {
-									const family = fam.family as unknown as Record<string, unknown>;
-									const { data: teens } = await supabase
-										.from("family_members")
-										.select(`user_id, user:profiles(id, username, display_name, avatar_url, account_type)`)
-										.eq("family_id", fam.family_id)
-										.eq("role", "child");
+								for (const teen of data.teens) {
+									const accountId = `teen-account-${teen.userId}`;
+									teenUserIdMap[accountId] = teen.userId;
 
-									const { data: logs } = await supabase
-										.from("family_activity_log")
-										.select("*")
-										.eq("family_id", fam.family_id)
-										.order("occurred_at", { ascending: false })
-										.limit(50);
+									const effectiveLevel = teen.monitoringLevelOverride
+										? dbLevelToNumeric(teen.monitoringLevelOverride)
+										: dbLevelToNumeric(teen.defaultMonitoringLevel);
 
-									for (const teen of teens || []) {
-										const u = teen.user as unknown as Record<string, unknown>;
-										const teenUid = u.id as string;
-
-										// Load persisted restrictions from DB (4 parallel queries per teen)
-										const [
-											{ data: dbKeywords },
-											{ data: dbTimeLimit },
-											{ data: dbBlockedCats },
-											{ data: dbRestrictedServers },
-										] = await Promise.all([
-											supabase.from("family_keyword_alerts").select("*")
-												.eq("family_id", fam.family_id).eq("teen_user_id", teenUid),
-											supabase.from("family_time_limits").select("*")
-												.eq("family_id", fam.family_id).eq("teen_user_id", teenUid)
-												.maybeSingle(),
-											supabase.from("family_blocked_categories").select("*")
-												.eq("family_id", fam.family_id).eq("teen_user_id", teenUid),
-											supabase.from("family_restricted_servers").select("*")
-												.eq("family_id", fam.family_id).eq("teen_user_id", teenUid),
-										]);
-
-										const accountId = `teen-account-${teenUid}`;
-										teenUserIdMap[accountId] = teenUid;
-
-										teenAccounts.push({
-											id: accountId,
-											user: {
-												id: teenUid, email: "",
-												username: u.username as string,
-												displayName: (u.display_name as string) || (u.username as string),
-												avatar: (u.avatar_url as string) || "",
-												banner: (u.banner_url as string) || "",
-												status: (u.status as "online" | "idle" | "dnd" | "offline") || "offline",
-												accountType: "teen", hasEmail: false, createdAt: new Date(),
-												settings: { theme: "dark", notifications: true, reducedMotion: false },
-											},
-											parentId: userId,
-											monitoringLevel: dbLevelToNumeric(family.monitoring_level as string),
-											activity: { messagesSent7Days: 0, serversJoined: 0, friendsAdded: 0, timeSpent7Days: 0, dailyActivity: [] },
-											contentFlags: [], pendingServers: [], pendingFriends: [],
-											transparencyLog: (logs || []).map(log => ({
-												id: log.id, action: log.activity_type,
-												details: JSON.stringify(log.details),
-												timestamp: new Date(log.occurred_at),
-												metadata: log.details as Record<string, unknown>,
+									teenAccounts.push({
+										id: accountId,
+										user: {
+											id: teen.userId, email: "",
+											username: teen.username,
+											displayName: teen.displayName,
+											avatar: teen.avatarUrl,
+											banner: "",
+											status: "offline",
+											accountType: "teen", hasEmail: false, createdAt: new Date(),
+											settings: { theme: "dark", notifications: true, reducedMotion: false },
+										},
+										parentId: userId,
+										monitoringLevel: effectiveLevel,
+										activity: { messagesSent7Days: 0, serversJoined: 0, friendsAdded: 0, timeSpent7Days: 0, dailyActivity: [] },
+										contentFlags: [], pendingServers: [], pendingFriends: [],
+										transparencyLog: teen.logs.map((log) => ({
+											id: log.id,
+											action: log.action as import("@/lib/types/family").TransparencyLogAction,
+											details: log.details,
+											timestamp: new Date(log.occurredAt),
+											metadata: log.metadata,
+										})),
+										restrictions: {
+											keywordAlerts: teen.keywords.map((k) => ({
+												id: k.id as string,
+												keyword: k.keyword as string,
+												isRegex: k.is_regex as boolean,
+												isActive: k.is_active as boolean,
+												severity: k.severity as "low" | "medium" | "high",
+												createdAt: new Date(k.created_at as string),
+												matchCount: (k.match_count as number) || 0,
+												lastMatchAt: k.last_match_at ? new Date(k.last_match_at as string) : undefined,
 											})),
-											restrictions: {
-												keywordAlerts: (dbKeywords || []).map((k: Record<string, unknown>) => ({
-													id: k.id as string,
-													keyword: k.keyword as string,
-													isRegex: k.is_regex as boolean,
-													isActive: k.is_active as boolean,
-													severity: k.severity as "low" | "medium" | "high",
-													createdAt: new Date(k.created_at as string),
-													matchCount: (k.match_count as number) || 0,
-													lastMatchAt: k.last_match_at ? new Date(k.last_match_at as string) : undefined,
-												})),
-												timeLimitConfig: dbTimeLimit ? {
-													dailyLimitMinutes: dbTimeLimit.daily_limit_minutes as number,
-													weekdaySchedule: dbTimeLimit.weekday_start
-														? { start: dbTimeLimit.weekday_start as string, end: dbTimeLimit.weekday_end as string }
-														: null,
-													weekendSchedule: dbTimeLimit.weekend_start
-														? { start: dbTimeLimit.weekend_start as string, end: dbTimeLimit.weekend_end as string }
-														: null,
-													isActive: dbTimeLimit.is_active as boolean,
-													overrideUntil: dbTimeLimit.override_until
-														? new Date(dbTimeLimit.override_until as string) : undefined,
-												} : undefined,
-												blockedCategories: (dbBlockedCats || []).map((c: Record<string, unknown>) => ({
-													id: c.id as string,
-													name: c.category_name as string,
-													description: c.category_description as string,
-													icon: c.category_icon as string,
-													isActive: c.is_active as boolean,
-												})),
-												restrictedServers: (dbRestrictedServers || []).map((r: Record<string, unknown>) => r.server_id as string),
-											},
-											createdAt: new Date(), lastActivityAt: new Date(),
-										});
-									}
+											timeLimitConfig: teen.timeLimit ? {
+												dailyLimitMinutes: teen.timeLimit.daily_limit_minutes as number,
+												weekdaySchedule: teen.timeLimit.weekday_start
+													? { start: teen.timeLimit.weekday_start as string, end: teen.timeLimit.weekday_end as string }
+													: null,
+												weekendSchedule: teen.timeLimit.weekend_start
+													? { start: teen.timeLimit.weekend_start as string, end: teen.timeLimit.weekend_end as string }
+													: null,
+												isActive: teen.timeLimit.is_active as boolean,
+												overrideUntil: teen.timeLimit.override_until
+													? new Date(teen.timeLimit.override_until as string) : undefined,
+											} : undefined,
+											blockedCategories: teen.blockedCategories.map((c) => ({
+												id: c.id as string,
+												name: c.category_name as string,
+												description: c.category_description as string,
+												icon: c.category_icon as string,
+												isActive: c.is_active as boolean,
+											})),
+											restrictedServers: teen.restrictedServers,
+										},
+										createdAt: new Date(), lastActivityAt: new Date(),
+									});
 								}
 
 								set({
 									isParent: true, isTeen: false, teenAccounts,
 									selectedTeenId: teenAccounts[0]?.id || null, isInitialized: true,
-									_familyId: familyId,
+									_familyId: data.familyId,
 									_teenUserIdMap: teenUserIdMap,
 								});
 
-								// Load pending approvals from new tables (fire-and-forget)
+								// Load pending approvals (fire-and-forget)
 								get().loadApprovals().catch(() => {});
 							} catch (err) {
-								console.error("Error loading parent data:", err);
+								console.error("[FamilyStore] Error loading parent data:", err);
 								set({ isParent: true, isTeen: false, teenAccounts: [], isInitialized: true });
 							}
 						};
