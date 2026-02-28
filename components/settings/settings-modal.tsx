@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { useRouter } from "next/navigation";
-import { User, Shield, Palette, Lock, Bell, Mic, Code, Crown, X, LogOut, Sparkles, Trophy } from "lucide-react";
+import { User, Shield, Palette, Lock, Bell, Mic, Code, Crown, X, LogOut, Sparkles, Trophy, ChevronRight, ChevronLeft } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useUIStore } from "@/store/ui.store";
 import { useAuthStore } from "@/store/auth.store";
 import { usePlatformRoleStore } from "@/store/platform-role.store";
 import { performFullLogout } from "@/lib/utils/logout";
 import { useAnalytics } from "@/hooks/useAnalytics";
+import { useIsMobile } from "@/lib/hooks/use-media-query";
 
 import { ProfileTab } from "./tabs/profile-tab";
 import { AccountTab } from "./tabs/account-tab";
@@ -46,6 +47,8 @@ const NAV_ITEMS: NavItem[] = [
 export function SettingsModal() {
 	const router = useRouter();
 	const [mounted, setMounted] = useState(false);
+	// Mobile: track whether we're showing the nav list or the active tab's content
+	const [mobileShowContent, setMobileShowContent] = useState(false);
 
 	const isOpen = useUIStore((s) => s.isSettingsOpen);
 	const activeTab = useUIStore((s) => s.settingsTab);
@@ -56,6 +59,7 @@ export function SettingsModal() {
 	const platformIsDeveloper = usePlatformRoleStore((s) => s.isDeveloper());
 	const platformIsStaff = usePlatformRoleStore((s) => s.isStaff());
 	const { trackFeature } = useAnalytics();
+	const isMobile = useIsMobile();
 
 	useEffect(() => {
 		setMounted(true);
@@ -64,6 +68,10 @@ export function SettingsModal() {
 	useEffect(() => {
 		if (isOpen) {
 			trackFeature('SETTINGS_OPEN');
+			// If opened with a specific tab (e.g. from a deep-link), go straight to content on mobile
+			if (isMobile && activeTab) setMobileShowContent(true);
+		} else {
+			setMobileShowContent(false);
 		}
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [isOpen]);
@@ -117,6 +125,8 @@ export function SettingsModal() {
 		router.push("/login");
 	};
 
+	const activeNavItem = visibleItems.find((item) => item.id === activeTab);
+
 	function renderTabContent() {
 		switch (activeTab) {
 			case "profile": return <ProfileTab />;
@@ -131,6 +141,58 @@ export function SettingsModal() {
 			case "admin": return <AdminTab />;
 			default: return <ProfileTab />;
 		}
+	}
+
+	// Shared nav list (used on both desktop sidebar and mobile nav screen)
+	function renderNavList() {
+		return (
+			<>
+				<div className="flex-1 py-6 px-3 overflow-y-auto scrollbar-thin">
+					{Object.entries(categories).map(([category, items]) => (
+						<div key={category} className="mb-4">
+							<p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 mb-1">
+								{category}
+							</p>
+							{items.map((item) => {
+								const Icon = item.icon;
+								const isActive = activeTab === item.id;
+								return (
+									<button
+										key={item.id}
+										type="button"
+										onClick={() => {
+											setTab(item.id);
+											if (isMobile) setMobileShowContent(true);
+										}}
+										className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-sm font-medium text-left transition-colors ${
+											isActive
+												? "bg-white/10 text-white"
+												: "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+										}`}
+									>
+										<Icon className="w-4 h-4 shrink-0" />
+										<span className="flex-1">{item.label}</span>
+										{isMobile && <ChevronRight className="w-4 h-4 shrink-0 text-slate-600" />}
+									</button>
+								);
+							})}
+						</div>
+					))}
+				</div>
+
+				{/* Separator + Logout */}
+				<div className="border-t border-white/5 px-3 py-3 shrink-0">
+					<button
+						type="button"
+						onClick={handleLogout}
+						className="flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-sm font-medium text-red-400 hover:bg-red-500/10 transition-colors"
+					>
+						<LogOut className="w-4 h-4 shrink-0" />
+						Log Out
+					</button>
+				</div>
+			</>
+		);
 	}
 
 	return createPortal(
@@ -152,9 +214,7 @@ export function SettingsModal() {
 						onClick={closeSettings}
 					/>
 
-					{/* Settings container — pointer-events disabled during exit to prevent
-					    the full-screen overlay from blocking clicks on underlying elements
-					    (e.g., channel list buttons) during the spring exit animation */}
+					{/* Settings container */}
 					<motion.div
 						key="settings-content"
 						initial={{ opacity: 0, scale: 0.98, pointerEvents: "none" as const }}
@@ -163,81 +223,125 @@ export function SettingsModal() {
 						transition={{ type: "spring", stiffness: 260, damping: 20 }}
 						className="fixed inset-0 z-50 flex"
 					>
-						<div className="flex w-full h-full">
-							{/* Sidebar */}
-							<div className="w-[240px] shrink-0 bg-[oklch(0.11_0.02_250)] overflow-y-auto scrollbar-thin flex flex-col">
-								<div className="flex-1 py-6 px-3">
-									{Object.entries(categories).map(([category, items]) => (
-										<div key={category} className="mb-4">
-											<p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 mb-1">
-												{category}
-											</p>
-											{items.map((item) => {
-												const Icon = item.icon;
-												const isActive = activeTab === item.id;
-												return (
-													<button
-														key={item.id}
-														type="button"
-														onClick={() => setTab(item.id)}
-														className={`flex items-center gap-3 w-full px-3 py-2 rounded-md text-sm font-medium text-left transition-colors ${
-															isActive
-																? "bg-white/10 text-white"
-																: "text-slate-400 hover:text-slate-200 hover:bg-white/5"
-														}`}
-													>
-														<Icon className="w-4 h-4 shrink-0" />
-														{item.label}
-													</button>
-												);
-											})}
-										</div>
-									))}
+						{isMobile ? (
+							/* ── Mobile: two-screen stack ── */
+							<div className="w-full h-full bg-[oklch(0.11_0.02_250)] flex flex-col">
+								<AnimatePresence mode="wait" initial={false}>
+									{!mobileShowContent ? (
+										/* Screen 1 — nav list */
+										<motion.div
+											key="mobile-nav"
+											className="flex flex-col h-full"
+											initial={{ opacity: 0, x: -24 }}
+											animate={{ opacity: 1, x: 0 }}
+											exit={{ opacity: 0, x: -24 }}
+											transition={{ duration: 0.18 }}
+										>
+											{/* Header */}
+											<div className="flex items-center justify-between px-4 py-4 border-b border-white/10 shrink-0">
+												<h2 className="text-base font-bold text-white">Settings</h2>
+												<button
+													type="button"
+													onClick={closeSettings}
+													className="p-2 rounded-full border border-white/10 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+													aria-label="Close settings"
+												>
+													<X className="w-5 h-5" />
+												</button>
+											</div>
+											{renderNavList()}
+										</motion.div>
+									) : (
+										/* Screen 2 — tab content */
+										<motion.div
+											key="mobile-content"
+											className="flex flex-col h-full"
+											initial={{ opacity: 0, x: 24 }}
+											animate={{ opacity: 1, x: 0 }}
+											exit={{ opacity: 0, x: 24 }}
+											transition={{ duration: 0.18 }}
+										>
+											{/* Header with back button */}
+											<div className="flex items-center gap-3 px-4 py-4 border-b border-white/10 shrink-0">
+												<button
+													type="button"
+													onClick={() => setMobileShowContent(false)}
+													className="p-1.5 -ml-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+													aria-label="Back to settings menu"
+												>
+													<ChevronLeft className="w-5 h-5" />
+												</button>
+												<h2 className="flex-1 text-base font-bold text-white truncate">
+													{activeNavItem?.label ?? "Settings"}
+												</h2>
+												<button
+													type="button"
+													onClick={closeSettings}
+													className="p-2 rounded-full border border-white/10 bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+													aria-label="Close settings"
+												>
+													<X className="w-5 h-5" />
+												</button>
+											</div>
+											{/* Scrollable content */}
+											<div className="flex-1 min-h-0 overflow-y-auto settings-scrollbar">
+												<div className="px-4 py-6">
+													<AnimatePresence mode="wait">
+														<motion.div
+															key={activeTab}
+															initial={{ opacity: 0, y: 8 }}
+															animate={{ opacity: 1, y: 0 }}
+															exit={{ opacity: 0, y: -8 }}
+															transition={{ duration: 0.15 }}
+														>
+															{renderTabContent()}
+														</motion.div>
+													</AnimatePresence>
+												</div>
+											</div>
+										</motion.div>
+									)}
+								</AnimatePresence>
+							</div>
+						) : (
+							/* ── Desktop: two-column layout ── */
+							<div className="flex w-full h-full">
+								{/* Sidebar */}
+								<div className="w-[240px] shrink-0 bg-[oklch(0.11_0.02_250)] flex flex-col">
+									{renderNavList()}
 								</div>
 
-								{/* Separator + Logout */}
-								<div className="border-t border-white/5 px-3 py-3">
+								{/* Content area */}
+								<div className="flex-1 bg-[oklch(0.14_0.02_250)] relative">
+									{/* Close button — always visible, positioned over scroll content */}
 									<button
 										type="button"
-										onClick={handleLogout}
-										className="flex items-center gap-3 w-full px-3 py-2 rounded-md text-sm font-medium text-red-400 hover:bg-red-500/10 transition-colors"
+										onClick={closeSettings}
+										className="absolute top-4 right-4 z-10 p-2 rounded-full border border-white/10 bg-[oklch(0.14_0.02_250)]/80 backdrop-blur-sm text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-hidden focus:ring-2 focus:ring-primary"
+										aria-label="Close settings"
 									>
-										<LogOut className="w-4 h-4 shrink-0" />
-										Log Out
+										<X className="w-5 h-5" />
 									</button>
-								</div>
-							</div>
 
-							{/* Content area — close button is outside the scroll container so it never scrolls away */}
-							<div className="flex-1 bg-[oklch(0.14_0.02_250)] relative">
-								{/* Close button — always visible, positioned over scroll content */}
-								<button
-									type="button"
-									onClick={closeSettings}
-									className="absolute top-4 right-4 z-10 p-2 rounded-full border border-white/10 bg-[oklch(0.14_0.02_250)]/80 backdrop-blur-sm text-slate-400 hover:text-white hover:bg-white/10 transition-colors focus:outline-hidden focus:ring-2 focus:ring-primary"
-									aria-label="Close settings"
-								>
-									<X className="w-5 h-5" />
-								</button>
-
-								{/* Scrollable tab content */}
-								<div className="h-full overflow-y-auto settings-scrollbar">
-									<div className="max-w-[740px] mx-auto px-10 py-8">
-										<AnimatePresence mode="wait">
-											<motion.div
-												key={activeTab}
-												initial={{ opacity: 0, y: 8 }}
-												animate={{ opacity: 1, y: 0 }}
-												exit={{ opacity: 0, y: -8 }}
-												transition={{ duration: 0.15 }}
-											>
-												{renderTabContent()}
-											</motion.div>
-										</AnimatePresence>
+									{/* Scrollable tab content */}
+									<div className="h-full overflow-y-auto settings-scrollbar">
+										<div className="max-w-[740px] mx-auto px-10 py-8">
+											<AnimatePresence mode="wait">
+												<motion.div
+													key={activeTab}
+													initial={{ opacity: 0, y: 8 }}
+													animate={{ opacity: 1, y: 0 }}
+													exit={{ opacity: 0, y: -8 }}
+													transition={{ duration: 0.15 }}
+												>
+													{renderTabContent()}
+												</motion.div>
+											</AnimatePresence>
+										</div>
 									</div>
 								</div>
 							</div>
-						</div>
+						)}
 					</motion.div>
 				</>
 			)}
