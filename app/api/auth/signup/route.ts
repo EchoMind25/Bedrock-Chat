@@ -117,21 +117,6 @@ export async function POST(request: NextRequest) {
 		);
 	}
 
-	if (body.accountType === "teen" && !body.parentEmail) {
-		return NextResponse.json(
-			{ error: "Parent email required for teen accounts" },
-			{ status: 400 },
-		);
-	}
-
-	// Parent and teen accounts require a real email for safety/communication
-	if (body.accountType !== "standard" && !body.email) {
-		return NextResponse.json(
-			{ error: "Email is required for family accounts" },
-			{ status: 400 },
-		);
-	}
-
 	// ── 3. Config Guards ─────────────────────────────────────────────────────
 	const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 	const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

@@ -48,11 +48,6 @@ export default function SignupPage() {
 			return;
 		}
 
-		// Parent/teen accounts require email
-		if (formData.accountType !== "standard" && !formData.email) {
-			return;
-		}
-
 		if (formData.password !== confirmPassword) {
 			return;
 		}
@@ -231,17 +226,16 @@ export default function SignupPage() {
 
 									<Input
 										type="text"
-										label={formData.accountType === "standard" ? "Email (optional)" : "Email"}
+										label="Email (optional)"
 										labelClassName="text-blue-400"
 										value={formData.email || ""}
 										onChange={(e) =>
 											setFormData({ ...formData, email: e.target.value })
 										}
 										placeholder="you@example.com"
-										required={formData.accountType !== "standard"}
 										autoComplete="email"
 										id="email"
-										helperText={formData.accountType === "standard" ? "Skip for full anonymity. Add one later for password recovery." : undefined}
+										helperText="Skip for full anonymity. Add one later for account recovery."
 									/>
 
 									<Input

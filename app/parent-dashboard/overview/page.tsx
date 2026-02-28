@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback, useEffect, useRef } from "react";
+import { useMemo, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useFamilyStore } from "@/store/family.store";
 import { MONITORING_LEVELS } from "@/lib/types/family";
@@ -14,10 +14,11 @@ import {
 	Eye,
 	Server,
 	Shield,
-	Users,
-	TrendingUp,
-	TrendingDown,
+	UserPlus,
 	ArrowRight,
+	X,
+	Check,
+	Loader2,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 
@@ -26,10 +27,190 @@ const StatsChart = dynamic(
 	{ ssr: false },
 );
 
+// ── Add Teen Form ────────────────────────────────────────────────────────────
+
+function AddTeenForm({ onSuccess, onCancel }: { onSuccess: (username: string) => void; onCancel?: () => void }) {
+	const [username, setUsername] = useState("");
+	const [password, setPassword] = useState("");
+	const [confirm, setConfirm] = useState("");
+	const [isCreating, setIsCreating] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [success, setSuccess] = useState(false);
+
+	const handleSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+		setError(null);
+
+		if (username.length < 3) { setError("Username must be at least 3 characters"); return; }
+		if (password.length < 8) { setError("Password must be at least 8 characters"); return; }
+		if (password !== confirm) { setError("Passwords do not match"); return; }
+
+		setIsCreating(true);
+		try {
+			const res = await fetch("/api/parent/create-teen", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ username, password }),
+			});
+			const data = await res.json();
+
+			if (!res.ok) {
+				setError(data.error ?? "Something went wrong");
+				return;
+			}
+
+			setSuccess(true);
+			setTimeout(() => onSuccess(username), 1200);
+		} catch {
+			setError("Network error — please try again");
+		} finally {
+			setIsCreating(false);
+		}
+	};
+
+	if (success) {
+		return (
+			<div className="flex flex-col items-center gap-3 py-6">
+				<div
+					className="w-12 h-12 rounded-full flex items-center justify-center"
+					style={{ background: "var(--pd-success-light)" }}
+				>
+					<Check size={22} style={{ color: "var(--pd-success)" }} />
+				</div>
+				<p className="font-semibold" style={{ color: "var(--pd-success)" }}>
+					@{username} account created!
+				</p>
+				<p className="text-sm text-center" style={{ color: "var(--pd-text-muted)" }}>
+					Refreshing dashboard…
+				</p>
+			</div>
+		);
+	}
+
+	return (
+		<form onSubmit={handleSubmit} className="space-y-4">
+			<div>
+				<label
+					htmlFor="teen-username"
+					className="block text-sm font-medium mb-1.5"
+					style={{ color: "var(--pd-text)" }}
+				>
+					Username
+				</label>
+				<input
+					id="teen-username"
+					type="text"
+					value={username}
+					onChange={(e) => setUsername(e.target.value.trim())}
+					placeholder="coolteen123"
+					autoComplete="off"
+					minLength={3}
+					required
+					className="w-full px-3 py-2.5 rounded-lg text-sm outline-none focus:ring-2"
+					style={{
+						background: "var(--pd-bg-secondary)",
+						color: "var(--pd-text)",
+						border: "1px solid var(--pd-border)",
+					}}
+				/>
+				<p className="text-xs mt-1" style={{ color: "var(--pd-text-muted)" }}>
+					No email needed — teen logs in with username + password only
+				</p>
+			</div>
+
+			<div>
+				<label
+					htmlFor="teen-password"
+					className="block text-sm font-medium mb-1.5"
+					style={{ color: "var(--pd-text)" }}
+				>
+					Password
+				</label>
+				<input
+					id="teen-password"
+					type="password"
+					value={password}
+					onChange={(e) => setPassword(e.target.value)}
+					placeholder="••••••••"
+					autoComplete="new-password"
+					minLength={8}
+					required
+					className="w-full px-3 py-2.5 rounded-lg text-sm outline-none focus:ring-2"
+					style={{
+						background: "var(--pd-bg-secondary)",
+						color: "var(--pd-text)",
+						border: "1px solid var(--pd-border)",
+					}}
+				/>
+			</div>
+
+			<div>
+				<label
+					htmlFor="teen-confirm"
+					className="block text-sm font-medium mb-1.5"
+					style={{ color: "var(--pd-text)" }}
+				>
+					Confirm Password
+				</label>
+				<input
+					id="teen-confirm"
+					type="password"
+					value={confirm}
+					onChange={(e) => setConfirm(e.target.value)}
+					placeholder="••••••••"
+					autoComplete="new-password"
+					required
+					className="w-full px-3 py-2.5 rounded-lg text-sm outline-none focus:ring-2"
+					style={{
+						background: "var(--pd-bg-secondary)",
+						color: "var(--pd-text)",
+						border: "1px solid var(--pd-border)",
+					}}
+				/>
+			</div>
+
+			{error && (
+				<p className="text-sm px-3 py-2 rounded-lg" style={{ background: "var(--pd-danger-light)", color: "var(--pd-danger)" }}>
+					{error}
+				</p>
+			)}
+
+			<div className="flex gap-3 pt-1">
+				<button
+					type="submit"
+					disabled={isCreating}
+					className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white disabled:opacity-60 transition-opacity"
+					style={{ background: "var(--pd-primary)" }}
+				>
+					{isCreating ? (
+						<><Loader2 size={15} className="animate-spin" /> Creating…</>
+					) : (
+						<><UserPlus size={15} /> Create Account</>
+					)}
+				</button>
+				{onCancel && (
+					<button
+						type="button"
+						onClick={onCancel}
+						className="px-4 py-2.5 rounded-lg text-sm font-medium"
+						style={{ background: "var(--pd-bg-secondary)", color: "var(--pd-text-muted)" }}
+					>
+						Cancel
+					</button>
+				)}
+			</div>
+		</form>
+	);
+}
+
+// ── Overview Page ────────────────────────────────────────────────────────────
+
 export default function OverviewPage() {
 	const router = useRouter();
 	const getSelectedTeenAccount = useFamilyStore((s) => s.getSelectedTeenAccount);
+	const reinit = useFamilyStore((s) => s.reset);
 	const teenAccount = getSelectedTeenAccount();
+	const [showAddTeen, setShowAddTeen] = useState(false);
 
 	// Real-time teen presence — only available at monitoring level 2+
 	const teenUserId = teenAccount?.user.id;
@@ -81,14 +262,41 @@ export default function OverviewPage() {
 		};
 	}, [teenAccount]);
 
+	// ── Empty state: no teens yet ─────────────────────────────────────────────
 	if (!teenAccount || !stats) {
 		return (
-			<div className="flex items-center justify-center h-full">
-				<p style={{ color: "var(--pd-text-muted)" }}>No teen account selected</p>
+			<div className="max-w-lg mx-auto p-4 lg:p-6">
+				<div className="pd-card p-6 space-y-6">
+					<div className="flex items-center justify-between">
+						<div>
+							<h1 className="text-xl font-semibold" style={{ color: "var(--pd-text)" }}>
+								Add a Teen Account
+							</h1>
+							<p className="text-sm mt-1" style={{ color: "var(--pd-text-muted)" }}>
+								No email required — just a username and password
+							</p>
+						</div>
+						<div
+							className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+							style={{ background: "var(--pd-primary-light)" }}
+						>
+							<UserPlus size={22} style={{ color: "var(--pd-primary)" }} />
+						</div>
+					</div>
+
+					<AddTeenForm
+						onSuccess={() => {
+							// Reset the family store so it re-fetches the new teen
+							reinit();
+							router.refresh();
+						}}
+					/>
+				</div>
 			</div>
 		);
 	}
 
+	// ── Normal overview ───────────────────────────────────────────────────────
 	const levelInfo = MONITORING_LEVELS[teenAccount.monitoringLevel];
 	const chartData = stats.dailyActivity.map((d) => ({
 		date: new Date(d.date).toLocaleDateString("en-US", { weekday: "short" }),
@@ -115,7 +323,35 @@ export default function OverviewPage() {
 						Here&apos;s an overview of {teenAccount.user.displayName}&apos;s activity
 					</p>
 				</div>
+				<button
+					type="button"
+					onClick={() => setShowAddTeen((v) => !v)}
+					className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+					style={{
+						background: showAddTeen ? "var(--pd-bg-secondary)" : "var(--pd-primary-light)",
+						color: showAddTeen ? "var(--pd-text-muted)" : "var(--pd-primary)",
+					}}
+				>
+					{showAddTeen ? <><X size={15} /> Cancel</> : <><UserPlus size={15} /> Add Teen</>}
+				</button>
 			</div>
+
+			{/* Add teen inline panel */}
+			{showAddTeen && (
+				<div className="pd-card p-5">
+					<h2 className="text-base font-semibold mb-4" style={{ color: "var(--pd-text)" }}>
+						Add Another Teen Account
+					</h2>
+					<AddTeenForm
+						onSuccess={() => {
+							setShowAddTeen(false);
+							reinit();
+							router.refresh();
+						}}
+						onCancel={() => setShowAddTeen(false)}
+					/>
+				</div>
+			)}
 
 			{/* Teen summary card */}
 			<div className="pd-card p-5">
@@ -145,7 +381,6 @@ export default function OverviewPage() {
 						>
 							{levelInfo.name} Monitoring
 						</span>
-						{/* Real-time presence: level 2+ sees online/offline, level 3+ sees full status */}
 						{teenAccount.monitoringLevel >= 2 && (
 							<span
 								className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs"
