@@ -26,6 +26,8 @@ export function UserPanel() {
 	const totalPoints = usePointsStore((s) => s.totalPoints);
 	const platformIsDeveloper = usePlatformRoleStore((s) => s.isDeveloper());
 	const platformIsStaff = usePlatformRoleStore((s) => s.isStaff());
+	const isParent = useFamilyStore((s) => s.isParent);
+	const monitoringLevel = useFamilyStore((s) => s.myMonitoringLevel);
 	const [showSettings, setShowSettings] = useState(false);
 	const [isMuted, setIsMuted] = useState(false);
 	const [isDeafened, setIsDeafened] = useState(false);
@@ -72,8 +74,6 @@ export function UserPanel() {
 			setIsMuted(true);
 		}
 	};
-
-	const monitoringLevel = useFamilyStore((s) => s.myMonitoringLevel);
 
 	const statusToAvatar: Record<UserStatus, AvatarStatus> = {
 		online: "online",
@@ -299,6 +299,22 @@ export function UserPanel() {
 											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
 										</svg>
 										Admin Panel
+									</button>
+								)}
+								{isParent && (
+									<button
+										type="button"
+										className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded-sm transition-colors flex items-center gap-2"
+										onClick={() => {
+											setShowSettings(false);
+											router.push("/parent-dashboard/overview");
+										}}
+									>
+										<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<title>Family Dashboard</title>
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+										</svg>
+										Family Dashboard
 									</button>
 								)}
 								<div className="h-px bg-white/10 my-1" />
