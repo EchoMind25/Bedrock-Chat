@@ -98,7 +98,7 @@ export default function MonitoringPage() {
 								onClick={() => {
 									if (!isActive) setMonitoringLevel(teenAccount.id, level);
 								}}
-								className="pd-card p-5 text-left transition-all relative"
+								className="pd-card p-5 text-left transition-all relative cursor-pointer"
 								style={{
 									borderColor: isActive ? info.color : "var(--pd-border)",
 									borderWidth: isActive ? "2px" : "1px",
