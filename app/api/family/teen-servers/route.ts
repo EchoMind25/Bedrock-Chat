@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
   // ── 5. Fetch server details ───────────────────────────────────────────────
   const { data: serverRows, error: serverError } = await admin
     .from("servers")
-    .select("id, name, description, icon_url, member_count")
+    .select("id, name, description, icon_url, member_count, is_family_friendly")
     .in("id", serverIds);
 
   if (serverError) {
@@ -98,12 +98,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to load server details" }, { status: 500 });
   }
 
-  const servers = (serverRows ?? []).map((s: { id: string; name: string; description: string | null; icon_url: string | null; member_count: number }) => ({
+  const servers = (serverRows ?? []).map((s: { id: string; name: string; description: string | null; icon_url: string | null; member_count: number; is_family_friendly: boolean }) => ({
     id: s.id,
     name: s.name,
     description: s.description ?? null,
     icon: s.icon_url ?? null,
     memberCount: s.member_count ?? 0,
+    isFamilyFriendly: s.is_family_friendly ?? false,
   }));
 
   return NextResponse.json({ servers });

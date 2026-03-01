@@ -8,6 +8,7 @@ import {
 	Ban,
 	Unlock,
 	Shield,
+	ShieldCheck,
 	Loader2,
 } from "lucide-react";
 import { ApprovalQueue } from "@/components/family/dashboard/ApprovalQueue";
@@ -20,6 +21,7 @@ interface TeenServer {
 	description: string | null;
 	icon: string | null;
 	memberCount: number;
+	isFamilyFriendly: boolean;
 }
 
 function ServerIcon({ icon, size = 20, fallback }: { icon: string | null; size?: number; fallback?: React.ReactNode }) {
@@ -154,6 +156,15 @@ export default function ServersPage() {
 										<h3 className="font-semibold truncate" style={{ color: "var(--pd-text)" }}>
 											{server.name}
 										</h3>
+										{server.isFamilyFriendly && (
+											<span
+												className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium mt-1"
+												style={{ background: "var(--pd-success-light)", color: "var(--pd-success)" }}
+											>
+												<ShieldCheck size={10} />
+												Family Friendly
+											</span>
+										)}
 										{server.description && (
 											<p className="text-xs mt-0.5 line-clamp-2" style={{ color: "var(--pd-text-muted)" }}>
 												{server.description}

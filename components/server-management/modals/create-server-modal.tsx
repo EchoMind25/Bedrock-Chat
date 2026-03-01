@@ -99,6 +99,7 @@ export function CreateServerModal() {
   const [isPublic, setIsPublic] = useState(false);
   const [allowDiscovery, setAllowDiscovery] = useState(false);
   const [requireApproval, setRequireApproval] = useState(true);
+  const [isFamilyFriendly, setIsFamilyFriendly] = useState(false);
   const [category, setCategory] = useState("general");
 
   const handleClose = () => {
@@ -112,6 +113,7 @@ export function CreateServerModal() {
       setIsPublic(false);
       setAllowDiscovery(false);
       setRequireApproval(true);
+      setIsFamilyFriendly(false);
       setCategory("general");
     }, 300);
   };
@@ -168,6 +170,7 @@ export function CreateServerModal() {
           is_public: isPublic,
           allow_discovery: isPublic ? true : allowDiscovery,
           require_approval: isPublic ? false : requireApproval,
+          is_family_friendly: isFamilyFriendly,
           category,
         });
 
@@ -297,6 +300,7 @@ export function CreateServerModal() {
           banner: null,
         },
         description: "",
+        isFamilyFriendly,
       };
 
       useServerStore.setState((state) => ({
@@ -548,6 +552,25 @@ export function CreateServerModal() {
                 </div>
               </div>
             )}
+
+            {/* Family Friendly */}
+            <div className="flex items-start gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
+              <input
+                type="checkbox"
+                id="family-friendly"
+                checked={isFamilyFriendly}
+                onChange={(e) => setIsFamilyFriendly(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded-sm border-white/30 text-emerald-600 focus:ring-emerald-500/50"
+              />
+              <div className="flex-1">
+                <label htmlFor="family-friendly" className="text-sm font-medium text-white cursor-pointer">
+                  Family Friendly
+                </label>
+                <p className="text-xs text-white/50 mt-1">
+                  Mark this server as safe for all ages. This badge is visible to parents managing teen accounts.
+                </p>
+              </div>
+            </div>
 
             {/* Privacy Summary */}
             <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">

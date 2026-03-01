@@ -115,6 +115,7 @@ export function ServerSettingsModal() {
 
     if (editedServer.name !== undefined) dbUpdates.name = editedServer.name;
     if (editedServer.description !== undefined) dbUpdates.description = editedServer.description;
+    if (editedServer.isFamilyFriendly !== undefined) dbUpdates.is_family_friendly = editedServer.isFamilyFriendly;
 
     // Icon/banner cleared (set to null) without a new file
     if (!pendingFiles.logo && editedServer.icon !== undefined) {

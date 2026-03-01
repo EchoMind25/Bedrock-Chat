@@ -17,6 +17,7 @@ export function OverviewTab({ server, onChange, onPendingFile }: OverviewTabProp
   const [description, setDescription] = useState(server.description || "");
   const [icon, setIcon] = useState<string | null>(server.icon);
   const [banner, setBanner] = useState<string | null>(server.banner || null);
+  const [isFamilyFriendly, setIsFamilyFriendly] = useState(server.isFamilyFriendly ?? false);
 
   // Update parent on changes (skip initial render to avoid infinite loop)
   const isInitialRender = useRef(true);
@@ -30,9 +31,10 @@ export function OverviewTab({ server, onChange, onPendingFile }: OverviewTabProp
       description,
       icon,
       banner,
+      isFamilyFriendly,
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps -- onChange is intentionally excluded to prevent infinite re-renders
-  }, [name, description, icon, banner]);
+  }, [name, description, icon, banner, isFamilyFriendly]);
 
   return (
     <div className="space-y-6">
@@ -84,6 +86,27 @@ export function OverviewTab({ server, onChange, onPendingFile }: OverviewTabProp
             aspectRatio="banner"
             placeholder="Upload server banner"
           />
+        </div>
+      </div>
+
+      <div className="glass-card rounded-xl p-6">
+        <h4 className="text-sm font-semibold text-slate-200 mb-4">Safety</h4>
+        <div className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            id="family-friendly-setting"
+            checked={isFamilyFriendly}
+            onChange={(e) => setIsFamilyFriendly(e.target.checked)}
+            className="mt-0.5 w-4 h-4 rounded-sm border-white/30 text-emerald-600 focus:ring-emerald-500/50"
+          />
+          <div className="flex-1">
+            <label htmlFor="family-friendly-setting" className="text-sm font-medium text-slate-200 cursor-pointer">
+              Family Friendly
+            </label>
+            <p className="text-xs text-slate-400 mt-1">
+              Mark this server as safe for all ages. This badge is visible to parents managing teen accounts.
+            </p>
+          </div>
         </div>
       </div>
 

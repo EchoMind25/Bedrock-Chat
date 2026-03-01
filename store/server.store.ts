@@ -84,7 +84,7 @@ export const useServerStore = create<ServerState>()(
 									role,
 									server:servers(
 										id, name, description, icon_url, banner_url,
-										owner_id, member_count, is_public, created_at
+										owner_id, member_count, is_public, is_family_friendly, created_at
 									)
 								`)
 								.eq("user_id", userId);
@@ -284,6 +284,7 @@ export const useServerStore = create<ServerState>()(
 									},
 									banner: (srv.banner_url as string) || null,
 									description: (srv.description as string) || "",
+											isFamilyFriendly: (srv.is_family_friendly as boolean) ?? false,
 								});
 							}
 

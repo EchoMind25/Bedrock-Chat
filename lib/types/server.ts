@@ -57,6 +57,8 @@ export interface Server {
 	description?: string;
 	// Visual theming (OKLCH format, e.g. "oklch(0.65 0.25 265)")
 	themeColor?: string;
+	// Family safety flag — advisory, set by server owner
+	isFamilyFriendly?: boolean;
 }
 
 export interface ServerMember {
