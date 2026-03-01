@@ -14,8 +14,8 @@ import { useAuthStore } from "../../../store/auth.store";
 import { toast } from "../../../lib/stores/toast-store";
 import { cn } from "../../../lib/utils/cn";
 import { createClient } from "../../../lib/supabase/client";
-import type { ChannelType } from "../../../lib/types/server";
-import { generateDefaultRoles } from "../../../lib/constants/roles";
+import { createServerFromDefinition } from "../../../lib/services/server-creation";
+import { CUSTOM_TEMPLATE } from "../../../lib/templates/builtin";
 import { DEFAULT_SERVER_SETTINGS } from "../../../lib/types/server-settings";
 import { deriveThemeColor } from "../../../lib/utils/derive-theme-color";
 
@@ -95,165 +95,52 @@ export function AddServerModal() {
     try {
       const supabase = createClient();
 
-      // Generate UUID client-side to avoid dependency on .select() RETURNING,
-      // which can fail with 403 if the SELECT policy hasn't been satisfied yet.
-      const serverId = crypto.randomUUID();
-
-      // 1. Create server
-      const { error: serverError } = await supabase
-        .from("servers")
-        .insert({
-          id: serverId,
-          name: serverName.trim(),
-          description: description.trim() || null,
-          owner_id: user.id,
-          icon_url: serverIcon,
-          is_public: isPublic,
-          allow_discovery: isPublic ? true : allowDiscovery,
-          require_approval: isPublic ? false : requireApproval,
-          category,
-        });
-
-      if (serverError) throw serverError;
-
-      // 2. Add creator as owner
-      const { error: memberError } = await supabase.from("server_members").insert({
-        server_id: serverId,
-        user_id: user.id,
-        role: "owner",
+      const result = await createServerFromDefinition(supabase, {
+        definition: CUSTOM_TEMPLATE.definition,
+        serverName,
+        userId: user.id,
+        serverIcon,
+        description: description.trim(),
+        category,
+        isPublic,
+        allowDiscovery,
+        requireApproval,
       });
-
-      if (memberError) {
-        // Critical: clean up orphaned server
-        await supabase.from("servers").delete().eq("id", serverId);
-        throw memberError;
-      }
-
-      // 3. Create default category + channel
-      const { data: categoriesData, error: catError } = await supabase
-        .from("channel_categories")
-        .insert([{ server_id: serverId, name: "TEXT CHANNELS", position: 0 }])
-        .select();
-
-      if (catError) {
-        console.error("Error creating categories:", catError);
-      }
-
-      const defaultCategoryId = categoriesData?.[0]?.id || null;
-
-      const { data: channelsData, error: chError } = await supabase
-        .from("channels")
-        .insert([
-          {
-            server_id: serverId,
-            category_id: defaultCategoryId,
-            name: "general",
-            type: "text" as ChannelType,
-            position: 0,
-          },
-        ])
-        .select();
-
-      if (chError) {
-        console.error("Error creating channels:", chError);
-      }
-
-      // 4. Create default roles in DB so they persist across reloads
-      const defaultRoles = generateDefaultRoles(serverId);
-      const roleInserts = defaultRoles.map((role) => ({
-        id: role.id,
-        server_id: serverId,
-        name: role.name,
-        color: role.color,
-        permissions: role.permissions,
-        position: role.position,
-        mentionable: role.mentionable,
-        is_default: role.isDefault,
-      }));
-      const { error: roleError } = await supabase
-        .from("server_roles")
-        .insert(roleInserts);
-      if (roleError) {
-        console.error("Error creating default roles:", roleError);
-      }
-
-      // 5. Audit log (non-critical, don't block creation)
-      try {
-        await supabase.from("audit_log").insert({
-          server_id: serverId,
-          actor_id: user.id,
-          action: "server_create",
-          target_id: serverId,
-          target_name: serverName.trim(),
-          target_type: "server",
-        });
-      } catch {
-        // Audit log failure is non-critical
-      }
-
-      // 6. Build local server and add to store
-      const categories = (categoriesData || []).map((cat) => ({
-        id: cat.id,
-        name: cat.name,
-        serverId,
-        position: cat.position,
-        collapsed: false,
-      }));
-
-      const channels = (channelsData || []).map((ch) => ({
-        id: ch.id,
-        name: ch.name,
-        type: ch.type as ChannelType,
-        serverId,
-        categoryId: ch.category_id,
-        position: ch.position,
-        unreadCount: 0,
-        isNsfw: ch.is_nsfw,
-        slowMode: ch.slow_mode_seconds,
-      }));
 
       useServerStore.setState((state) => ({
         servers: [
           ...state.servers,
           {
-            id: serverId,
+            id: result.serverId,
             name: serverName.trim(),
             icon: serverIcon,
             ownerId: user.id,
             memberCount: 1,
             isOwner: true,
-            categories,
-            channels,
+            categories: result.categories,
+            channels: result.channels,
             unreadCount: 0,
             createdAt: new Date(),
             themeColor: deriveThemeColor(serverName.trim()),
-            roles: generateDefaultRoles(serverId),
+            roles: result.roles,
             settings: {
               ...DEFAULT_SERVER_SETTINGS,
               icon: serverIcon,
               banner: null,
             },
             description: description.trim(),
+            isFamilyFriendly: false,
           },
         ],
-        currentServerId: serverId,
-        currentChannelId: channels[0]?.id || null,
+        currentServerId: result.serverId,
+        currentChannelId: result.firstChannelId,
       }));
 
-      // Close modal before navigation to prevent state conflicts
       handleClose();
 
-      // Verify the server was actually added to the store
-      const createdServer = useServerStore.getState().servers.find((s) => s.id === serverId);
-      if (!createdServer) {
-        toast.error("Server Error", "Server was created but could not be loaded. Please refresh.");
-        return;
-      }
-
-      const firstChannel = channels[0];
-      if (firstChannel) {
+      if (result.firstChannelId) {
         toast.success("Server Created", `${serverName} has been created successfully`);
-        router.push(`/servers/${serverId}/${firstChannel.id}`);
+        router.push(`/servers/${result.serverId}/${result.firstChannelId}`);
       } else {
         toast.success("Server Created", `${serverName} was created. Add channels in server settings.`);
         router.push("/friends");

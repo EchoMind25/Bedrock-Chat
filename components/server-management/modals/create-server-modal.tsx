@@ -3,74 +3,23 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
-import { Gamepad2, GraduationCap, Users, Sparkles } from "lucide-react";
+import { Upload } from "lucide-react";
 import { Modal } from "../../ui/modal/modal";
 import { Input } from "../../ui/input/input";
 import { Button } from "../../ui/button/button";
 import { ImageUpload } from "../file-upload/image-upload";
+import { TemplateCard, TemplatePreview } from "../templates/template-card";
 import { useServerManagementStore } from "../../../store/server-management.store";
 import { useServerStore } from "../../../store/server.store";
 import { useAuthStore } from "../../../store/auth.store";
 import { toast } from "../../../lib/stores/toast-store";
 import { usePointsStore } from "../../../store/points.store";
-import { cn } from "../../../lib/utils/cn";
 import { createClient } from "../../../lib/supabase/client";
-import type { ChannelType } from "../../../lib/types/server";
-import { generateDefaultRoles } from "../../../lib/constants/roles";
+import { createServerFromDefinition } from "../../../lib/services/server-creation";
+import { ALL_TEMPLATES } from "../../../lib/templates/builtin";
+import type { BuiltinTemplate } from "../../../lib/templates/builtin";
 import { DEFAULT_SERVER_SETTINGS } from "../../../lib/types/server-settings";
 import { deriveThemeColor } from "../../../lib/utils/derive-theme-color";
-
-type ServerTemplate = "gaming" | "school" | "friends" | "custom";
-
-const TEMPLATES = [
-  {
-    id: "gaming" as const,
-    name: "Gaming",
-    description: "For gaming communities",
-    icon: Gamepad2,
-    channels: [
-      { name: "welcome", type: "announcement" as ChannelType, category: "INFORMATION" },
-      { name: "rules", type: "announcement" as ChannelType, category: "INFORMATION" },
-      { name: "general", type: "text" as ChannelType, category: "TEXT CHANNELS" },
-      { name: "looking-for-group", type: "text" as ChannelType, category: "TEXT CHANNELS" },
-      { name: "General Voice", type: "voice" as ChannelType, category: "VOICE CHANNELS" },
-      { name: "Gaming", type: "voice" as ChannelType, category: "VOICE CHANNELS" },
-    ],
-  },
-  {
-    id: "school" as const,
-    name: "School",
-    description: "For study groups",
-    icon: GraduationCap,
-    channels: [
-      { name: "announcements", type: "announcement" as ChannelType, category: "INFORMATION" },
-      { name: "general", type: "text" as ChannelType, category: "TEXT CHANNELS" },
-      { name: "homework-help", type: "text" as ChannelType, category: "TEXT CHANNELS" },
-      { name: "resources", type: "text" as ChannelType, category: "TEXT CHANNELS" },
-      { name: "Study Room", type: "voice" as ChannelType, category: "VOICE CHANNELS" },
-    ],
-  },
-  {
-    id: "friends" as const,
-    name: "Friends",
-    description: "For hanging out",
-    icon: Users,
-    channels: [
-      { name: "general", type: "text" as ChannelType, category: "TEXT CHANNELS" },
-      { name: "random", type: "text" as ChannelType, category: "TEXT CHANNELS" },
-      { name: "Hangout", type: "voice" as ChannelType, category: "VOICE CHANNELS" },
-    ],
-  },
-  {
-    id: "custom" as const,
-    name: "Custom",
-    description: "Start from scratch",
-    icon: Sparkles,
-    channels: [
-      { name: "general", type: "text" as ChannelType, category: "TEXT CHANNELS" },
-    ],
-  },
-];
 
 const CATEGORIES = [
   { value: "general", label: "General" },
@@ -84,12 +33,11 @@ const CATEGORIES = [
 
 export function CreateServerModal() {
   const router = useRouter();
-  // ✅ Use selectors to subscribe only to specific values, not entire store
   const isCreateServerOpen = useServerManagementStore((state) => state.isCreateServerOpen);
   const closeCreateServer = useServerManagementStore((state) => state.closeCreateServer);
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [selectedTemplate, setSelectedTemplate] = useState<ServerTemplate>("friends");
+  const [selectedTemplateId, setSelectedTemplateId] = useState("community");
   const [serverName, setServerName] = useState("");
   const [serverIcon, setServerIcon] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -102,11 +50,14 @@ export function CreateServerModal() {
   const [isFamilyFriendly, setIsFamilyFriendly] = useState(false);
   const [category, setCategory] = useState("general");
 
+  const selectedTemplate: BuiltinTemplate =
+    ALL_TEMPLATES.find((t) => t.id === selectedTemplateId) || ALL_TEMPLATES[0];
+
   const handleClose = () => {
     closeCreateServer();
     setTimeout(() => {
       setStep(1);
-      setSelectedTemplate("friends");
+      setSelectedTemplateId("community");
       setServerName("");
       setServerIcon(null);
       setError("");
@@ -131,6 +82,10 @@ export function CreateServerModal() {
         return;
       }
       setError("");
+      // Auto-set family-friendly from template
+      if (selectedTemplate.isFamilySafe) {
+        setIsFamilyFriendly(true);
+      }
       setStep(3);
     }
   };
@@ -152,166 +107,52 @@ export function CreateServerModal() {
 
     try {
       const supabase = createClient();
-      const template = TEMPLATES.find((t) => t.id === selectedTemplate)!;
 
-      // Generate UUID client-side to avoid dependency on .select() RETURNING,
-      // which can fail with 403 if the SELECT policy hasn't been satisfied yet
-      // (e.g., private servers where the owner isn't yet in server_members).
-      const serverId = crypto.randomUUID();
-
-      // 1. Create server in Supabase
-      const { error: serverError } = await supabase
-        .from("servers")
-        .insert({
-          id: serverId,
-          name: serverName.trim(),
-          owner_id: user.id,
-          icon_url: serverIcon,
-          is_public: isPublic,
-          allow_discovery: isPublic ? true : allowDiscovery,
-          require_approval: isPublic ? false : requireApproval,
-          is_family_friendly: isFamilyFriendly,
-          category,
-        });
-
-      if (serverError) throw serverError;
-
-      // 2. Add creator as owner member
-      const { error: memberError } = await supabase.from("server_members").insert({
-        server_id: serverId,
-        user_id: user.id,
-        role: "owner",
-      });
-
-      if (memberError) {
-        // Critical: clean up orphaned server
-        await supabase.from("servers").delete().eq("id", serverId);
-        throw memberError;
-      }
-
-      // 3. Create categories
-      const categoryNames = Array.from(new Set(template.channels.map((ch) => ch.category)));
-      const categoryInserts = categoryNames.map((name, index) => ({
-        server_id: serverId,
-        name,
-        position: index,
-      }));
-
-      const { data: categoriesData, error: catError } = await supabase
-        .from("channel_categories")
-        .insert(categoryInserts)
-        .select();
-
-      if (catError) {
-        console.error("Error creating categories:", catError);
-      }
-
-      // 4. Create channels
-      const channelInserts = template.channels.map((ch, index) => {
-        const cat = (categoriesData || []).find((c) => c.name === ch.category);
-        return {
-          server_id: serverId,
-          category_id: cat?.id || null,
-          name: ch.name,
-          type: ch.type,
-          position: index,
-        };
-      });
-
-      const { data: channelsData, error: chError } = await supabase
-        .from("channels")
-        .insert(channelInserts)
-        .select();
-
-      if (chError) {
-        console.error("Error creating channels:", chError);
-      }
-
-      // 5. Create default roles in DB so they persist across reloads
-      const defaultRoles = generateDefaultRoles(serverId);
-      const roleInserts = defaultRoles.map((role) => ({
-        id: role.id,
-        server_id: serverId,
-        name: role.name,
-        color: role.color,
-        permissions: role.permissions,
-        position: role.position,
-        mentionable: role.mentionable,
-        is_default: role.isDefault,
-      }));
-      const { error: roleError } = await supabase
-        .from("server_roles")
-        .insert(roleInserts);
-      if (roleError) {
-        console.error("Error creating default roles:", roleError);
-      }
-
-      // 6. Log audit entry (non-critical, don't block creation)
-      try {
-        await supabase.from("audit_log").insert({
-          server_id: serverId,
-          actor_id: user.id,
-          action: "server_create",
-          target_id: serverId,
-          target_name: serverName.trim(),
-          target_type: "server",
-        });
-      } catch {
-        // Audit log failure is non-critical
-      }
-
-      // 7. Build local server object and add to store
-      const categories = (categoriesData || []).map((cat) => ({
-        id: cat.id,
-        name: cat.name,
-        serverId,
-        position: cat.position,
-        collapsed: false,
-      }));
-
-      const channels = (channelsData || []).map((ch) => ({
-        id: ch.id,
-        name: ch.name,
-        type: ch.type as ChannelType,
-        serverId,
-        categoryId: ch.category_id,
-        position: ch.position,
-        unreadCount: 0,
-        isNsfw: ch.is_nsfw,
-        slowMode: ch.slow_mode_seconds,
-      }));
-
-      const newServer = {
-        id: serverId,
-        name: serverName.trim(),
-        icon: serverIcon,
-        ownerId: user.id,
-        memberCount: 1,
-        isOwner: true,
-        categories,
-        channels,
-        unreadCount: 0,
-        createdAt: new Date(),
-        themeColor: deriveThemeColor(serverName.trim()),
-        roles: generateDefaultRoles(serverId),
-        settings: {
-          ...DEFAULT_SERVER_SETTINGS,
-          icon: serverIcon,
-          banner: null,
-        },
+      const result = await createServerFromDefinition(supabase, {
+        definition: selectedTemplate.definition,
+        serverName,
+        userId: user.id,
+        serverIcon,
         description: "",
+        category,
+        isPublic,
+        allowDiscovery,
+        requireApproval,
         isFamilyFriendly,
-      };
+      });
 
+      // Build local server object and add to store
       useServerStore.setState((state) => ({
-        servers: [...state.servers, newServer],
-        currentServerId: serverId,
-        currentChannelId: channels[0]?.id || null,
+        servers: [
+          ...state.servers,
+          {
+            id: result.serverId,
+            name: serverName.trim(),
+            icon: serverIcon,
+            ownerId: user.id,
+            memberCount: 1,
+            isOwner: true,
+            categories: result.categories,
+            channels: result.channels,
+            unreadCount: 0,
+            createdAt: new Date(),
+            themeColor: deriveThemeColor(serverName.trim()),
+            roles: result.roles,
+            settings: {
+              ...DEFAULT_SERVER_SETTINGS,
+              icon: serverIcon,
+              banner: null,
+            },
+            description: "",
+            isFamilyFriendly,
+          },
+        ],
+        currentServerId: result.serverId,
+        currentChannelId: result.firstChannelId,
       }));
 
       toast.success("Server Created", `${serverName} has been created successfully`);
 
-      // Award points and track achievement for server creation
       try {
         usePointsStore.getState().awardServerCreated();
         usePointsStore.getState().updateAchievementProgress("founder", 1);
@@ -319,9 +160,8 @@ export function CreateServerModal() {
 
       handleClose();
 
-      const firstChannel = channels[0];
-      if (firstChannel) {
-        router.push(`/servers/${serverId}/${firstChannel.id}`);
+      if (result.firstChannelId) {
+        router.push(`/servers/${result.serverId}/${result.firstChannelId}`);
       }
     } catch (err) {
       console.error("Error creating server:", err);
@@ -392,32 +232,34 @@ export function CreateServerModal() {
               Choose a template to get started quickly, or start from scratch.
             </p>
 
-            <div className="grid grid-cols-2 gap-3">
-              {TEMPLATES.map((template) => {
-                const Icon = template.icon;
-                return (
-                  <motion.button
-                    key={template.id}
-                    type="button"
-                    onClick={() => setSelectedTemplate(template.id)}
-                    className={cn(
-                      "p-4 rounded-lg border-2 transition-all text-left",
-                      selectedTemplate === template.id
-                        ? "border-blue-500 bg-blue-500/10"
-                        : "border-white/10 hover:border-white/20 hover:bg-white/5",
-                    )}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Icon className={cn(
-                      "w-8 h-8 mb-2",
-                      selectedTemplate === template.id ? "text-blue-400" : "text-white/60",
-                    )} />
-                    <h3 className="font-medium mb-1">{template.name}</h3>
-                    <p className="text-xs text-white/60">{template.description}</p>
-                  </motion.button>
-                );
-              })}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {ALL_TEMPLATES.map((template) => (
+                <TemplateCard
+                  key={template.id}
+                  template={template}
+                  isSelected={selectedTemplateId === template.id}
+                  onSelect={() => setSelectedTemplateId(template.id)}
+                />
+              ))}
+            </div>
+
+            {/* Template preview */}
+            {selectedTemplate.id !== "custom" && (
+              <TemplatePreview template={selectedTemplate} />
+            )}
+
+            {/* Import from Discord placeholder */}
+            <div className="pt-2 border-t border-white/10">
+              <button
+                type="button"
+                disabled
+                className="flex items-center gap-2 text-sm text-white/40 cursor-not-allowed"
+                aria-label="Import from Discord (coming soon)"
+              >
+                <Upload className="w-4 h-4" aria-hidden="true" />
+                Import from Discord
+                <span className="text-xs text-white/30">(coming soon)</span>
+              </button>
             </div>
           </motion.div>
         )}
@@ -450,7 +292,7 @@ export function CreateServerModal() {
             <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
               <p className="text-xs text-blue-200">
                 Your server will be created with preset channels based on the{" "}
-                <strong>{TEMPLATES.find((t) => t.id === selectedTemplate)?.name}</strong> template.
+                <strong>{selectedTemplate.displayName}</strong> template.
               </p>
             </div>
           </motion.div>
@@ -575,7 +417,7 @@ export function CreateServerModal() {
             {/* Privacy Summary */}
             <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
               <div className="flex gap-2">
-                <svg className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
                 <p className="text-xs text-blue-200">

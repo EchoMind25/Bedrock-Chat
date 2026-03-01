@@ -29,7 +29,7 @@ export interface ServerTemplate {
   name: string;
   description: string | null;
   sourceServerId: string | null;
-  createdBy: string;
+  createdBy: string | null;
   templateData: ServerTemplateData;
   isPublic: boolean;
   code: string;
@@ -37,6 +37,11 @@ export interface ServerTemplate {
   previewImageUrl: string | null;
   createdAt: Date;
   updatedAt: Date;
+  slug: string | null;
+  category: string;
+  isFeatured: boolean;
+  iconEmoji: string | null;
+  isFamilyFriendly: boolean;
 }
 
 export const mapDbServerTemplate = (row: Record<string, unknown>): ServerTemplate => ({
@@ -44,7 +49,7 @@ export const mapDbServerTemplate = (row: Record<string, unknown>): ServerTemplat
   name: row.name as string,
   description: (row.description as string) || null,
   sourceServerId: (row.source_server_id as string) || null,
-  createdBy: row.created_by as string,
+  createdBy: (row.created_by as string) || null,
   templateData: row.template_data as ServerTemplateData,
   isPublic: row.is_public as boolean,
   code: row.code as string,
@@ -52,4 +57,9 @@ export const mapDbServerTemplate = (row: Record<string, unknown>): ServerTemplat
   previewImageUrl: (row.preview_image_url as string) || null,
   createdAt: new Date(row.created_at as string),
   updatedAt: new Date(row.updated_at as string),
+  slug: (row.slug as string) || null,
+  category: (row.category as string) || "general",
+  isFeatured: (row.is_featured as boolean) || false,
+  iconEmoji: (row.icon_emoji as string) || null,
+  isFamilyFriendly: (row.is_family_friendly as boolean) || false,
 });
