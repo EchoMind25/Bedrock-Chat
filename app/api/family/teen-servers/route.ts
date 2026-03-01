@@ -81,19 +81,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to load servers" }, { status: 500 });
   }
 
+  type ServerRow = { id: string; name: string; description: string | null; icon_url: string | null; member_count: number };
   const servers = (memberships ?? [])
-    .map((m: { servers: Record<string, unknown> | null }) => {
-      const s = m.servers;
-      if (!s) return null;
-      return {
-        id: s.id as string,
-        name: s.name as string,
-        description: (s.description as string | null) ?? null,
-        icon: (s.icon_url as string | null) ?? null,
-        memberCount: (s.member_count as number) ?? 0,
-      };
-    })
-    .filter((s): s is NonNullable<typeof s> => s !== null);
+    .flatMap((m: { servers: ServerRow[] }) => m.servers ?? [])
+    .map((s: ServerRow) => ({
+      id: s.id,
+      name: s.name,
+      description: s.description ?? null,
+      icon: s.icon_url ?? null,
+      memberCount: s.member_count ?? 0,
+    }));
 
   return NextResponse.json({ servers });
 }
