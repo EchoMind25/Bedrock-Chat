@@ -70,27 +70,41 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Teen not found in family" }, { status: 404 });
   }
 
-  // ── 4. Fetch teen's server memberships with server details ────────────────
+  // ── 4. Fetch teen's server memberships ──────────────────────────────────
   const { data: memberships, error: membershipsError } = await admin
     .from("server_members")
-    .select("servers(id, name, description, icon_url, member_count)")
+    .select("server_id")
     .eq("user_id", teenUserId);
 
   if (membershipsError) {
-    console.error("[teen-servers] error:", membershipsError.message);
+    console.error("[teen-servers] memberships error:", membershipsError.message);
     return NextResponse.json({ error: "Failed to load servers" }, { status: 500 });
   }
 
-  type ServerRow = { id: string; name: string; description: string | null; icon_url: string | null; member_count: number };
-  const servers = (memberships ?? [])
-    .flatMap((m: { servers: ServerRow[] }) => m.servers ?? [])
-    .map((s: ServerRow) => ({
-      id: s.id,
-      name: s.name,
-      description: s.description ?? null,
-      icon: s.icon_url ?? null,
-      memberCount: s.member_count ?? 0,
-    }));
+  const serverIds = (memberships ?? []).map((m: { server_id: string }) => m.server_id);
+
+  if (serverIds.length === 0) {
+    return NextResponse.json({ servers: [] });
+  }
+
+  // ── 5. Fetch server details ───────────────────────────────────────────────
+  const { data: serverRows, error: serverError } = await admin
+    .from("servers")
+    .select("id, name, description, icon_url, member_count")
+    .in("id", serverIds);
+
+  if (serverError) {
+    console.error("[teen-servers] servers error:", serverError.message);
+    return NextResponse.json({ error: "Failed to load server details" }, { status: 500 });
+  }
+
+  const servers = (serverRows ?? []).map((s: { id: string; name: string; description: string | null; icon_url: string | null; member_count: number }) => ({
+    id: s.id,
+    name: s.name,
+    description: s.description ?? null,
+    icon: s.icon_url ?? null,
+    memberCount: s.member_count ?? 0,
+  }));
 
   return NextResponse.json({ servers });
 }
