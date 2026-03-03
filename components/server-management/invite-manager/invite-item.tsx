@@ -7,7 +7,7 @@ import { Button } from "../../ui/button/button";
 import { Avatar } from "../../ui/avatar/avatar";
 import { cn } from "../../../lib/utils/cn";
 import type { ServerInvite } from "../../../lib/types/invites";
-import { formatTimeRemaining, isInviteValid } from "../../../lib/types/invites";
+import { formatTimeRemaining, isInviteValid, buildInviteUrl } from "../../../lib/types/invites";
 import { toast } from "../../../lib/stores/toast-store";
 
 interface InviteItemProps {
@@ -20,7 +20,7 @@ export function InviteItem({ invite, channelName, onDelete }: InviteItemProps) {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleCopy = () => {
-    const inviteUrl = `https://bedrock.chat/invite/${invite.code}`;
+    const inviteUrl = buildInviteUrl(invite.code);
     navigator.clipboard.writeText(inviteUrl);
     toast.success("Invite Copied", "Invite link copied to clipboard");
   };

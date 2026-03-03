@@ -40,6 +40,7 @@ export type AuditLogAction =
   | "member_unban"
   | "invite_create"
   | "invite_delete"
+  | "invite_deactivate"
   | "message_delete"
   | "message_pin"
   | "message_unpin"
@@ -100,6 +101,7 @@ export const getAuditLogActionName = (action: AuditLogAction): string => {
     member_unban: "Member Unbanned",
     invite_create: "Invite Created",
     invite_delete: "Invite Deleted",
+    invite_deactivate: "Invite Deactivated",
     message_delete: "Message Deleted",
     message_pin: "Message Pinned",
     message_unpin: "Message Unpinned",
@@ -141,6 +143,7 @@ export const getAuditLogActionIcon = (action: AuditLogAction): string => {
     member_unban: "UserPlus",
     invite_create: "Plus",
     invite_delete: "Trash2",
+    invite_deactivate: "XCircle",
     message_delete: "Trash2",
     message_pin: "Pin",
     message_unpin: "PinOff",

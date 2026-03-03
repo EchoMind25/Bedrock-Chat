@@ -8,8 +8,9 @@ import { FeatureUsageTab } from "./components/FeatureUsageTab";
 import { PerformanceTab } from "./components/PerformanceTab";
 import { SessionsTab } from "./components/SessionsTab";
 import { BugReportsTab } from "./components/BugReportsTab";
+import { MigrationTab } from "./components/MigrationTab";
 
-type Tab = "navigation" | "features" | "performance" | "sessions" | "bugs";
+type Tab = "navigation" | "features" | "performance" | "sessions" | "bugs" | "migration";
 
 const TAB_LABELS: Record<Tab, string> = {
 	navigation: "Navigation & Funnels",
@@ -17,6 +18,7 @@ const TAB_LABELS: Record<Tab, string> = {
 	performance: "Performance",
 	sessions: "Sessions & Engagement",
 	bugs: "Bug Reports",
+	migration: "Migration Funnel",
 };
 
 function AnalyticsDashboard() {
@@ -40,7 +42,8 @@ function AnalyticsDashboard() {
 				{activeTab === "performance" && <PerformanceTab />}
 				{activeTab === "sessions" && <SessionsTab />}
 				{activeTab === "bugs" && <BugReportsTab />}
-				{!["navigation", "features", "performance", "sessions", "bugs"].includes(activeTab) && (
+				{activeTab === "migration" && <MigrationTab />}
+				{!["navigation", "features", "performance", "sessions", "bugs", "migration"].includes(activeTab) && (
 					<NavigationTab />
 				)}
 			</div>

@@ -15,9 +15,44 @@ export interface ServerInvite {
   expiresAt: Date | null; // null = never expires
   temporary: boolean; // Kick user on disconnect if they joined via this invite
 
+  // Smart invite fields
+  mappedRoleId: string | null; // Auto-assign this role on join
+  mappedRoleName?: string; // Denormalized for display
+  mappedRoleColor?: string; // Denormalized for display
+  label: string | null; // Human label: "For Moderators", "For Discord Members"
+  clickCount: number; // Aggregate click counter (no PII)
+  isActive: boolean; // Soft delete flag
+  requiresFamilyAccount: boolean; // COPPA: only family accounts can use
+
   // Stats
   uses: number;
   createdAt: Date;
+}
+
+/** Public-safe preview data for the invite landing page (no PII) */
+export interface InvitePreview {
+  code: string;
+  serverName: string;
+  serverIcon: string | null;
+  memberCount: number;
+  channelCount: number;
+  mappedRoleName: string | null;
+  mappedRoleColor: string | null;
+  label: string | null;
+  expiresAt: string | null; // ISO string
+  isValid: boolean; // Not expired, not maxed, is_active
+  requiresFamilyAccount: boolean;
+}
+
+/** Aggregated invite statistics for the migration dashboard */
+export interface InviteStats {
+  totalInvites: number;
+  activeInvites: number;
+  totalJoins: number;
+  totalClicks: number;
+  joinRate: number; // totalJoins / totalClicks as percentage (0-100)
+  membersByRole: { roleName: string; roleColor: string | null; count: number }[];
+  dailyJoins: { date: string; count: number }[];
 }
 
 export type InviteExpirationOption = "30m" | "1h" | "6h" | "12h" | "1d" | "7d" | "never";
@@ -66,12 +101,12 @@ export const formatTimeRemaining = (expiresAt: Date | null): string => {
 
 // Helper to check if invite is valid
 export const isInviteValid = (invite: ServerInvite): boolean => {
-  // Check if expired
+  if (!invite.isActive) return false;
+
   if (invite.expiresAt && invite.expiresAt < new Date()) {
     return false;
   }
 
-  // Check if max uses reached
   if (invite.maxUses > 0 && invite.uses >= invite.maxUses) {
     return false;
   }
@@ -79,15 +114,16 @@ export const isInviteValid = (invite: ServerInvite): boolean => {
   return true;
 };
 
-// Generate random invite code
-export const generateInviteCode = (): string => {
+// Generate cryptographically secure invite code (URL-safe, 8 chars)
+export const generateSecureInviteCode = (): string => {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let code = "";
-  for (let i = 0; i < 8; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
+  const array = new Uint8Array(8);
+  crypto.getRandomValues(array);
+  return Array.from(array, (byte) => chars[byte % chars.length]).join("");
 };
+
+/** @deprecated Use generateSecureInviteCode instead */
+export const generateInviteCode = generateSecureInviteCode;
 
 // Default invite settings
 export const DEFAULT_INVITE_SETTINGS: InviteSettings = {
@@ -95,3 +131,9 @@ export const DEFAULT_INVITE_SETTINGS: InviteSettings = {
   maxUses: 0,
   temporary: false,
 };
+
+/** Base URL for invite links */
+export const INVITE_BASE_URL = "https://bedrock.chat/join";
+
+/** Build a full invite URL from a code */
+export const buildInviteUrl = (code: string): string => `${INVITE_BASE_URL}/${code}`;

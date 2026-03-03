@@ -12,6 +12,7 @@ const NAV_TABS = [
 	{ id: "performance", label: "Performance", icon: "M13 10V3L4 14h7v7l9-11h-7z" },
 	{ id: "sessions", label: "Sessions & Engagement", icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" },
 	{ id: "bugs", label: "Bug Reports", icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" },
+	{ id: "migration", label: "Migration Funnel", icon: "M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" },
 ] as const;
 
 type AggregateStatus = "idle" | "loading" | "success" | "error";

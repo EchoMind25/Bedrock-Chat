@@ -9,7 +9,7 @@ import { createClient } from "../lib/supabase/client";
 
 const EMPTY_ARRAY: never[] = [];
 
-export type ServerSettingsTab = "overview" | "roles" | "channels" | "categories" | "moderation" | "invites" | "appearance" | "emojis" | "welcome" | "events" | "webhooks" | "bots";
+export type ServerSettingsTab = "overview" | "roles" | "channels" | "categories" | "moderation" | "invites" | "migration" | "appearance" | "emojis" | "welcome" | "events" | "webhooks" | "bots";
 export type ChannelSettingsTab = "overview" | "permissions";
 
 export interface DiscoverableServer {
@@ -57,7 +57,7 @@ interface ServerManagementState {
   searchDiscoverableServers: (query: string) => Promise<DiscoverableServer[]>;
   joinPublicServer: (serverId: string) => Promise<void>;
   requestToJoinServer: (serverId: string, message?: string) => Promise<void>;
-  joinServerByInvite: (code: string) => Promise<void>;
+  joinServerByInvite: (code: string) => Promise<{ serverId: string; serverName: string; roleAssigned: boolean; roleName: string | null; alreadyMember: boolean } | void>;
 
   openCreateChannel: (preselectedCategoryId?: string) => void;
   closeCreateChannel: () => void;
@@ -75,8 +75,12 @@ interface ServerManagementState {
     inviterUsername: string,
     inviterAvatar: string,
     settings: InviteSettings,
+    mappedRoleId?: string | null,
+    label?: string | null,
+    requiresFamilyAccount?: boolean,
   ) => Promise<ServerInvite>;
   deleteInvite: (serverId: string, inviteId: string) => Promise<void>;
+  deactivateInvite: (serverId: string, inviteId: string) => Promise<void>;
   loadInvites: (serverId: string, channelIds: string[]) => void;
   getInvitesByServer: (serverId: string) => ServerInvite[];
 
@@ -241,69 +245,37 @@ export const useServerManagementStore = create<ServerManagementState>()(
         },
 
         joinServerByInvite: async (code) => {
-          const supabase = createClient();
-          const { data: { user }, error: authError } = await supabase.auth.getUser();
-          if (authError || !user) {
-            toast.error("Not Authenticated", "Please log in to use an invite");
-            throw new Error("Not authenticated");
-          }
+          const res = await fetch("/api/invites/redeem", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code: code.trim() }),
+          });
 
-          // Look up the invite with channel info
-          const { data: invite, error: inviteError } = await supabase
-            .from("server_invites")
-            .select(`*, channel:channels(id, name, type)`)
-            .eq("code", code.trim())
-            .single();
+          if (!res.ok) {
+            const err = await res.json();
+            const message = err.error || "Could not join server";
 
-          if (inviteError || !invite) {
-            toast.error("Invalid Invite", "This invite code is invalid or has expired");
-            throw new Error("Invalid or expired invite code");
-          }
-
-          // Check expiration
-          if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
-            toast.error("Expired Invite", "This invite link has expired");
-            throw new Error("This invite has expired");
-          }
-
-          // Check max uses
-          if (invite.max_uses > 0 && invite.uses >= invite.max_uses) {
-            toast.error("Invite Exhausted", "This invite has reached its maximum uses");
-            throw new Error("This invite has reached its maximum uses");
-          }
-
-          // Join server
-          const { error: memberError } = await supabase
-            .from("server_members")
-            .insert({ server_id: invite.server_id, user_id: user.id, role: "member" });
-
-          if (memberError) {
-            if (memberError.code === "23505") {
-              toast.info("Already Joined", "You are already a member of this server");
-              return;
+            if (res.status === 401) {
+              toast.error("Not Authenticated", "Please log in to use an invite");
+            } else if (res.status === 410) {
+              toast.error("Expired Invite", message);
+            } else {
+              toast.error("Join Failed", message);
             }
-            toast.error("Join Failed", "Could not join server. Please try again.");
-            throw memberError;
+            throw new Error(message);
           }
 
-          // Increment uses (non-critical, don't let failure block the join)
-          try {
-            await supabase
-              .from("server_invites")
-              .update({ uses: invite.uses + 1 })
-              .eq("id", invite.id);
-          } catch {
-            // Invite use count is non-critical
+          const result = await res.json();
+
+          if (result.alreadyMember) {
+            toast.info("Already Joined", `You are already a member of ${result.serverName}`);
+          } else if (result.roleAssigned) {
+            toast.success("Joined Server", `Welcome to ${result.serverName}! You've been assigned the ${result.roleName} role.`);
+          } else {
+            toast.success("Joined Server", `Welcome to ${result.serverName}!`);
           }
 
-          // Determine success message based on target type
-          const targetType = invite.target_type as InviteTargetType;
-          const channel = invite.channel as unknown as Record<string, unknown>;
-          const redirectMessage = targetType === "server"
-            ? "You have joined the server"
-            : `You have joined via ${targetType === "voice" ? "🔊 " : "# "}${channel?.name || "invite"}`;
-
-          toast.success("Joined Server", redirectMessage);
+          return result;
         },
 
         openCreateChannel: (preselectedCategoryId) => {
@@ -327,7 +299,7 @@ export const useServerManagementStore = create<ServerManagementState>()(
         },
 
         // Invite operations
-        createInvite: async (serverId, targetType, channelId, inviterId, inviterUsername, inviterAvatar, settings) => {
+        createInvite: async (serverId, targetType, channelId, inviterId, inviterUsername, inviterAvatar, settings, mappedRoleId, label, requiresFamilyAccount) => {
           const supabase = createClient();
 
           // Validate target type and channel ID relationship
@@ -350,6 +322,9 @@ export const useServerManagementStore = create<ServerManagementState>()(
               max_uses: settings.maxUses,
               expires_at: calculateExpirationDate(settings.expiresAfter)?.toISOString() || null,
               is_temporary: settings.temporary,
+              mapped_role_id: mappedRoleId || null,
+              label: label?.trim() || null,
+              requires_family_account: requiresFamilyAccount || false,
             })
             .select()
             .single();
@@ -371,6 +346,11 @@ export const useServerManagementStore = create<ServerManagementState>()(
             maxUses: data.max_uses,
             expiresAt: data.expires_at ? new Date(data.expires_at) : null,
             temporary: data.is_temporary,
+            mappedRoleId: data.mapped_role_id || null,
+            label: data.label || null,
+            clickCount: 0,
+            isActive: true,
+            requiresFamilyAccount: data.requires_family_account || false,
             uses: 0,
             createdAt: new Date(data.created_at),
           };
@@ -414,28 +394,63 @@ export const useServerManagementStore = create<ServerManagementState>()(
           toast.success("Invite Deleted", "The invite has been removed");
         },
 
+        deactivateInvite: async (serverId, inviteId) => {
+          try {
+            const res = await fetch(`/api/invites/${inviteId}`, { method: "PATCH" });
+            if (!res.ok) {
+              const err = await res.json();
+              toast.error("Error", err.error || "Could not deactivate invite");
+              throw new Error(err.error);
+            }
+
+            set((state) => {
+              const serverInvites = state.invites.get(serverId) || [];
+              const newInvites = new Map(state.invites);
+              newInvites.set(
+                serverId,
+                serverInvites.map((inv) =>
+                  inv.id === inviteId ? { ...inv, isActive: false } : inv,
+                ),
+              );
+              return { invites: newInvites };
+            });
+
+            toast.success("Invite Deactivated", "The invite link is no longer active");
+          } catch (err) {
+            console.error("Error deactivating invite:", err);
+          }
+        },
+
         loadInvites: async (serverId) => {
           try {
             const supabase = createClient();
             const { data, error } = await supabase
               .from("server_invites")
-              .select(`*, inviter:profiles!server_invites_inviter_id_fkey(id, username, avatar_url)`)
+              .select(`*, inviter:profiles!server_invites_inviter_id_fkey(id, username, avatar_url), mapped_role:server_roles(id, name, color)`)
               .eq("server_id", serverId);
 
             if (error) throw error;
 
             const invites: ServerInvite[] = (data || []).map((inv) => {
               const inviter = inv.inviter as unknown as Record<string, unknown>;
+              const mappedRole = inv.mapped_role as unknown as Record<string, unknown> | null;
               return {
                 id: inv.id, code: inv.code, serverId: inv.server_id,
                 channelId: inv.channel_id,
-                targetType: (inv.target_type as InviteTargetType) || "channel", // Default to 'channel' for backward compatibility
+                targetType: (inv.target_type as InviteTargetType) || "channel",
                 inviterId: inv.inviter_id,
                 inviterUsername: (inviter?.username as string) || "Unknown",
                 inviterAvatar: (inviter?.avatar_url as string) || "",
                 maxUses: inv.max_uses,
                 expiresAt: inv.expires_at ? new Date(inv.expires_at) : null,
                 temporary: inv.is_temporary, uses: inv.uses,
+                mappedRoleId: inv.mapped_role_id || null,
+                mappedRoleName: (mappedRole?.name as string) || undefined,
+                mappedRoleColor: (mappedRole?.color as string) || undefined,
+                label: inv.label || null,
+                clickCount: inv.click_count || 0,
+                isActive: inv.is_active ?? true,
+                requiresFamilyAccount: inv.requires_family_account || false,
                 createdAt: new Date(inv.created_at),
               };
             });

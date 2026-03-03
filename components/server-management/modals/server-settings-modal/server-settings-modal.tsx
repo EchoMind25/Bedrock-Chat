@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Settings, Shield, Hash, Ban, Link as LinkIcon, Folder, Palette, Smile, PartyPopper, CalendarDays, Webhook, Bot } from "lucide-react";
+import { Settings, Shield, Hash, Ban, Link as LinkIcon, Folder, Palette, Smile, PartyPopper, CalendarDays, Webhook, Bot, ArrowRightLeft } from "lucide-react";
 import { Modal } from "../../../ui/modal/modal";
 import { Button } from "../../../ui/button/button";
 import { OverviewTab } from "./overview-tab";
@@ -16,6 +16,7 @@ import { WelcomeTab } from "./welcome-tab";
 import { EventsTab } from "./events-tab";
 import { WebhooksTab } from "./webhooks-tab";
 import { BotsTab } from "./bots-tab";
+import { MigrationTab } from "./migration-tab";
 import { useServerManagementStore } from "../../../../store/server-management.store";
 import { useServerStore } from "../../../../store/server.store";
 import { toast } from "../../../../lib/stores/toast-store";
@@ -364,6 +365,7 @@ export function ServerSettingsModal() {
     { id: "events" as const, label: "Events", icon: CalendarDays },
     { id: "moderation" as const, label: "Moderation", icon: Ban },
     { id: "invites" as const, label: "Invites", icon: LinkIcon },
+    { id: "migration" as const, label: "Migration", icon: ArrowRightLeft },
     { id: "webhooks" as const, label: "Webhooks", icon: Webhook },
     { id: "bots" as const, label: "Bots", icon: Bot },
   ];
@@ -486,6 +488,9 @@ export function ServerSettingsModal() {
           )}
           {serverSettingsTab === "events" && (
             <EventsTab serverId={currentServer.id} />
+          )}
+          {serverSettingsTab === "migration" && (
+            <MigrationTab />
           )}
           {serverSettingsTab === "webhooks" && (
             <WebhooksTab serverId={currentServer.id} />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, lazy, Suspense } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence, MotionConfig } from "motion/react";
 import { useAuthStore } from "@/store/auth.store";
 import { useFamilyStore } from "@/store/family.store";
@@ -273,6 +273,59 @@ export function MainLayoutClient({
 			useSettingsStore.getState().clearSettings();
 		}
 	}, [isAuthenticated]);
+
+	// Auto-redeem invite code from URL (e.g., /channels?redeem=CODE)
+	const searchParams = useSearchParams();
+	useEffect(() => {
+		if (loadingStage !== "ready" || !isAuthenticated) return;
+
+		const redeemCode = searchParams.get("redeem");
+		if (!redeemCode) return;
+
+		// Clear the param from URL immediately to prevent re-redeem on refresh
+		const url = new URL(window.location.href);
+		url.searchParams.delete("redeem");
+		window.history.replaceState(null, "", url.toString());
+
+		// Redeem the invite
+		fetch("/api/invites/redeem", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ code: redeemCode }),
+		})
+			.then((res) => res.json())
+			.then((result) => {
+				if (result.error) {
+					import("@/lib/stores/toast-store").then(({ toast }) => {
+						toast.error("Invite Failed", result.error);
+					});
+					return;
+				}
+
+				import("@/lib/stores/toast-store").then(({ toast }) => {
+					if (result.alreadyMember) {
+						toast.info("Already Joined", `You are already a member of ${result.serverName}`);
+					} else if (result.roleAssigned) {
+						toast.success("Joined Server", `Welcome to ${result.serverName}! You've been assigned the ${result.roleName} role.`);
+					} else {
+						toast.success("Joined Server", `Welcome to ${result.serverName}!`);
+					}
+				});
+
+				// Reload servers so the new server appears in the sidebar
+				useServerStore.getState().loadServers().then(() => {
+					if (result.serverId) {
+						useServerStore.getState().setCurrentServer(result.serverId);
+					}
+				});
+			})
+			.catch(() => {
+				import("@/lib/stores/toast-store").then(({ toast }) => {
+					toast.error("Invite Failed", "Could not redeem invite. Please try again.");
+				});
+			});
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [loadingStage, isAuthenticated]); // Exclude searchParams — captured in closure
 
 	// Join/leave presence channel when current server changes
 	const currentServerId = useServerStore((s) => s.currentServerId);

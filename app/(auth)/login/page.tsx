@@ -20,6 +20,8 @@ export default function LoginPage() {
 
 	const [phase, setPhase] = useState<LoginPhase>("form");
 
+	const inviteCode = searchParams.get("invite");
+
 	const handleLoginSuccess = useCallback(() => {
 		// Hide the form immediately.
 		setPhase("transitioning");
@@ -29,9 +31,13 @@ export default function LoginPage() {
 		triggerEntranceTransition();
 		// Navigate immediately. The portal survives the route change
 		// because it lives in the root layout, not in this component.
-		const destination = isOnboardingComplete ? "/channels" : "/onboarding";
-		router.push(destination);
-	}, [triggerEntranceTransition, isOnboardingComplete, router]);
+		if (inviteCode) {
+			router.push(`/channels?redeem=${encodeURIComponent(inviteCode)}`);
+		} else {
+			const destination = isOnboardingComplete ? "/channels" : "/onboarding";
+			router.push(destination);
+		}
+	}, [triggerEntranceTransition, isOnboardingComplete, router, inviteCode]);
 
 	const showForm = phase === "form";
 

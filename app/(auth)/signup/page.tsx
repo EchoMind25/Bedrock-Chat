@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuthStore } from "@/store/auth.store";
 import type { SignupData } from "@/store/auth.store";
@@ -16,6 +16,8 @@ type Step = 1 | 2 | 3;
 
 export default function SignupPage() {
 	const router = useRouter();
+	const searchParams = useSearchParams();
+	const inviteCode = searchParams.get("invite");
 	const signUpWithEmail = useAuthStore((s) => s.signUpWithEmail);
 	const resendConfirmationEmail = useAuthStore((s) => s.resendConfirmationEmail);
 	const isLoading = useAuthStore((s) => s.isLoading);
@@ -161,7 +163,7 @@ export default function SignupPage() {
 								<p className="text-center mt-6 text-blue-300/60">
 									Already have an account?{" "}
 									<Link
-										href="/login"
+										href={inviteCode ? `/login?invite=${encodeURIComponent(inviteCode)}` : "/login"}
 										className="text-blue-400 hover:text-blue-300"
 									>
 										Sign in
