@@ -106,7 +106,6 @@ export function VoiceChannel({
   useEffect(() => {
     leavingRef.current = false;
     useVoiceStore.getState().setPermissionStep("mic");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId]);
 
   // Track voice presence in Supabase when connected (for sidebar display)
@@ -120,7 +119,6 @@ export function VoiceChannel({
     ) {
       useVoicePresenceStore.getState().untrackVoice();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionStatus, channelId]);
 
   // Cleanup on unmount only
@@ -170,9 +168,11 @@ export function VoiceChannel({
           }
         }
 
-        console.info(
-          `[Privacy Audit] Microphone permission granted at ${new Date().toISOString()}`,
-        );
+        if (process.env.NODE_ENV === "development") {
+          console.info(
+            `[Privacy Audit] Microphone permission granted at ${new Date().toISOString()}`,
+          );
+        }
 
         useVoiceStore.getState().setPermissionStep("none");
         joinTimeRef.current = Date.now();
@@ -188,9 +188,11 @@ export function VoiceChannel({
           // Camera denied - just close modal
         }
 
-        console.info(
-          `[Privacy Audit] Camera permission granted at ${new Date().toISOString()}`,
-        );
+        if (process.env.NODE_ENV === "development") {
+          console.info(
+            `[Privacy Audit] Camera permission granted at ${new Date().toISOString()}`,
+          );
+        }
         useVoiceStore.getState().setPermissionStep("none");
       }
     } catch {

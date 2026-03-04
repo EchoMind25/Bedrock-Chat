@@ -363,7 +363,7 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 					{!isGrouped && !isBubble && (
 						<div className="flex items-baseline gap-2 mb-1">
 							<span
-								className="font-semibold cursor-pointer hover:underline"
+								className="font-semibold cursor-pointer hover:underline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-1 rounded-sm"
 								role="button"
 								tabIndex={0}
 								onClick={handleAuthorClick}
@@ -397,7 +397,7 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 					{/* Bubble mode: show sender name for non-own, non-grouped messages */}
 					{!isGrouped && isBubble && !isOwnMessage && (
 						<span
-							className="text-xs font-semibold mb-0.5 block cursor-pointer hover:underline"
+							className="text-xs font-semibold mb-0.5 block cursor-pointer hover:underline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-1 rounded-sm"
 							role="button"
 							tabIndex={0}
 							onClick={handleAuthorClick}

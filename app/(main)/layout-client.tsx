@@ -26,22 +26,35 @@ import { ErrorRecovery } from "@/components/error-recovery";
 import { SettingsEffects } from "@/components/settings/settings-effects";
 import { ColorBlindFilters } from "@/components/accessibility/color-blind-filters";
 import { useIdleDetection } from "@/lib/hooks/use-idle-detection";
-import { initPerformanceMonitoring } from "@/store/performance.store";
-import { PerformanceMonitor } from "@/lib/performance/monitoring";
-import { PerformanceOverlay } from "@/components/performance/PerformanceOverlay";
-import { PerformanceDashboard } from "@/components/performance/PerformanceDashboard";
-import { RewardToasts } from "@/components/rewards/reward-toast";
-import { EasterEggDetectors } from "@/components/rewards/easter-egg-detectors";
 import { logError } from "@/lib/utils/error-logger";
 import { subscribeToPush } from "@/lib/utils/push-subscribe";
-import { AnalyticsProvider } from "@/providers/AnalyticsProvider";
-import { BugReportWidgetWrapper } from "@/components/widget/bug-report-wrapper";
+import { ENABLE_FAMILY_ACCOUNTS } from "@/lib/feature-flags";
 import { MonitoringBadge } from "@/components/family/MonitoringBadge";
 
 const MemberListPanel = lazy(() =>
 	import("@/components/navigation/member-list/member-list-panel").then((m) => ({
 		default: m.MemberListPanel,
 	}))
+);
+
+// Lazy-load non-critical shell components — these are not needed for initial render
+const PerformanceOverlay = lazy(() =>
+	import("@/components/performance/PerformanceOverlay").then((m) => ({ default: m.PerformanceOverlay }))
+);
+const PerformanceDashboard = lazy(() =>
+	import("@/components/performance/PerformanceDashboard").then((m) => ({ default: m.PerformanceDashboard }))
+);
+const RewardToasts = lazy(() =>
+	import("@/components/rewards/reward-toast").then((m) => ({ default: m.RewardToasts }))
+);
+const EasterEggDetectors = lazy(() =>
+	import("@/components/rewards/easter-egg-detectors").then((m) => ({ default: m.EasterEggDetectors }))
+);
+const BugReportWidgetWrapper = lazy(() =>
+	import("@/components/widget/bug-report-wrapper").then((m) => ({ default: m.BugReportWidgetWrapper }))
+);
+const AnalyticsProvider = lazy(() =>
+	import("@/providers/AnalyticsProvider").then((m) => ({ default: m.AnalyticsProvider }))
 );
 
 const MAX_INIT_ATTEMPTS = 3;
@@ -77,8 +90,11 @@ export function MainLayoutClient({
 	// Initialize enhanced performance monitoring pipeline (deferred until app is ready)
 	useEffect(() => {
 		if (loadingStage !== "ready") return;
-		const cleanup = initPerformanceMonitoring();
-		return cleanup;
+		let cleanup: (() => void) | undefined;
+		import("@/store/performance.store").then(({ initPerformanceMonitoring }) => {
+			cleanup = initPerformanceMonitoring();
+		}).catch(() => {});
+		return () => cleanup?.();
 	}, [loadingStage]);
 
 	useEffect(() => {
@@ -90,8 +106,12 @@ export function MainLayoutClient({
 		}
 		useUIStore.getState().setIdle(isIdle);
 
-		// Sync idle state to performance monitor for threshold switching
-		PerformanceMonitor.getInstance().setIdleState(isIdle);
+		// Sync idle state to performance monitor for threshold switching (dev-only)
+		if (process.env.NODE_ENV !== "production") {
+			import("@/lib/performance/monitoring").then(({ PerformanceMonitor }) => {
+				PerformanceMonitor.getInstance().setIdleState(isIdle);
+			}).catch(() => {});
+		}
 
 		// Sync idle state to presence — auto-set "idle" / restore previous status
 		const presenceState = usePresenceStore.getState();
@@ -163,7 +183,7 @@ export function MainLayoutClient({
 
 					// Step 2.4: Initialize family store for parent/teen accounts (fire-and-forget)
 					const { user: authedUser } = useAuthStore.getState();
-					if (authedUser && (authedUser.accountType === "parent" || authedUser.accountType === "teen")) {
+					if (ENABLE_FAMILY_ACCOUNTS && authedUser && (authedUser.accountType === "parent" || authedUser.accountType === "teen")) {
 						useFamilyStore.getState().init(authedUser.id, authedUser.accountType);
 					}
 					if (authedUser?.id) {
@@ -324,8 +344,7 @@ export function MainLayoutClient({
 					toast.error("Invite Failed", "Could not redeem invite. Please try again.");
 				});
 			});
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [loadingStage, isAuthenticated]); // Exclude searchParams — captured in closure
+	}, [loadingStage, isAuthenticated, searchParams]);
 
 	// Join/leave presence channel when current server changes
 	const currentServerId = useServerStore((s) => s.currentServerId);
@@ -345,8 +364,7 @@ export function MainLayoutClient({
 			usePresenceStore.getState().leaveServer();
 			useVoicePresenceStore.getState().leaveServer();
 		};
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [currentServerId, isAuthenticated]); // Exclude store actions — stable Zustand actions
+	}, [currentServerId, isAuthenticated]);
 
 	// Destroy presence, DM, and friend request subscriptions on full unmount
 	useEffect(() => {
@@ -355,7 +373,7 @@ export function MainLayoutClient({
 			useVoicePresenceStore.getState().destroy();
 			useDMStore.getState().unsubscribeFromDms();
 			useFriendsStore.getState().unsubscribeFromFriendRequests();
-			useFamilyStore.getState().reset();
+			if (ENABLE_FAMILY_ACCOUNTS) useFamilyStore.getState().reset();
 			useNotificationStore.getState().reset();
 		};
 	}, []);
@@ -410,6 +428,7 @@ export function MainLayoutClient({
 	}
 
 	return (
+		<Suspense fallback={null}>
 		<AnalyticsProvider>
 		<MotionConfig reducedMotion={reducedMotion ? "always" : "never"}>
 		<div
@@ -419,7 +438,9 @@ export function MainLayoutClient({
 			{/* Apply global settings effects (theme, font size, accessibility) */}
 			<SettingsEffects />
 			<ColorBlindFilters />
-			<EasterEggDetectors />
+			<Suspense fallback={null}>
+				<EasterEggDetectors />
+			</Suspense>
 
 			{/* Skip to main content link for keyboard users */}
 			<a
@@ -471,7 +492,7 @@ export function MainLayoutClient({
 							: undefined
 					}
 				>
-					<MonitoringBadge />
+					{ENABLE_FAMILY_ACCOUNTS && <MonitoringBadge />}
 					{children}
 				</main>
 			</ErrorBoundary>
@@ -508,10 +529,10 @@ export function MainLayoutClient({
 						<ErrorBoundary level="feature" name="MemberList">
 							<motion.div
 								key="member-panel-desktop"
-								className="relative z-10 w-60 bg-[oklch(0.15_0.02_250)] border-l border-white/10 overflow-hidden"
-								initial={{ width: 0, opacity: 0 }}
-								animate={{ width: 240, opacity: 1 }}
-								exit={{ width: 0, opacity: 0 }}
+								className="relative z-10 w-60 bg-[oklch(0.15_0.02_250)] border-l border-white/10 overflow-hidden origin-right"
+								initial={{ scaleX: 0, opacity: 0 }}
+								animate={{ scaleX: 1, opacity: 1 }}
+								exit={{ scaleX: 0, opacity: 0 }}
 								transition={{ type: "spring", stiffness: 300, damping: 30 }}
 							>
 								<Suspense fallback={<MemberListSkeleton />}>
@@ -533,16 +554,21 @@ export function MainLayoutClient({
 			{/* Portal transition overlay */}
 			<PortalOverlay />
 
-			{/* Reward toasts */}
-			<RewardToasts />
-
-			{/* Performance monitoring overlays */}
-			<PerformanceOverlay />
-			<PerformanceDashboard />
+			{/* Lazy-loaded non-critical overlays */}
+			<Suspense fallback={null}>
+				<RewardToasts />
+			</Suspense>
+			<Suspense fallback={null}>
+				<PerformanceOverlay />
+				<PerformanceDashboard />
+			</Suspense>
 		</div>
 		</MotionConfig>
-		<BugReportWidgetWrapper />
+		<Suspense fallback={null}>
+			<BugReportWidgetWrapper />
+		</Suspense>
 		</AnalyticsProvider>
+		</Suspense>
 	);
 }
 

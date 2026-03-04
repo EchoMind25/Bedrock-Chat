@@ -1,9 +1,13 @@
 "use client";
 
-import { use, useEffect, useRef } from "react";
+import { use, useEffect, useRef, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
-import { VoiceChannel } from "@/components/voice/voice-channel";
 import { useServerStore } from "@/store/server.store";
+
+// Dynamic import: LiveKit + voice components are ~400KB — only load when entering voice
+const VoiceChannel = lazy(() =>
+  import("@/components/voice/voice-channel").then((m) => ({ default: m.VoiceChannel }))
+);
 
 interface VoiceChannelPageProps {
   params: Promise<{
@@ -70,11 +74,20 @@ export default function VoiceChannelPage({ params }: VoiceChannelPageProps) {
   };
 
   return (
-    <VoiceChannel
-      channelId={channelId}
-      channelName={channelName}
-      serverId={serverId}
-      onLeave={handleLeave}
-    />
+    <Suspense fallback={
+      <div className="flex-1 flex items-center justify-center bg-[oklch(0.12_0.03_260)]">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-[oklch(0.55_0.2_265)] border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="mt-4 text-sm text-slate-400">Loading voice channel...</p>
+        </div>
+      </div>
+    }>
+      <VoiceChannel
+        channelId={channelId}
+        channelName={channelName}
+        serverId={serverId}
+        onLeave={handleLeave}
+      />
+    </Suspense>
   );
 }

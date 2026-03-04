@@ -34,7 +34,6 @@ export function AppEntranceTransition({
   const [animationComplete, setAnimationComplete] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  const loadServers = useServerStore((s) => s.loadServers);
   const isInitialized = useServerStore((s) => s.isInitialized);
 
   useEffect(() => {
@@ -59,8 +58,7 @@ export function AppEntranceTransition({
     }, timeoutMs);
 
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isActive, timeoutMs]);
+  }, [isActive, timeoutMs, onComplete]);
 
   // Preload server data when transition becomes active
   useEffect(() => {
@@ -75,8 +73,8 @@ export function AppEntranceTransition({
       return;
     }
 
-    // Start loading servers
-    loadServers()
+    // Start loading servers — use getState() for stable reference
+    useServerStore.getState().loadServers()
       .then(() => {
         setDataLoaded(true);
       })
@@ -84,7 +82,7 @@ export function AppEntranceTransition({
         console.error("Error preloading servers:", err);
         setDataLoaded(true); // Mark as loaded even on error to not block transition
       });
-  }, [isActive, preloadData, isInitialized, loadServers]);
+  }, [isActive, preloadData, isInitialized]);
 
   // Complete transition only when both animation and data are ready
   useEffect(() => {

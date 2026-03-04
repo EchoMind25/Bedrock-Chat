@@ -136,9 +136,11 @@ export function VoiceSettings({ isOpen, onClose }: VoiceSettingsProps) {
       setInputDevices(inputs);
       setOutputDevices(outputs);
 
-      console.info(
-        `[Privacy Audit] Voice settings accessed at ${new Date().toISOString()}`
-      );
+      if (process.env.NODE_ENV === "development") {
+        console.info(
+          `[Privacy Audit] Voice settings accessed at ${new Date().toISOString()}`
+        );
+      }
     } catch (err) {
       console.warn("[Voice Settings] Failed to load devices:", err);
     }
@@ -166,54 +168,54 @@ export function VoiceSettings({ isOpen, onClose }: VoiceSettingsProps) {
   const handleInputDeviceChange = useCallback(
     async (deviceId: string) => {
       // Persist to settings store (DB + localStorage)
-      updateSettings({ input_device: deviceId === "default" ? null : deviceId });
+      useSettingsStore.getState().updateSettings({ input_device: deviceId === "default" ? null : deviceId });
 
       // If in an active LiveKit session, switch device without republishing
       const room = getLiveKitRoomRef();
       if (room && room.state === ConnectionState.Connected) {
         try {
           await room.switchActiveDevice("audioinput", deviceId);
-          console.info(
-            `[Privacy Audit] Audio input device switched at ${new Date().toISOString()}`
-          );
+          if (process.env.NODE_ENV === "development") {
+            console.info(
+              `[Privacy Audit] Audio input device switched at ${new Date().toISOString()}`
+            );
+          }
         } catch (err) {
           console.warn("[Voice Settings] Failed to switch audio input device:", err);
         }
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
   const handleOutputDeviceChange = useCallback(
     async (deviceId: string) => {
-      updateSettings({ output_device: deviceId === "default" ? null : deviceId });
+      useSettingsStore.getState().updateSettings({ output_device: deviceId === "default" ? null : deviceId });
 
       const room = getLiveKitRoomRef();
       if (room && room.state === ConnectionState.Connected) {
         try {
           await room.switchActiveDevice("audiooutput", deviceId);
-          console.info(
-            `[Privacy Audit] Audio output device switched at ${new Date().toISOString()}`
-          );
+          if (process.env.NODE_ENV === "development") {
+            console.info(
+              `[Privacy Audit] Audio output device switched at ${new Date().toISOString()}`
+            );
+          }
         } catch (err) {
           console.warn("[Voice Settings] Failed to switch audio output device:", err);
         }
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
   const handleInputVolumeChange = useCallback(
-    (v: number) => updateSettings({ input_volume: v }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    (v: number) => useSettingsStore.getState().updateSettings({ input_volume: v }),
     [],
   );
 
   const handleOutputVolumeChange = useCallback(
-    (v: number) => updateSettings({ output_volume: v }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    (v: number) => useSettingsStore.getState().updateSettings({ output_volume: v }),
     [],
   );
 

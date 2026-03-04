@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { useRouter } from "next/navigation";
@@ -13,16 +13,16 @@ import { performFullLogout } from "@/lib/utils/logout";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useIsMobile } from "@/lib/hooks/use-media-query";
 
-import { ProfileTab } from "./tabs/profile-tab";
-import { AccountTab } from "./tabs/account-tab";
-import { AppearanceTab } from "./tabs/appearance-tab";
-import { PrivacyTab } from "./tabs/privacy-tab";
-import { NotificationsTab } from "./tabs/notifications-tab";
-import { VoiceTab } from "./tabs/voice-tab";
-import { DeveloperTab } from "./tabs/developer-tab";
-import { AdminTab } from "./tabs/admin-tab";
-import { IdentityTab } from "./tabs/identity-tab";
-import { RewardsTab } from "./tabs/rewards-tab";
+const ProfileTab = lazy(() => import("./tabs/profile-tab").then(m => ({ default: m.ProfileTab })));
+const AccountTab = lazy(() => import("./tabs/account-tab").then(m => ({ default: m.AccountTab })));
+const AppearanceTab = lazy(() => import("./tabs/appearance-tab").then(m => ({ default: m.AppearanceTab })));
+const PrivacyTab = lazy(() => import("./tabs/privacy-tab").then(m => ({ default: m.PrivacyTab })));
+const NotificationsTab = lazy(() => import("./tabs/notifications-tab").then(m => ({ default: m.NotificationsTab })));
+const VoiceTab = lazy(() => import("./tabs/voice-tab").then(m => ({ default: m.VoiceTab })));
+const DeveloperTab = lazy(() => import("./tabs/developer-tab").then(m => ({ default: m.DeveloperTab })));
+const AdminTab = lazy(() => import("./tabs/admin-tab").then(m => ({ default: m.AdminTab })));
+const IdentityTab = lazy(() => import("./tabs/identity-tab").then(m => ({ default: m.IdentityTab })));
+const RewardsTab = lazy(() => import("./tabs/rewards-tab").then(m => ({ default: m.RewardsTab })));
 
 interface NavItem {
 	id: string;
@@ -267,7 +267,9 @@ export function SettingsModal() {
 												exit={{ opacity: 0, y: -8 }}
 												transition={{ duration: 0.15 }}
 											>
-												{renderTabContent()}
+												<Suspense fallback={<SettingsTabSkeleton />}>
+													{renderTabContent()}
+												</Suspense>
 											</motion.div>
 										</AnimatePresence>
 									</div>
@@ -351,7 +353,9 @@ export function SettingsModal() {
 													exit={{ opacity: 0, y: -8 }}
 													transition={{ duration: 0.15 }}
 												>
-													{renderTabContent()}
+													<Suspense fallback={<SettingsTabSkeleton />}>
+														{renderTabContent()}
+													</Suspense>
 												</motion.div>
 											</AnimatePresence>
 										</div>
@@ -364,5 +368,19 @@ export function SettingsModal() {
 			)}
 		</AnimatePresence>,
 		document.body
+	);
+}
+
+function SettingsTabSkeleton() {
+	return (
+		<div className="space-y-4 animate-pulse">
+			<div className="h-6 w-48 bg-white/10 rounded-sm" />
+			<div className="h-4 w-72 bg-white/10 rounded-sm" />
+			<div className="space-y-3 mt-6">
+				{Array.from({ length: 4 }).map((_, i) => (
+					<div key={i} className="h-12 bg-white/10 rounded-lg" />
+				))}
+			</div>
+		</div>
 	);
 }

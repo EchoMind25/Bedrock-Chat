@@ -11,6 +11,7 @@ import { Modal } from "@/components/ui/modal/modal";
 import { SettingsSection } from "../settings-section";
 import { SettingsRow } from "../settings-row";
 import { toast } from "@/lib/stores/toast-store";
+import { ENABLE_FAMILY_ACCOUNTS } from "@/lib/feature-flags";
 import { ConvertToParentCard } from "@/components/family/ConvertToParentCard";
 import { TeenSettingsPanel } from "@/components/family/teen-settings-panel";
 
@@ -195,13 +196,13 @@ export function AccountTab() {
 				</SettingsRow>
 			</SettingsSection>
 
-			{user.accountType === "standard" && (
+			{ENABLE_FAMILY_ACCOUNTS && user.accountType === "standard" && (
 				<SettingsSection title="Family Controls">
 					<ConvertToParentCard />
 				</SettingsSection>
 			)}
 
-			{user.accountType === "teen" && (
+			{ENABLE_FAMILY_ACCOUNTS && user.accountType === "teen" && (
 				<SettingsSection title="Family Monitoring">
 					<TeenSettingsPanel />
 				</SettingsSection>

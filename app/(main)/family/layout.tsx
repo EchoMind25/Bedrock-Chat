@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/auth.store";
 import { useFamilyStore } from "@/store/family.store";
+import { ENABLE_FAMILY_ACCOUNTS } from "@/lib/feature-flags";
 import { motion } from "motion/react";
 
 const navigationItems = [
@@ -37,8 +38,13 @@ export default function FamilyLayout({
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [user, isInitialized]); // Exclude init - stable Zustand action
 
-	// Redirect if not authenticated or not a parent
+	// Redirect if not authenticated, not a parent, or family accounts disabled
 	useEffect(() => {
+		if (!ENABLE_FAMILY_ACCOUNTS) {
+			router.push("/channels");
+			return;
+		}
+
 		// Wait for auth check to complete before redirecting
 		if (isAuthInitializing) return;
 

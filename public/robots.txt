@@ -1,0 +1,32 @@
+# Bedrock Chat — robots.txt
+# Privacy-first: block crawling of authenticated and sensitive routes
+
+User-agent: *
+Allow: /
+Allow: /privacy-policy
+Allow: /terms-of-service
+Allow: /cookie-policy
+Allow: /switch
+
+Disallow: /api/
+Disallow: /auth/
+Disallow: /login
+Disallow: /signup
+Disallow: /servers/
+Disallow: /channels/
+Disallow: /friends
+Disallow: /dms/
+Disallow: /notifications
+Disallow: /settings
+Disallow: /admin/
+Disallow: /parent-dashboard/
+Disallow: /family/
+Disallow: /data-export
+Disallow: /privacy-settings
+Disallow: /report-bug
+Disallow: /developers
+Disallow: /waitlist-pending
+Disallow: /onboarding
+Disallow: /demo
+
+Sitemap: https://bedrockchat.com/sitemap.xml

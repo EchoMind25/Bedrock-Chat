@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button/button";
 import { Input } from "@/components/ui/input/input";
 import { PasswordStrength } from "@/components/ui/password-strength/password-strength";
 import { validatePassword } from "@/lib/utils/password-validation";
+import { ENABLE_FAMILY_ACCOUNTS } from "@/lib/feature-flags";
 import Link from "next/link";
 
 type Step = 1 | 2 | 3;
@@ -145,19 +146,36 @@ export default function SignupPage() {
 										</p>
 									</button>
 
-									<button
-										type="button"
-										onClick={() => handleAccountTypeSelect("parent")}
-										className="w-full p-6 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-400/50 rounded-lg transition-all text-left group"
-									>
-										<h3 className="text-lg font-semibold text-blue-300 mb-2 group-hover:text-blue-400 transition-colors">
-											Family Account
-										</h3>
-										<p className="text-blue-200/50 text-sm">
-											Parent-managed for teens with transparent oversight and
-											monitoring controls.
-										</p>
-									</button>
+									{ENABLE_FAMILY_ACCOUNTS ? (
+										<button
+											type="button"
+											onClick={() => handleAccountTypeSelect("parent")}
+											className="w-full p-6 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-400/50 rounded-lg transition-all text-left group"
+										>
+											<h3 className="text-lg font-semibold text-blue-300 mb-2 group-hover:text-blue-400 transition-colors">
+												Family Account
+											</h3>
+											<p className="text-blue-200/50 text-sm">
+												Parent-managed for teens with transparent oversight and
+												monitoring controls.
+											</p>
+										</button>
+									) : (
+										<div className="w-full p-6 bg-white/5 border border-white/10 rounded-lg opacity-60 cursor-not-allowed">
+											<div className="flex items-center justify-between mb-2">
+												<h3 className="text-lg font-semibold text-blue-300/60">
+													Family Account
+												</h3>
+												<span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-400/10 text-blue-400/80">
+													Coming Soon
+												</span>
+											</div>
+											<p className="text-blue-200/30 text-sm">
+												Parent-managed for teens with transparent oversight and
+												monitoring controls.
+											</p>
+										</div>
+									)}
 								</div>
 
 								<p className="text-center mt-6 text-blue-300/60">

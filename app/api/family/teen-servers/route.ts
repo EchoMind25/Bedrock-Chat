@@ -9,8 +9,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { ENABLE_FAMILY_ACCOUNTS } from "@/lib/feature-flags";
 
 export async function GET(request: NextRequest) {
+  if (!ENABLE_FAMILY_ACCOUNTS) {
+    return NextResponse.json({ error: "Family accounts are not yet available" }, { status: 403 });
+  }
+
   const { searchParams } = new URL(request.url);
   const teenUserId = searchParams.get("teenId");
 

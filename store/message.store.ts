@@ -13,14 +13,19 @@ interface AttachmentInput {
   mimeType: string;
 }
 
+// Maximum number of channels to keep messages cached for (LRU eviction)
+const MAX_CACHED_CHANNELS = 5;
+
 interface MessageState {
   messages: Record<string, Message[]>; // channelId -> messages
   loadingChannels: Record<string, boolean>; // channelId -> loading state (per-channel, not global)
   loadErrors: Record<string, boolean>; // channelId -> had load error (allows retry)
   subscriptions: Record<string, () => void>; // channelId -> cleanup function
+  channelAccessOrder: string[]; // LRU order — most recently accessed last
 
   // Actions
   loadMessages: (channelId: string) => Promise<void>;
+  prefetchMessages: (channelId: string) => void;
   subscribeToChannel: (channelId: string) => void;
   unsubscribeFromChannel: (channelId: string) => void;
   sendMessage: (channelId: string, content: string, attachment?: AttachmentInput) => void;
@@ -28,6 +33,34 @@ interface MessageState {
   removeReaction: (channelId: string, messageId: string, emoji: string) => void;
   editMessage: (channelId: string, messageId: string, content: string) => void;
   deleteMessage: (channelId: string, messageId: string) => void;
+}
+
+/** Touch a channelId in the LRU list and evict old entries */
+function touchChannel(order: string[], channelId: string): string[] {
+  const filtered = order.filter((id) => id !== channelId);
+  filtered.push(channelId);
+  return filtered;
+}
+
+function evictOldChannels(
+  messages: Record<string, Message[]>,
+  subscriptions: Record<string, () => void>,
+  accessOrder: string[],
+): { messages: Record<string, Message[]>; channelAccessOrder: string[] } {
+  if (accessOrder.length <= MAX_CACHED_CHANNELS) {
+    return { messages, channelAccessOrder: accessOrder };
+  }
+
+  const toEvict = accessOrder.slice(0, accessOrder.length - MAX_CACHED_CHANNELS);
+  const newMessages = { ...messages };
+  for (const id of toEvict) {
+    // Only evict channels without active subscriptions
+    if (!subscriptions[id]) {
+      delete newMessages[id];
+    }
+  }
+  const newOrder = accessOrder.filter((id) => id in newMessages);
+  return { messages: newMessages, channelAccessOrder: newOrder };
 }
 
 function mapAttachments(rows: Record<string, unknown>[]): Attachment[] {
@@ -50,6 +83,7 @@ export const useMessageStore = create<MessageState>()(
       loadingChannels: {},
       loadErrors: {},
       subscriptions: {},
+      channelAccessOrder: [],
 
       subscribeToChannel: (channelId) => {
         // Don't subscribe twice
@@ -274,11 +308,17 @@ export const useMessageStore = create<MessageState>()(
             type: (msg.type as Message['type']) || 'default',
           }));
 
-          set((prev) => ({
-            messages: { ...prev.messages, [channelId]: messages },
-            loadingChannels: { ...prev.loadingChannels, [channelId]: false },
-            loadErrors: { ...prev.loadErrors, [channelId]: false },
-          }));
+          set((prev) => {
+            const updatedMessages = { ...prev.messages, [channelId]: messages };
+            const updatedOrder = touchChannel(prev.channelAccessOrder, channelId);
+            const evicted = evictOldChannels(updatedMessages, prev.subscriptions, updatedOrder);
+            return {
+              messages: evicted.messages,
+              channelAccessOrder: evicted.channelAccessOrder,
+              loadingChannels: { ...prev.loadingChannels, [channelId]: false },
+              loadErrors: { ...prev.loadErrors, [channelId]: false },
+            };
+          });
         } catch (err) {
           clearTimeout(timeoutId);
           if (err instanceof DOMException && err.name === 'AbortError') {
@@ -292,6 +332,17 @@ export const useMessageStore = create<MessageState>()(
             loadErrors: { ...prev.loadErrors, [channelId]: true },
           }));
         }
+      },
+
+      prefetchMessages: (channelId) => {
+        // Silent background fetch — does not set loading state.
+        // Used for hover prefetch on channel list items.
+        const state = get();
+        if (state.messages[channelId] !== undefined || state.loadingChannels[channelId]) {
+          return; // Already cached or in-flight
+        }
+        // Fire-and-forget — reuse loadMessages which handles deduplication
+        get().loadMessages(channelId);
       },
 
       sendMessage: async (channelId, content, attachment) => {

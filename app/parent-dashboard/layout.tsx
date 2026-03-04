@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/auth.store";
 import { useFamilyStore } from "@/store/family.store";
+import { ENABLE_FAMILY_ACCOUNTS } from "@/lib/feature-flags";
 import { useParentDashboardStore } from "@/store/parent-dashboard.store";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -44,27 +45,29 @@ export default function ParentDashboardLayout({
 	const isAuthInitializing = useAuthStore((s) => s.isInitializing);
 	const isParent = useFamilyStore((s) => s.isParent);
 	const isInitialized = useFamilyStore((s) => s.isInitialized);
-	const init = useFamilyStore((s) => s.init);
 	const teenAccounts = useFamilyStore((s) => s.teenAccounts);
 	const selectedTeenId = useFamilyStore((s) => s.selectedTeenId);
 	const setSelectedTeen = useFamilyStore((s) => s.setSelectedTeen);
-	const {
-		isSidebarCollapsed,
-		isMobileSidebarOpen,
-		toggleSidebar,
-		toggleMobileSidebar,
-		closeMobileSidebar,
-		darkMode,
-		toggleDarkMode,
-	} = useParentDashboardStore();
+	const isSidebarCollapsed = useParentDashboardStore((s) => s.isSidebarCollapsed);
+	const isMobileSidebarOpen = useParentDashboardStore((s) => s.isMobileSidebarOpen);
+	const toggleSidebar = useParentDashboardStore((s) => s.toggleSidebar);
+	const toggleMobileSidebar = useParentDashboardStore((s) => s.toggleMobileSidebar);
+	const closeMobileSidebar = useParentDashboardStore((s) => s.closeMobileSidebar);
+	const darkMode = useParentDashboardStore((s) => s.darkMode);
+	const toggleDarkMode = useParentDashboardStore((s) => s.toggleDarkMode);
 
 	useEffect(() => {
 		if (user && !isInitialized) {
-			init(user.id, user.accountType);
+			useFamilyStore.getState().init(user.id, user.accountType);
 		}
-	}, [user, isInitialized, init]);
+	}, [user, isInitialized]);
 
 	useEffect(() => {
+		if (!ENABLE_FAMILY_ACCOUNTS) {
+			router.push("/channels");
+			return;
+		}
+
 		// Wait for auth check to complete before redirecting
 		if (isAuthInitializing) return;
 

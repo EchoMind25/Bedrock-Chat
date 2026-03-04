@@ -10,6 +10,7 @@ import { hasAcceptedNsfw } from "@/lib/utils/nsfw-gate";
 import { usePointsStore } from "@/store/points.store";
 import { useFamilyStore } from "@/store/family.store";
 import { ChatMonitoringNotice } from "@/components/family/ChatMonitoringNotice";
+import { ENABLE_FAMILY_ACCOUNTS } from "@/lib/feature-flags";
 
 // Lazy load heavy chat components (includes @tanstack/react-virtual)
 const ChannelHeader = lazy(() =>
@@ -206,7 +207,7 @@ export default function ChannelPage({ params }: PageProps) {
 				<ChannelHeader channel={channel} memberCount={liveMemberCount} />
 
 				{/* Family monitoring notice for teens (level 2+) */}
-				{isTeen && myMonitoringLevel && myMonitoringLevel >= 2 && (
+				{ENABLE_FAMILY_ACCOUNTS && isTeen && myMonitoringLevel && myMonitoringLevel >= 2 && (
 					<ChatMonitoringNotice channelName={channel.name} />
 				)}
 

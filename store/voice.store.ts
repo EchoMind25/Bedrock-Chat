@@ -202,9 +202,11 @@ export const useVoiceStore = create<VoiceState>()(
 
         // Participant actions with privacy audit logging
         addParticipant: (participant) => {
-          console.info(
-            `[Privacy Audit] User ${participant.username} (${participant.userId}) joined voice channel at ${new Date().toISOString()}`,
-          );
+          if (process.env.NODE_ENV === "development") {
+            console.info(
+              `[Privacy Audit] User ${participant.username} (${participant.userId}) joined voice channel at ${new Date().toISOString()}`,
+            );
+          }
           set((s) => ({
             participants: {
               ...s.participants,
@@ -227,7 +229,7 @@ export const useVoiceStore = create<VoiceState>()(
 
         removeParticipant: (identity) => {
           const participant = get().participants[identity];
-          if (participant) {
+          if (participant && process.env.NODE_ENV === "development") {
             console.info(
               `[Privacy Audit] User ${participant.username} (${participant.userId}) left voice channel at ${new Date().toISOString()}`,
             );
@@ -245,7 +247,7 @@ export const useVoiceStore = create<VoiceState>()(
           const localParticipant = (
             Object.values(get().participants) as VoiceParticipant[]
           ).find((p) => p.isLocal);
-          if (localParticipant) {
+          if (localParticipant && process.env.NODE_ENV === "development") {
             console.info(
               `[Privacy Audit] User ${localParticipant.username} ${muted ? "muted" : "unmuted"} microphone at ${new Date().toISOString()}`,
             );
@@ -262,23 +264,27 @@ export const useVoiceStore = create<VoiceState>()(
 
         // Screen sharing actions
         setActiveScreenShare: (data) => {
-          if (data) {
-            console.info(
-              `[Privacy Audit] Screen share ${data.isLocal ? "started" : "received from"} ${data.username} at ${new Date().toISOString()}`,
-            );
-          } else {
-            console.info(
-              `[Privacy Audit] Screen share ended at ${new Date().toISOString()}`,
-            );
+          if (process.env.NODE_ENV === "development") {
+            if (data) {
+              console.info(
+                `[Privacy Audit] Screen share ${data.isLocal ? "started" : "received from"} ${data.username} at ${new Date().toISOString()}`,
+              );
+            } else {
+              console.info(
+                `[Privacy Audit] Screen share ended at ${new Date().toISOString()}`,
+              );
+            }
           }
           set({ activeScreenShare: data });
         },
 
         // Audio enhancement actions
         setNoiseCancellation: (enabled) => {
-          console.info(
-            `[Privacy Audit] Noise cancellation ${enabled ? "enabled" : "disabled"} at ${new Date().toISOString()}`,
-          );
+          if (process.env.NODE_ENV === "development") {
+            console.info(
+              `[Privacy Audit] Noise cancellation ${enabled ? "enabled" : "disabled"} at ${new Date().toISOString()}`,
+            );
+          }
           set({ noiseCancellationEnabled: enabled });
         },
 

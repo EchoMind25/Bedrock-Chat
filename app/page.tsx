@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth.store";
 import { useOnboardingStore } from "@/store/onboarding.store";
-import { ComparisonTable } from "@/components/landing/comparison-table";
-import { CTASection } from "@/components/landing/cta-section";
-import { FeaturesSection } from "@/components/landing/features-section";
-import { Footer } from "@/components/landing/footer";
 import { HeroSection } from "@/components/landing/hero-section";
-import { SocialProofSection } from "@/components/landing/social-proof-section";
-import { TrustSection } from "@/components/landing/trust-section";
+
+// Below-fold sections: lazy-load to keep initial bundle small (hero is LCP)
+const FeaturesSection = lazy(() => import("@/components/landing/features-section").then(m => ({ default: m.FeaturesSection })));
+const TrustSection = lazy(() => import("@/components/landing/trust-section").then(m => ({ default: m.TrustSection })));
+const ComparisonTable = lazy(() => import("@/components/landing/comparison-table").then(m => ({ default: m.ComparisonTable })));
+const SocialProofSection = lazy(() => import("@/components/landing/social-proof-section").then(m => ({ default: m.SocialProofSection })));
+const CTASection = lazy(() => import("@/components/landing/cta-section").then(m => ({ default: m.CTASection })));
+const Footer = lazy(() => import("@/components/landing/footer").then(m => ({ default: m.Footer })));
 
 export default function LandingPage() {
   const router = useRouter();
@@ -45,12 +47,14 @@ export default function LandingPage() {
   return (
     <main className="min-h-screen bg-background-dark overflow-x-hidden">
       <HeroSection />
-      <FeaturesSection />
-      <TrustSection />
-      <ComparisonTable />
-      <SocialProofSection />
-      <CTASection />
-      <Footer />
+      <Suspense fallback={null}>
+        <FeaturesSection />
+        <TrustSection />
+        <ComparisonTable />
+        <SocialProofSection />
+        <CTASection />
+        <Footer />
+      </Suspense>
     </main>
   );
 }

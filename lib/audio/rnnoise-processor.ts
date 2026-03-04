@@ -29,7 +29,9 @@ export class RNNoiseProcessor {
     }
 
     try {
-      console.info('[Privacy Audit] Initializing RNNoise processor (client-side WASM) at', new Date().toISOString());
+      if (process.env.NODE_ENV === "development") {
+        console.info('[Privacy Audit] Initializing RNNoise processor (client-side WASM) at', new Date().toISOString());
+      }
 
       // Create AudioContext with optimal sample rate for voice
       this.audioContext = new AudioContext({
@@ -46,7 +48,9 @@ export class RNNoiseProcessor {
       // Register worklet processor
       await this.audioContext.audioWorklet.addModule('/audio-worklets/rnnoiseWorklet.js');
 
-      console.info('[RNNoise] Audio worklet loaded successfully');
+      if (process.env.NODE_ENV === "development") {
+        console.info('[RNNoise] Audio worklet loaded successfully');
+      }
       this.isInitialized = true;
     } catch (error) {
       console.error('[RNNoise] Failed to initialize:', error);
@@ -93,12 +97,14 @@ export class RNNoiseProcessor {
       this.sourceNode.connect(this.workletNode);
       this.workletNode.connect(this.destinationNode);
 
-      console.info('[Privacy Audit] RNNoise processing active - audio processed locally (Web Audio API)', {
-        timestamp: new Date().toISOString(),
-        sampleRate: this.audioContext.sampleRate,
-        latency: this.audioContext.baseLatency,
-        channels: 2
-      });
+      if (process.env.NODE_ENV === "development") {
+        console.info('[Privacy Audit] RNNoise processing active - audio processed locally (Web Audio API)', {
+          timestamp: new Date().toISOString(),
+          sampleRate: this.audioContext.sampleRate,
+          latency: this.audioContext.baseLatency,
+          channels: 2
+        });
+      }
 
       // Return the processed stream
       return this.destinationNode.stream;
@@ -148,7 +154,9 @@ export class RNNoiseProcessor {
       this.wasmBinary = null;
       this.isInitialized = false;
 
-      console.info('[Privacy Audit] RNNoise processor cleaned up at', new Date().toISOString());
+      if (process.env.NODE_ENV === "development") {
+        console.info('[Privacy Audit] RNNoise processor cleaned up at', new Date().toISOString());
+      }
     } catch (error) {
       console.error('[RNNoise] Error during cleanup:', error);
     }

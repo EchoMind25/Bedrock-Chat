@@ -10,8 +10,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { ENABLE_FAMILY_ACCOUNTS } from "@/lib/feature-flags";
 
 export async function POST(request: NextRequest) {
+  if (!ENABLE_FAMILY_ACCOUNTS) {
+    return NextResponse.json({ error: "Family accounts are not yet available" }, { status: 403 });
+  }
+
   // ── 1. Auth check ─────────────────────────────────────────────────────────
   const supabase = await createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();

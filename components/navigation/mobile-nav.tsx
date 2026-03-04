@@ -8,6 +8,7 @@ import { useAuthStore } from "@/store/auth.store";
 import type { UserStatus } from "@/store/auth.store";
 import { usePresenceStore } from "@/store/presence.store";
 import { useFamilyStore } from "@/store/family.store";
+import { ENABLE_FAMILY_ACCOUNTS } from "@/lib/feature-flags";
 import { useNotificationStore } from "@/store/notification.store";
 import { usePlatformRoleStore } from "@/store/platform-role.store";
 import { performFullLogout } from "@/lib/utils/logout";
@@ -78,7 +79,7 @@ export function MobileNav() {
     { value: "online", label: "Online", color: "oklch(0.72 0.19 145)" },
     { value: "idle", label: "Idle", color: "oklch(0.80 0.18 85)" },
     { value: "dnd", label: "Do Not Disturb", color: "oklch(0.63 0.21 25)" },
-    ...(monitoringLevel === 4
+    ...(ENABLE_FAMILY_ACCOUNTS && monitoringLevel === 4
       ? []
       : [{ value: "invisible" as UserStatus, label: "Invisible", color: "oklch(0.50 0.01 250)" }]),
   ];
@@ -187,6 +188,9 @@ export function MobileNav() {
                     <span
                       className="absolute -top-1 -right-1 min-w-[14px] h-3.5 flex items-center justify-center rounded-full text-[9px] font-bold text-white px-0.5"
                       style={{ background: "oklch(0.63 0.21 25)" }}
+                      role="status"
+                      aria-live="polite"
+                      aria-atomic="true"
                       aria-label={`${unreadNotifications} unread notifications`}
                     >
                       {unreadNotifications > 9 ? "9+" : unreadNotifications}
@@ -403,7 +407,7 @@ export function MobileNav() {
                   )}
 
                   {/* ── Family ────────────────────────────────── */}
-                  {(isParent || (isTeen && monitoringLevel !== null && monitoringLevel > 0)) && (
+                  {ENABLE_FAMILY_ACCOUNTS && (isParent || (isTeen && monitoringLevel !== null && monitoringLevel > 0)) && (
                     <>
                       <div className="h-px bg-white/10 my-1.5 mx-1" aria-hidden="true" />
                       <p className="px-3 pt-0.5 pb-0.5 text-[10px] font-semibold text-white/30 uppercase tracking-wider">

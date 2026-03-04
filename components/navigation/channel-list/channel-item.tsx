@@ -1,11 +1,13 @@
 "use client";
 
+import { useCallback, useRef } from "react";
 import type { Channel, VoiceUser } from "@/lib/types/server";
 import { useServerStore } from "@/store/server.store";
 import { useServerManagementStore } from "@/store/server-management.store";
 import { useFavoritesStore } from "@/store/favorites.store";
 import { useUIStore } from "@/store/ui.store";
 import { useVoicePresenceStore } from "@/store/voice-presence.store";
+import { useMessageStore } from "@/store/message.store";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils/cn";
@@ -91,6 +93,21 @@ export function ChannelItem({ channel, isActive }: ChannelItemProps) {
 	const connectedUsers = isVoice ? (voicePresenceUsers ?? channel.connectedUsers) : undefined;
 	const hasConnectedUsers = isVoice && connectedUsers && connectedUsers.length > 0;
 
+	// Prefetch messages on hover (200ms debounce to avoid fetch storms)
+	const prefetchTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+	const handleMouseEnter = useCallback(() => {
+		if (channel.type === "voice") return; // Voice channels don't have messages to prefetch
+		prefetchTimeoutRef.current = setTimeout(() => {
+			useMessageStore.getState().prefetchMessages(channel.id);
+		}, 200);
+	}, [channel.id, channel.type]);
+
+	const handleMouseLeave = useCallback(() => {
+		if (prefetchTimeoutRef.current) {
+			clearTimeout(prefetchTimeoutRef.current);
+		}
+	}, []);
+
 	const handleChannelClick = () => {
 		setCurrentChannel(channel.id);
 
@@ -121,6 +138,8 @@ export function ChannelItem({ channel, isActive }: ChannelItemProps) {
 			<motion.button
 				type="button"
 				onClick={handleChannelClick}
+				onMouseEnter={handleMouseEnter}
+				onMouseLeave={handleMouseLeave}
 				className={cn(
 					"w-full px-2 py-3 md:py-1.5 mx-1 min-h-[44px] md:min-h-0 rounded-sm flex items-center gap-2 text-sm transition-colors group touch-manipulation focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2",
 					isActive

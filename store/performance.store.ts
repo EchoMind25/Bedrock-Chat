@@ -106,9 +106,18 @@ export const usePerformanceStore = create<PerformanceState>()(
  * Initialize the performance monitoring pipeline.
  * Connects PerformanceMonitor → PerformanceStore.
  * Call once on app mount. Returns cleanup function.
+ *
+ * PRODUCTION GATE: Monitoring runs only in development by default.
+ * The rAF-based CPU estimator and PerformanceObservers consume 1-2% CPU —
+ * acceptable for dev profiling, unacceptable for end-user production load.
  */
 export function initPerformanceMonitoring(): () => void {
 	if (typeof window === "undefined") return () => {};
+
+	// Only run in development unless explicitly opted in via dev settings
+	if (process.env.NODE_ENV === "production") {
+		return () => {};
+	}
 
 	const monitor = PerformanceMonitor.getInstance();
 	const cleanupMonitor = monitor.start();

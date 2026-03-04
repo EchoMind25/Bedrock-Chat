@@ -15,8 +15,10 @@ interface JoinServerSearchProps {
 }
 
 export function JoinServerSearch({ onSuccess }: JoinServerSearchProps) {
-  const { searchDiscoverableServers, joinPublicServer, requestToJoinServer, joinServerByInvite } =
-    useServerManagementStore();
+  const searchDiscoverableServers = useServerManagementStore((s) => s.searchDiscoverableServers);
+  const joinPublicServer = useServerManagementStore((s) => s.joinPublicServer);
+  const requestToJoinServer = useServerManagementStore((s) => s.requestToJoinServer);
+  const joinServerByInvite = useServerManagementStore((s) => s.joinServerByInvite);
 
   const [activeTab, setActiveTab] = useState<"search" | "invite">("search");
   const [searchQuery, setSearchQuery] = useState("");

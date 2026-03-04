@@ -100,6 +100,9 @@ export function MessageList({ channelId }: MessageListProps) {
 			{/* Scrollable container */}
 			<div
 				ref={parentRef}
+				role="log"
+				aria-live="polite"
+				aria-label="Message list"
 				className="h-full overflow-y-auto overflow-x-hidden scrollbar-thin"
 				style={{ contain: 'strict' }}
 			>

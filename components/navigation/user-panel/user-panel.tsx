@@ -7,6 +7,7 @@ import { useAuthStore } from "@/store/auth.store";
 import type { UserStatus } from "@/store/auth.store";
 import { usePresenceStore } from "@/store/presence.store";
 import { useFamilyStore } from "@/store/family.store";
+import { ENABLE_FAMILY_ACCOUNTS } from "@/lib/feature-flags";
 import { useUIStore } from "@/store/ui.store";
 import { usePointsStore } from "@/store/points.store";
 import { usePlatformRoleStore } from "@/store/platform-role.store";
@@ -90,7 +91,7 @@ export function UserPanel() {
 		{ value: "online", label: "Online", color: "oklch(0.72 0.19 145)" },
 		{ value: "idle", label: "Idle", color: "oklch(0.80 0.18 85)" },
 		{ value: "dnd", label: "Do Not Disturb", color: "oklch(0.63 0.21 25)" },
-		...(monitoringLevel === 4
+		...(ENABLE_FAMILY_ACCOUNTS && monitoringLevel === 4
 			? []
 			: [{ value: "invisible" as UserStatus, label: "Invisible", color: "oklch(0.50 0.01 250)" }]
 		),
@@ -301,7 +302,7 @@ export function UserPanel() {
 										Admin Panel
 									</button>
 								)}
-								{isParent && (
+								{ENABLE_FAMILY_ACCOUNTS && isParent && (
 									<button
 										type="button"
 										className="w-full px-3 py-2 text-sm text-left text-white/80 hover:bg-white/5 rounded-sm transition-colors flex items-center gap-2"

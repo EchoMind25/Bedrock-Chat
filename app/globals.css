@@ -10,7 +10,7 @@
   --color-background: oklch(0.98 0.01 285);
   --color-foreground: oklch(0.15 0.02 285);
   --color-muted: oklch(0.92 0.02 285);
-  --color-muted-foreground: oklch(0.45 0.02 285);
+  --color-muted-foreground: oklch(0.55 0.02 285);
   --color-border: oklch(0.88 0.02 285);
   --color-background-dark: oklch(0.12 0.02 285);
   --color-foreground-dark: oklch(0.95 0.01 285);
