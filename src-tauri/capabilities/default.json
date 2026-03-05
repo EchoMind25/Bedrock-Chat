@@ -1,0 +1,48 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "identifier": "default",
+  "description": "Default capability set for Bedrock Chat desktop client. Deny-by-default with explicit grants.",
+  "windows": ["main"],
+  "permissions": [
+    {
+      "identifier": "core:window:allow-start-dragging",
+      "description": "WHY: Enables custom drag regions for frameless window mode (future). Required for window repositioning via drag."
+    },
+    {
+      "identifier": "core:window:allow-set-title",
+      "description": "WHY: Allows updating the window title dynamically (e.g., showing current channel name)."
+    },
+    {
+      "identifier": "core:window:allow-minimize",
+      "description": "WHY: Allows programmatic minimize when clicking tray icon to hide window."
+    },
+    {
+      "identifier": "core:window:allow-maximize",
+      "description": "WHY: Allows programmatic maximize/restore for window management."
+    },
+    {
+      "identifier": "core:window:allow-close",
+      "description": "WHY: Allows programmatic close to support tray-based hide-on-close behavior."
+    },
+    {
+      "identifier": "core:window:allow-show",
+      "description": "WHY: Allows showing the window from tray icon and after DOM-ready to prevent FOUC."
+    },
+    {
+      "identifier": "core:window:allow-hide",
+      "description": "WHY: Allows hiding the window to system tray instead of quitting."
+    },
+    {
+      "identifier": "notification:allow-request-permission",
+      "description": "WHY: Prompts user for notification permission on first launch. Required for message/call notifications."
+    },
+    {
+      "identifier": "notification:allow-notify",
+      "description": "WHY: Sends native OS notifications for incoming messages, calls, and family alerts."
+    },
+    {
+      "identifier": "shell:allow-open",
+      "description": "WHY: Opens URLs in the default browser. Required for OAuth login flows (Supabase auth redirects) and external links in chat messages."
+    }
+  ]
+}

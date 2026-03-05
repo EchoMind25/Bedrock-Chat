@@ -1,5 +1,9 @@
 import type { NextConfig } from "next";
 
+// Tauri builds require static export (no Node.js server).
+// Set TAURI_BUILD=true to enable this mode. Vercel deploys remain server-rendered.
+const isTauriBuild = process.env.TAURI_BUILD === "true";
+
 // Extract hostname from NEXT_PUBLIC_SUPABASE_URL for Next.js Image optimization.
 // Falls back to a wildcard pattern covering all Supabase projects.
 const supabaseHostname = (() => {
@@ -12,15 +16,23 @@ const supabaseHostname = (() => {
 })();
 
 const nextConfig: NextConfig = {
-  images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: supabaseHostname,
-        pathname: "/storage/v1/object/public/**",
-      },
-    ],
-  },
+  // Static export for Tauri desktop builds; server-rendered for Vercel
+  ...(isTauriBuild && {
+    output: "export",
+    // Disable image optimization for static export (no server-side loader)
+    images: { unoptimized: true },
+  }),
+  ...(!isTauriBuild && {
+    images: {
+      remotePatterns: [
+        {
+          protocol: "https",
+          hostname: supabaseHostname,
+          pathname: "/storage/v1/object/public/**",
+        },
+      ],
+    },
+  }),
   // Enable React Compiler
   reactCompiler: true,
   // Turbopack is default in Next.js 16
