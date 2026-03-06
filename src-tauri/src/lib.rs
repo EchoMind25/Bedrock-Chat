@@ -4,7 +4,8 @@ use tauri::{
     image::Image,
     menu::{MenuBuilder, MenuItemBuilder},
     tray::TrayIconBuilder,
-    Manager, WindowEvent,
+    webview::PageLoadEvent,
+    Manager,
 };
 use tauri_plugin_updater::UpdaterExt;
 
@@ -40,6 +41,12 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             activity::get_running_processes,
         ])
+        // Show window after page load to prevent FOUC (window starts hidden)
+        .on_page_load(|webview, payload| {
+            if payload.event() == PageLoadEvent::Finished {
+                let _ = webview.window().show();
+            }
+        })
         .setup(|app| {
             // --- System Tray ---
             let show_item = MenuItemBuilder::with_id("show", "Show Bedrock Chat")
@@ -85,18 +92,6 @@ pub fn run() {
                     _ => {}
                 })
                 .build(app)?;
-
-            // --- Show window after DOM ready (prevents FOUC) ---
-            let main_window = app.get_webview_window("main");
-            if let Some(window) = main_window {
-                let win = window.clone();
-                window.on_window_event(move |event| {
-                    // Show window once the webview content is ready
-                    if let WindowEvent::Focused(true) = event {
-                        let _ = win.show();
-                    }
-                });
-            }
 
             // --- Auto-updater: check on launch ---
             let app_handle = app.handle().clone();

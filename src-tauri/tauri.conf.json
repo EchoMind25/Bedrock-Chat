@@ -25,7 +25,7 @@
       "tooltip": "Bedrock Chat"
     },
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.livekit.cloud wss://*.livekit.cloud https://releases.bedrockchat.com; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co; font-src 'self' data:; media-src 'self' blob:; worker-src 'self' blob:",
+      "csp": "default-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.livekit.cloud wss://*.livekit.cloud https://bedrockchat.com; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src blob:; worker-src blob:",
       "freezePrototype": false,
       "dangerousDisableAssetCspModification": false
     }
