@@ -12,9 +12,20 @@ export async function subscribeToPush(): Promise<void> {
 	if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
 
 	const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-	if (!vapidKey) return;
+	if (!vapidKey) {
+		// VAPID key not configured — skip silently in production
+		if (process.env.NODE_ENV === "development") {
+			console.warn("[Push] NEXT_PUBLIC_VAPID_PUBLIC_KEY not set, skipping push subscription");
+		}
+		return;
+	}
+
+	// Ensure notification permission is granted before attempting subscription
+	if (typeof Notification !== "undefined" && Notification.permission !== "granted") return;
 
 	try {
+		// Wait for service worker to be fully active before subscribing.
+		// This prevents the AbortError from subscribing while SW is installing.
 		const registration = await navigator.serviceWorker.ready;
 
 		let subscription = await registration.pushManager.getSubscription();
@@ -36,9 +47,10 @@ export async function subscribeToPush(): Promise<void> {
 				userAgent: navigator.userAgent,
 			}),
 		});
-	} catch (err) {
-		// Push subscription failures should never break the app
-		console.error("[Push] Subscribe failed:", err);
+	} catch {
+		// Push subscription failures should never break the app.
+		// Common causes: SW not ready, browser doesn't support, VAPID mismatch.
+		// Fail silently — push is a progressive enhancement.
 	}
 }
 
@@ -62,8 +74,8 @@ export async function unsubscribeFromPush(): Promise<void> {
 				body: JSON.stringify({ endpoint }),
 			});
 		}
-	} catch (err) {
-		console.error("[Push] Unsubscribe failed:", err);
+	} catch {
+		// Unsubscribe failures are non-critical
 	}
 }
 

@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { UserPlus, Check, Loader2, Info } from "lucide-react";
+import { Check, Loader2, Info, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Modal } from "@/components/ui/modal/modal";
 import { Button } from "@/components/ui/button/button";
 import { MONITORING_LEVELS } from "@/lib/types/family";
 import type { MonitoringLevel } from "@/lib/types/family";
 import { useFamilyStore } from "@/store/family.store";
+import { ParentalConsentOTP } from "@/components/family/consent/ParentalConsentOTP";
 
 interface AddTeenModalProps {
   isOpen: boolean;
@@ -22,19 +23,23 @@ const MONITORING_LEVEL_OPTIONS: { value: MonitoringLevel; label: string; descrip
   { value: 4, label: "Restricted", description: "Whitelist only, time limits, full logs" },
 ];
 
+type ModalStep = "details" | "consent" | "creating" | "success";
+
 export function AddTeenModal({ isOpen, onClose, onSuccess }: AddTeenModalProps) {
   const selectedTeen = useFamilyStore((s) => s.getSelectedTeenAccount());
   const familyDefaultLevel = selectedTeen?.monitoringLevel ?? 1;
 
+  // Form fields
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [dob, setDob] = useState("");
   const [monitoringLevel, setMonitoringLevel] = useState<MonitoringLevel>(familyDefaultLevel);
-  const [coppaConsent, setCoppaConsent] = useState(false);
+
+  // Flow state
+  const [modalStep, setModalStep] = useState<ModalStep>("details");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
   const [createdUsername, setCreatedUsername] = useState("");
 
   const maxDob = new Date().toISOString().split("T")[0];
@@ -61,14 +66,14 @@ export function AddTeenModal({ isOpen, onClose, onSuccess }: AddTeenModalProps) 
     setConfirm("");
     setDob("");
     setMonitoringLevel(familyDefaultLevel);
-    setCoppaConsent(false);
+    setModalStep("details");
     setError(null);
-    setSuccess(false);
     setCreatedUsername("");
     onClose();
   };
 
-  const handleSubmit = async () => {
+  // Step 1: Validate details and proceed to consent
+  const handleProceedToConsent = () => {
     setError(null);
 
     if (username.trim().length < 3) {
@@ -91,12 +96,16 @@ export function AddTeenModal({ isOpen, onClose, onSuccess }: AddTeenModalProps) 
       setError("Date of birth is required for COPPA compliance");
       return;
     }
-    if (!coppaConsent) {
-      setError("You must confirm parental consent to create this account");
-      return;
-    }
 
+    setModalStep("consent");
+  };
+
+  // Step 2: After OTP verified, create the teen account
+  const handleConsentVerified = async (verificationId: string) => {
+    setModalStep("creating");
     setIsSubmitting(true);
+    setError(null);
+
     try {
       const res = await fetch("/api/family/add-teen", {
         method: "POST",
@@ -107,29 +116,39 @@ export function AddTeenModal({ isOpen, onClose, onSuccess }: AddTeenModalProps) 
           date_of_birth: dob,
           monitoring_level: monitoringLevel,
           coppa_consent: true,
+          consent_verification_id: verificationId,
         }),
       });
       const data = await res.json();
 
       if (!res.ok) {
         setError(data.error ?? "Something went wrong");
+        setModalStep("details");
         return;
       }
 
       setCreatedUsername(data.teen.username);
-      setSuccess(true);
+      setModalStep("success");
       setTimeout(() => {
         onSuccess(data.teen.username);
         handleClose();
       }, 2000);
     } catch {
       setError("Network error — please try again");
+      setModalStep("details");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const levelInfo = MONITORING_LEVELS[monitoringLevel];
+
+  const detailsValid =
+    username.trim().length >= 3 &&
+    /^[a-z0-9_]+$/i.test(username.trim()) &&
+    password.length >= 8 &&
+    password === confirm &&
+    !!dob;
 
   return (
     <Modal
@@ -140,54 +159,34 @@ export function AddTeenModal({ isOpen, onClose, onSuccess }: AddTeenModalProps) 
       closeOnOverlay={!isSubmitting}
       closeOnEscape={!isSubmitting}
       footer={
-        success ? undefined : (
+        modalStep === "details" ? (
           <>
-            <Button variant="secondary" size="sm" onClick={handleClose} disabled={isSubmitting}>
+            <Button variant="secondary" size="sm" onClick={handleClose}>
               Cancel
             </Button>
             <Button
               variant="primary"
               size="sm"
-              onClick={handleSubmit}
-              disabled={isSubmitting || !username || !password || !confirm || !dob || !coppaConsent}
+              onClick={handleProceedToConsent}
+              disabled={!detailsValid}
             >
-              {isSubmitting ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 size={14} className="animate-spin" />
-                  Creating…
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
-                  <UserPlus size={14} />
-                  Create Account
-                </span>
-              )}
+              <span className="flex items-center gap-2">
+                <ArrowRight size={14} />
+                Next: Verify Identity
+              </span>
             </Button>
           </>
-        )
+        ) : undefined
       }
     >
       <AnimatePresence mode="wait">
-        {success ? (
-          <motion.div
-            key="success"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-col items-center gap-3 py-6"
-          >
-            <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">
-              <Check size={22} className="text-green-400" />
-            </div>
-            <p className="font-semibold text-green-400">@{createdUsername} created!</p>
-            <p className="text-sm text-center text-white/60">
-              Share the username and password with your teen so they can log in.
-            </p>
-          </motion.div>
-        ) : (
+        {/* Step 1: Teen Details */}
+        {modalStep === "details" && (
           <motion.div
             key="form"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             className="space-y-5"
           >
             {/* Username */}
@@ -203,7 +202,7 @@ export function AddTeenModal({ isOpen, onClose, onSuccess }: AddTeenModalProps) 
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="coolteen123"
                 disabled={isSubmitting}
-                className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-60"
+                className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm outline-hidden focus:ring-2 focus:ring-primary/50 disabled:opacity-60"
               />
               <p className="text-xs text-white/40">No email needed — teen logs in with username + password</p>
             </div>
@@ -223,7 +222,7 @@ export function AddTeenModal({ isOpen, onClose, onSuccess }: AddTeenModalProps) 
                   placeholder="••••••••"
                   minLength={8}
                   disabled={isSubmitting}
-                  className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-60"
+                  className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm outline-hidden focus:ring-2 focus:ring-primary/50 disabled:opacity-60"
                 />
               </div>
               <div className="space-y-1.5">
@@ -238,7 +237,7 @@ export function AddTeenModal({ isOpen, onClose, onSuccess }: AddTeenModalProps) 
                   onChange={(e) => setConfirm(e.target.value)}
                   placeholder="••••••••"
                   disabled={isSubmitting}
-                  className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-60"
+                  className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm outline-hidden focus:ring-2 focus:ring-primary/50 disabled:opacity-60"
                 />
               </div>
             </div>
@@ -256,7 +255,7 @@ export function AddTeenModal({ isOpen, onClose, onSuccess }: AddTeenModalProps) 
                 max={maxDob}
                 min={minDob}
                 disabled={isSubmitting}
-                className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-60"
+                className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm outline-hidden focus:ring-2 focus:ring-primary/50 disabled:opacity-60"
                 style={{ colorScheme: "dark" }}
               />
               <p className="text-xs text-white/40 flex items-center gap-1">
@@ -266,8 +265,8 @@ export function AddTeenModal({ isOpen, onClose, onSuccess }: AddTeenModalProps) 
               {isUnder13 && dob && (
                 <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2">
                   <p className="text-xs text-amber-400">
-                    This child is under 13. Federal law (COPPA) applies — your consent below
-                    serves as the required parental authorization.
+                    This child is under 13. Federal law (COPPA) applies — verified parental
+                    consent is required in the next step.
                   </p>
                 </div>
               )}
@@ -325,25 +324,59 @@ export function AddTeenModal({ isOpen, onClose, onSuccess }: AddTeenModalProps) 
               </p>
             </div>
 
-            {/* COPPA consent */}
-            <label className="flex items-start gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={coppaConsent}
-                onChange={(e) => setCoppaConsent(e.target.checked)}
-                disabled={isSubmitting}
-                className="mt-0.5 w-4 h-4 accent-primary"
-              />
-              <span className="text-xs text-white/70 leading-relaxed">
-                I confirm I am the parent or legal guardian of this child and provide my consent to
-                create this account on their behalf. I understand my teen will always be able to see
-                what I access in their Transparency Log. <span className="text-red-400">*</span>
-              </span>
-            </label>
-
             {error && (
               <p className="text-xs text-red-400 bg-red-500/10 px-3 py-2 rounded-lg">{error}</p>
             )}
+          </motion.div>
+        )}
+
+        {/* Step 2: Email OTP Consent Verification */}
+        {modalStep === "consent" && (
+          <motion.div
+            key="consent"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <ParentalConsentOTP
+              onVerified={handleConsentVerified}
+              onCancel={() => setModalStep("details")}
+              consentContext={{
+                monitoringLevel,
+                teenDisplayName: username.trim().toLowerCase(),
+              }}
+            />
+          </motion.div>
+        )}
+
+        {/* Step 3: Creating account */}
+        {modalStep === "creating" && (
+          <motion.div
+            key="creating"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col items-center gap-3 py-6"
+          >
+            <Loader2 size={28} className="text-primary animate-spin" />
+            <p className="text-sm text-slate-300">Creating teen account…</p>
+          </motion.div>
+        )}
+
+        {/* Step 4: Success */}
+        {modalStep === "success" && (
+          <motion.div
+            key="success"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col items-center gap-3 py-6"
+          >
+            <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">
+              <Check size={22} className="text-green-400" />
+            </div>
+            <p className="font-semibold text-green-400">@{createdUsername} created!</p>
+            <p className="text-sm text-center text-white/60">
+              Share the username and password with your teen so they can log in.
+            </p>
           </motion.div>
         )}
       </AnimatePresence>

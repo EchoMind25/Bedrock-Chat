@@ -310,10 +310,12 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 	return (
 		<motion.div
 			className={cn(
-				"group hover:bg-white/5 transition-colors",
-				isGrouped ? "py-0.5" : "py-3 mt-3",
+				"group transition-colors hover:bg-white/[0.03]",
+				isGrouped
+					? "py-0.5"
+					: "pt-3 pb-0.5",
 				isBubble ? "px-3" : "px-4",
-				isMinimal && !isGrouped && "py-1.5 mt-1",
+				isMinimal && !isGrouped && "pt-1.5 pb-0",
 				isMinimal && isGrouped && "py-0",
 			)}
 			onMouseEnter={() => setIsHovered(true)}
@@ -326,10 +328,10 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 				"flex gap-3",
 				isBubble && isOwnMessage && "justify-end",
 			)}>
-				{/* Avatar (hidden when grouped, when showAvatars is off, or in bubble mode) */}
+				{/* Avatar column: always takes space for alignment; shows avatar only for first in group */}
 				{showAvatars && !isBubble && (
 					<div className="w-10 shrink-0">
-						{!isGrouped && (
+						{!isGrouped ? (
 							<div
 								role="button"
 								tabIndex={0}
@@ -350,6 +352,11 @@ export function Message({ message, isGrouped, channelId }: MessageProps) {
 									status={authorPresenceStatus}
 								/>
 							</div>
+						) : (
+							/* Hover timestamp for grouped messages — replaces avatar space */
+							<span className="text-[10px] text-white/0 group-hover:text-white/40 transition-colors leading-5 text-right block pt-0.5 select-none" title={formatAbsoluteTime(message.timestamp)}>
+								{message.timestamp.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+							</span>
 						)}
 					</div>
 				)}

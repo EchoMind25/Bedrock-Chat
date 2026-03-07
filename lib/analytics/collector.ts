@@ -44,6 +44,8 @@ export class AnalyticsCollector {
 	private sessionToken: string | null = null;
 	private flushTimer: ReturnType<typeof setInterval> | null = null;
 	private previousPath: string | null = null;
+	private consecutiveFailures = 0;
+	private static readonly MAX_CONSECUTIVE_FAILURES = 3;
 
 	constructor(config: CollectorConfig) {
 		this.endpoint = config.endpoint;
@@ -167,6 +169,12 @@ export class AnalyticsCollector {
 		if (this.queue.length === 0) return;
 		if (!this.sessionToken) return;
 
+		// Stop retrying after repeated failures to avoid flooding console/network
+		if (this.consecutiveFailures >= AnalyticsCollector.MAX_CONSECUTIVE_FAILURES) {
+			this.queue = [];
+			return;
+		}
+
 		const payload: BatchPayload = {
 			session_token: this.sessionToken,
 			device_category: getDeviceCategory(),
@@ -176,13 +184,10 @@ export class AnalyticsCollector {
 
 		const body = JSON.stringify(payload);
 
-		// sendBeacon is non-blocking and works on page unload
-		if (navigator.sendBeacon) {
-			const sent = navigator.sendBeacon(this.endpoint, new Blob([body], { type: "application/json" }));
-			if (!sent) {
-				// Beacon queue full — try fetch as fallback (best-effort, may not complete on unload)
-				this.sendViaFetch(body);
-			}
+		// Use fetch as primary — errors are catchable and won't spam the console.
+		// Only fall back to sendBeacon on page unload (visibilitychange handler).
+		if (document.visibilityState === "hidden" && navigator.sendBeacon) {
+			navigator.sendBeacon(this.endpoint, new Blob([body], { type: "application/json" }));
 		} else {
 			this.sendViaFetch(body);
 		}
@@ -194,7 +199,14 @@ export class AnalyticsCollector {
 			headers: { "Content-Type": "application/json" },
 			body,
 			keepalive: true,
+		}).then((res) => {
+			if (res.ok || res.status === 204) {
+				this.consecutiveFailures = 0;
+			} else {
+				this.consecutiveFailures++;
+			}
 		}).catch(() => {
+			this.consecutiveFailures++;
 			// Fail silently — analytics must never degrade UX
 		});
 	}

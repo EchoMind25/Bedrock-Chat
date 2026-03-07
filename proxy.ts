@@ -39,9 +39,9 @@ const securityHeaders = {
 	"Content-Security-Policy": [
 		"default-src 'self'",
 		"script-src 'self' 'unsafe-inline'",
-		"style-src 'self' 'unsafe-inline'",
+		"style-src 'self' 'unsafe-inline' https://fonts.cdnfonts.com",
 		"img-src 'self' data: https:",
-		"font-src 'self' data:",
+		"font-src 'self' data: https://fonts.cdnfonts.com",
 		"connect-src 'self' https://*.supabase.co wss://*.supabase.co wss://*.livekit.cloud https://*.livekit.cloud",
 		"frame-src 'self'",
 		"media-src 'self' blob: mediastream:",

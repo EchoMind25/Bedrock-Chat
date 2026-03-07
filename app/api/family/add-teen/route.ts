@@ -22,6 +22,7 @@ interface AddTeenBody {
   date_of_birth: string;        // ISO date string, required for COPPA
   monitoring_level?: MonitoringLevel; // 1-4 override; undefined = use family default
   coppa_consent: boolean;       // must be true
+  consent_verification_id?: string;  // OTP verification ID — required for verified consent
 }
 
 function parseBody(raw: unknown): AddTeenBody | null {
@@ -39,6 +40,9 @@ function parseBody(raw: unknown): AddTeenBody | null {
       ? (b.monitoring_level as MonitoringLevel)
       : undefined,
     coppa_consent: true,
+    consent_verification_id: typeof b.consent_verification_id === "string"
+      ? (b.consent_verification_id as string)
+      : undefined,
   };
 }
 
@@ -117,7 +121,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ── 3. Config guards ──────────────────────────────────────────────────────
+  // ── 3. Verify OTP consent (server-side) ──────────────────────────────────
+  if (!body.consent_verification_id) {
+    return NextResponse.json(
+      { error: "Verified parental consent is required (consent_verification_id missing)" },
+      { status: 400 }
+    );
+  }
+
+  // ── 4. Config guards ──────────────────────────────────────────────────────
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -127,7 +139,49 @@ export async function POST(request: NextRequest) {
 
   const adminClient = createAdminClient(supabaseUrl, serviceRoleKey);
 
-  // ── 4. Username uniqueness check ──────────────────────────────────────────
+  // ── 5. Verify OTP record belongs to this parent and was verified ─────────
+  const { data: otpRecord } = await adminClient
+    .from("otp_verifications")
+    .select("id, parent_user_id, is_used, is_invalidated, verified_at, expires_at")
+    .eq("id", body.consent_verification_id)
+    .maybeSingle();
+
+  if (!otpRecord) {
+    return NextResponse.json(
+      { error: "Consent verification not found" },
+      { status: 400 }
+    );
+  }
+
+  if (otpRecord.parent_user_id !== user.id) {
+    return NextResponse.json(
+      { error: "Consent verification does not belong to this account" },
+      { status: 403 }
+    );
+  }
+
+  if (!otpRecord.is_used || !otpRecord.verified_at) {
+    return NextResponse.json(
+      { error: "Consent verification has not been completed" },
+      { status: 400 }
+    );
+  }
+
+  if (otpRecord.is_invalidated) {
+    return NextResponse.json(
+      { error: "Consent verification has been invalidated" },
+      { status: 400 }
+    );
+  }
+
+  if (new Date(otpRecord.expires_at) < new Date()) {
+    return NextResponse.json(
+      { error: "Consent verification has expired" },
+      { status: 400 }
+    );
+  }
+
+  // ── 6. Username uniqueness check ──────────────────────────────────────────
   const { data: existing } = await adminClient
     .from("profiles")
     .select("id")
@@ -138,7 +192,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Username is already taken" }, { status: 409 });
   }
 
-  // ── 5. Create teen user via admin API (email-less, auto-confirmed) ─────────
+  // ── 7. Create teen user via admin API (email-less, auto-confirmed) ─────────
   const placeholderEmail = `${body.username}@anonymous.bedrock.local`;
 
   const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
@@ -161,7 +215,7 @@ export async function POST(request: NextRequest) {
 
   const teenId = newUser.user.id;
 
-  // ── 6. Create teen profile ────────────────────────────────────────────────
+  // ── 8. Create teen profile ────────────────────────────────────────────────
   const { error: profileError } = await adminClient.from("profiles").insert({
     id: teenId,
     username: body.username,
@@ -177,7 +231,7 @@ export async function POST(request: NextRequest) {
     // Non-fatal — may have been created by a trigger
   }
 
-  // ── 7. Find or create parent's family ─────────────────────────────────────
+  // ── 9. Find or create parent's family ─────────────────────────────────────
   const { data: existingMembership } = await adminClient
     .from("family_members")
     .select("family_id")
@@ -214,7 +268,7 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  // ── 8. Link teen to family with optional monitoring level override ─────────
+  // ── 10. Link teen to family with optional monitoring level override ────────
   const monitoringOverride = body.monitoring_level
     ? numericLevelToDb(body.monitoring_level)
     : null;
@@ -231,18 +285,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Failed to link teen to family" }, { status: 500 });
   }
 
-  // ── 9. Record COPPA consent ───────────────────────────────────────────────
+  // ── 11. Record COPPA consent (email-verified) ────────────────────────────
   try {
     await adminClient.from("parental_consent").insert({
       parent_user_id: user.id,
       child_user_id: teenId,
-      consent_method: "signed_form",
+      consent_method: "email",
       verified: true,
-      verified_at: new Date().toISOString(),
+      verified_at: otpRecord.verified_at,
+      otp_verification_id: body.consent_verification_id,
+      consent_version: "2.0.0",
     });
   } catch { /* non-fatal */ }
 
-  // ── 10. Log to transparency log ───────────────────────────────────────────
+  // ── 12. Log to transparency log ──────────────────────────────────────────
   try {
     await adminClient.from("family_activity_log").insert({
       family_id: familyId,

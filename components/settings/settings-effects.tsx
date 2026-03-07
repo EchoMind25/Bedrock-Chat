@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useSettingsStore } from "@/store/settings.store";
+import { useThemeStore } from "@/store/theme.store";
 import { loadFont } from "@/lib/fonts/font-loader";
 import { generatePalette, extractHCL } from "@/lib/themes/color-generator";
 
@@ -15,10 +16,10 @@ const ACCENT_COLOR_MAP: Record<string, string> = {
 
 const FONT_FAMILY_MAP: Record<string, string> = {
 	system: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-	inter: '"Inter", sans-serif',
+	inter: "var(--font-inter), sans-serif",
 	"sf-pro": '"SF Pro Display", -apple-system, sans-serif',
-	"jetbrains-mono": '"JetBrains Mono", monospace',
-	merriweather: '"Merriweather", serif',
+	"jetbrains-mono": "var(--font-jetbrains-mono), monospace",
+	merriweather: "var(--font-merriweather), serif",
 	opendyslexic: '"OpenDyslexic", sans-serif',
 };
 
@@ -191,6 +192,23 @@ export function SettingsEffects() {
 	useEffect(() => {
 		document.documentElement.dataset.timestampFormat = settings?.timestamp_format ?? "relative";
 	}, [settings?.timestamp_format]);
+
+	// ── Simple mode (theme override) ─────────────────────────
+	const overrideMode = useThemeStore((s) => s.preferences.overrideMode);
+	useEffect(() => {
+		const isSimple = overrideMode === "simple_mode";
+		const root = document.documentElement;
+		root.classList.toggle("simple-mode", isSimple);
+		// Simple mode disables expensive visual effects for performance
+		if (isSimple) {
+			root.style.setProperty("--animation-speed", "0");
+			root.classList.add("reduce-motion");
+		} else {
+			root.style.removeProperty("--animation-speed");
+			root.classList.remove("reduce-motion");
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [overrideMode]);
 
 	return null;
 }

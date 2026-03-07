@@ -1,4 +1,7 @@
 mod activity;
+mod game_list;
+mod overlay;
+mod performance;
 
 use tauri::{
     image::Image,
@@ -18,6 +21,8 @@ use tauri_plugin_updater::UpdaterExt;
 /// - Shell open (for OAuth and external links)
 /// - Auto-updater (check on launch, user-consented install)
 /// - Window hidden until DOM ready to prevent FOUC
+/// - Game activity detection (polling + allowlist matching)
+/// - Global shortcut (Shift+F1) for overlay toggle
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -37,9 +42,20 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         // Plugin: auto-updater checks for updates on launch
         .plugin(tauri_plugin_updater::Builder::new().build())
+        // Plugin: global keyboard shortcuts (Shift+F1 for overlay)
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        // Managed state: activity detection + performance monitor
+        .manage(activity::ManagedActivityState::default())
+        .manage(performance::ManagedSystem::default())
         // Register IPC command handlers
         .invoke_handler(tauri::generate_handler![
-            activity::get_running_processes,
+            activity::get_activity,
+            activity::set_activity_detection_enabled,
+            overlay::show_overlay,
+            overlay::hide_overlay,
+            overlay::toggle_overlay,
+            overlay::set_overlay_position,
+            performance::get_performance_stats,
         ])
         // Show window after page load to prevent FOUC (window starts hidden)
         .on_page_load(|webview, payload| {
@@ -92,6 +108,15 @@ pub fn run() {
                     _ => {}
                 })
                 .build(app)?;
+
+            // --- Activity Detection: start background polling ---
+            let handle = app.handle();
+            activity::start_polling(handle);
+
+            // --- Overlay: register Shift+F1 global hotkey ---
+            if let Err(e) = overlay::register_overlay_hotkey(handle) {
+                eprintln!("Failed to register overlay hotkey: {e}");
+            }
 
             // --- Auto-updater: check on launch ---
             let app_handle = app.handle().clone();

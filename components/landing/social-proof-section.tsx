@@ -159,7 +159,7 @@ export function SocialProofSection() {
     {
       type: "static",
       data: {
-        display: "<50MB",
+        display: "<100MB",
         label: "RAM Target",
         sublabel: "Engineered for gaming performance",
         icon: Cpu,

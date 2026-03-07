@@ -82,6 +82,9 @@
         "https://releases.bedrockchat.com/update/{{target}}/{{current_version}}"
       ],
       "pubkey": ""
+    },
+    "global-shortcut": {
+      "shortcuts": ["shift+f1"]
     }
   }
 }

@@ -323,19 +323,7 @@ export function ChannelList() {
 					</div>
 				)}
 
-				<motion.div
-					initial="hidden"
-					animate="visible"
-					variants={{
-						hidden: { opacity: 0 },
-						visible: {
-							opacity: 1,
-							transition: {
-								staggerChildren: 0.03,
-							},
-						},
-					}}
-				>
+				<div key={currentServerId}>
 					{/* Starred Channels Section */}
 					{favoriteChannels.length > 0 && (
 						<div className="mb-4 pb-4 border-b border-white/10">
@@ -398,7 +386,7 @@ export function ChannelList() {
 							))}
 						</div>
 					)}
-				</motion.div>
+				</div>
 			</div>
 
 			{/* Modals - Lazy loaded for performance */}

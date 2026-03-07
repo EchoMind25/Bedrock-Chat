@@ -48,3 +48,6 @@ developer-docs/node_modules/
 developer-docs/dist/
 developer-docs/.astro/
 developer-docs-context.md
+
+# Tauri
+src-tauri/target/
