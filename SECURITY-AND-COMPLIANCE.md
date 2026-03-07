@@ -50,7 +50,7 @@
 | Requirement | Status | Implementation |
 |---|---|---|
 | Age verification at signup | Implemented | Account type selection: standard, parent, teen |
-| Parental consent schema | Partial | `parental_consent` table exists in DB. Verified consent mechanism (e.g., credit card verification, signed form) NOT yet implemented |
+| Parental consent (email OTP) | Implemented | COPPA §312.5(b)(2) "email plus" method. Parent enters email → receives 6-digit OTP → verifies identity. OTP hashed with per-code salt (SHA-256), constant-time comparison, 5-attempt max, 15-min expiry. Confirmatory email sent on success. Records stored in `otp_verifications` table, linked from `parental_consent.otp_verification_id`. Routes: `api/family/consent/initiate`, `api/family/consent/verify` |
 | Parental controls | Implemented | 4 monitoring levels, keyword alerts, time limits, content flags |
 
 ### 18 U.S.C. 2258A (CSAM Reporting)

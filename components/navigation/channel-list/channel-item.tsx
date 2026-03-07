@@ -146,18 +146,6 @@ export function ChannelItem({ channel, isActive }: ChannelItemProps) {
 						? "bg-white/10 text-white"
 						: "text-white/60 hover:bg-white/5 hover:text-white/80"
 				)}
-				variants={{
-					hidden: { opacity: 0, x: -10 },
-					visible: {
-						opacity: 1,
-						x: 0,
-						transition: {
-							type: "spring",
-							stiffness: 260,
-							damping: 20,
-						},
-					},
-				}}
 				whileHover={{ x: 2 }}
 			>
 				{getChannelIcon()}

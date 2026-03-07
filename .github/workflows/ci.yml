@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Lint, Type-check & Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history for changed-file detection
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (Biome)
+        run: pnpm lint
+
+      - name: Type-check
+        run: pnpm type-check
+
+      - name: Build
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+          SUPABASE_SERVICE_ROLE_KEY: placeholder
+
+      - name: Privacy compliance check
+        run: |
+          echo "Checking changed files for third-party analytics patterns..."
+
+          # Get changed files (PR: vs base, push: vs previous commit)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            CHANGED=$(git diff --name-only --diff-filter=ACMR origin/${{ github.base_ref }}...HEAD -- '*.ts' '*.tsx' '*.js' '*.jsx')
+          else
+            CHANGED=$(git diff --name-only --diff-filter=ACMR HEAD~1...HEAD -- '*.ts' '*.tsx' '*.js' '*.jsx' 2>/dev/null || echo "")
+          fi
+
+          if [ -z "$CHANGED" ]; then
+            echo "No source files changed — skipping."
+            exit 0
+          fi
+
+          PATTERN='gtag\b|ga\(|mixpanel|amplitude|clarity|hotjar|\bsegment\b|heap\b|fullstory|logrocket'
+          VIOLATIONS=""
+          WARNINGS=""
+
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            [ ! -f "$file" ] && continue
+
+            # Search for analytics patterns, excluding comments
+            MATCHES=$(grep -nE "$PATTERN" "$file" 2>/dev/null | grep -vE '^\s*(//|/?\*|\*)' || true)
+
+            if [ -n "$MATCHES" ]; then
+              # Test files and storybook → warning only
+              if echo "$file" | grep -qE '\.(test|spec|stories)\.(ts|tsx|js|jsx)$'; then
+                WARNINGS="${WARNINGS}\n⚠️  WARNING (test/story): ${file}\n${MATCHES}\n"
+              else
+                VIOLATIONS="${VIOLATIONS}\n❌ VIOLATION: ${file}\n${MATCHES}\n"
+              fi
+            fi
+          done <<< "$CHANGED"
+
+          if [ -n "$WARNINGS" ]; then
+            echo -e "\n--- Warnings (non-blocking) ---"
+            echo -e "$WARNINGS"
+          fi
+
+          if [ -n "$VIOLATIONS" ]; then
+            echo -e "\n--- Privacy Violations (blocking) ---"
+            echo -e "$VIOLATIONS"
+            echo ""
+            echo "Third-party analytics/tracking detected in source files."
+            echo "Bedrock Chat is privacy-first — remove these or explain in a comment."
+            exit 1
+          fi
+
+          echo "✓ No third-party analytics patterns detected."

@@ -9,10 +9,10 @@ interface ThemePresetsProps {
 
 const FONT_MAP: Record<string, string> = {
 	system: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-	inter: '"Inter", sans-serif',
+	inter: "var(--font-inter), sans-serif",
 	"sf-pro": '"SF Pro Display", -apple-system, sans-serif',
-	"jetbrains-mono": '"JetBrains Mono", monospace',
-	merriweather: '"Merriweather", serif',
+	"jetbrains-mono": "var(--font-jetbrains-mono), monospace",
+	merriweather: "var(--font-merriweather), serif",
 	opendyslexic: '"OpenDyslexic", sans-serif',
 };
 

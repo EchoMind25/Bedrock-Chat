@@ -3,7 +3,9 @@ import { checkRateLimit } from "@/lib/utils/rate-limiter";
 import { createServiceClient } from "@/lib/supabase/service";
 import { sanitizePathServer } from "@/lib/analytics/sanitize";
 
-const ALLOWED_ORIGINS = ["https://bedrockchat.com", "https://www.bedrockchat.com"];
+// Allow same-origin requests + production domains. Uses Host header
+// so staging/preview deployments also work without code changes.
+const STATIC_ORIGINS = new Set(["https://bedrockchat.com", "https://www.bedrockchat.com"]);
 const MAX_EVENTS_PER_REQUEST = 100;
 const RATE_LIMIT_REQUESTS = 10;
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -63,10 +65,14 @@ function isValidViewportBucket(v: string): v is "sm" | "md" | "lg" | "xl" {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-	// CORS origin validation
+	// CORS origin validation — allow same-origin and known production domains.
+	// Also derive allowed origin from the Host header so Vercel preview
+	// deployments work without hardcoding every URL.
 	const origin = request.headers.get("origin") ?? "";
+	const host = request.headers.get("host") ?? "";
 	const isDev = process.env.NODE_ENV === "development";
-	if (!isDev && !ALLOWED_ORIGINS.includes(origin)) {
+	const hostOrigin = host ? `https://${host}` : "";
+	if (!isDev && !STATIC_ORIGINS.has(origin) && origin !== hostOrigin) {
 		return new NextResponse(null, { status: 403 });
 	}
 
@@ -179,32 +185,40 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 	}
 
 	// Insert using service role (bypasses RLS)
-	const supabase = createServiceClient();
+	// Wrapped in try/catch — if Supabase service client or schema is unavailable,
+	// fail gracefully instead of crashing the route.
+	try {
+		const supabase = createServiceClient();
 
-	const insertions: PromiseLike<unknown>[] = [];
+		const insertions: PromiseLike<unknown>[] = [];
 
-	if (rows.length > 0) {
-		insertions.push(
-			supabase.schema("analytics").from("raw_events").insert(rows).then(({ error }) => {
-				if (error) {
-					// Log count only, never contents
-					console.error(`[analytics/ingest] raw_events insert error for ${rows.length} events:`, error.code);
-				}
-			}),
-		);
+		if (rows.length > 0) {
+			insertions.push(
+				supabase.schema("analytics").from("raw_events").insert(rows).then(({ error }) => {
+					if (error) {
+						// Log count only, never contents
+						console.error(`[analytics/ingest] raw_events insert error for ${rows.length} events:`, error.code);
+					}
+				}),
+			);
+		}
+
+		if (errorRows.length > 0) {
+			insertions.push(
+				supabase.schema("analytics").from("error_events").insert(errorRows).then(({ error }) => {
+					if (error) {
+						console.error(`[analytics/ingest] error_events insert error for ${errorRows.length} events:`, error.code);
+					}
+				}),
+			);
+		}
+
+		await Promise.all(insertions);
+	} catch (error) {
+		// Service client or schema unavailable — log once and return success
+		// to prevent client-side retry storms
+		console.error("[analytics/ingest] Service error:", error instanceof Error ? error.message : "unknown");
 	}
-
-	if (errorRows.length > 0) {
-		insertions.push(
-			supabase.schema("analytics").from("error_events").insert(errorRows).then(({ error }) => {
-				if (error) {
-					console.error(`[analytics/ingest] error_events insert error for ${errorRows.length} events:`, error.code);
-				}
-			}),
-		);
-	}
-
-	await Promise.all(insertions);
 
 	// 204 No Content — minimal response
 	return new NextResponse(null, { status: 204 });
@@ -213,8 +227,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 // Preflight CORS
 export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
 	const origin = request.headers.get("origin") ?? "";
+	const host = request.headers.get("host") ?? "";
 	const isDev = process.env.NODE_ENV === "development";
-	if (!isDev && !ALLOWED_ORIGINS.includes(origin)) {
+	const hostOrigin = host ? `https://${host}` : "";
+	if (!isDev && !STATIC_ORIGINS.has(origin) && origin !== hostOrigin) {
 		return new NextResponse(null, { status: 403 });
 	}
 	return new NextResponse(null, {

@@ -1,12 +1,21 @@
-const FONT_URLS: Record<string, string> = {
-	inter: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
-	merriweather:
-		"https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap",
-	"jetbrains-mono":
-		"https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap",
-	opendyslexic:
-		"https://fonts.cdnfonts.com/css/opendyslexic",
+/**
+ * Font loader — privacy-first.
+ *
+ * All Google Fonts (Inter, JetBrains Mono, Merriweather) are self-hosted
+ * via next/font in app/layout.tsx. They are downloaded at BUILD time —
+ * ZERO runtime requests to fonts.googleapis.com.
+ *
+ * This module only handles OpenDyslexic (loaded from cdnfonts on demand)
+ * and marks other fonts as "loaded" since they're already available
+ * via CSS variables (--font-inter, --font-jetbrains-mono, --font-merriweather).
+ */
+
+const EXTERNAL_FONT_URLS: Record<string, string> = {
+	opendyslexic: "https://fonts.cdnfonts.com/css/opendyslexic",
 };
+
+// Fonts that are self-hosted via next/font (always available)
+const SELF_HOSTED_FONTS = new Set(["inter", "jetbrains-mono", "merriweather"]);
 
 const loadedFonts = new Set<string>();
 
@@ -19,7 +28,14 @@ export function loadFont(fontFamily: string): void {
 		return;
 	}
 
-	const url = FONT_URLS[fontFamily];
+	// Self-hosted fonts are always available via next/font CSS variables
+	if (SELF_HOSTED_FONTS.has(fontFamily)) {
+		loadedFonts.add(fontFamily);
+		return;
+	}
+
+	// External fonts (OpenDyslexic) loaded on demand
+	const url = EXTERNAL_FONT_URLS[fontFamily];
 	if (!url) return;
 
 	const link = document.createElement("link");

@@ -11,7 +11,10 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "tauri": "cargo tauri",
+    "tauri:dev": "cargo tauri dev",
+    "tauri:build": "./scripts/tauri-build.sh"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -25,6 +28,7 @@
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.95.3",
     "@tanstack/react-virtual": "^3.13.18",
+    "@tauri-apps/api": "^2.10.1",
     "html2canvas": "^1.4.1",
     "livekit-client": "^2.17.2",
     "livekit-server-sdk": "^2.15.0",
@@ -35,6 +39,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "recharts": "^3.7.0",
+    "resend": "^6.9.3",
     "three": "^0.182.0",
     "web-push": "^3.6.7",
     "zod": "^3.24.0",

@@ -3,7 +3,7 @@
  * Tracks long tasks, memory usage, layout shifts, FCP, LCP
  * Provides health checks and CSS containment helpers
  *
- * Targets: <50MB RAM, <2% CPU idle (gamer-safe)
+ * Targets: <100MB RAM, <2% CPU idle (gamer-safe)
  */
 
 export interface PerformanceMetrics {

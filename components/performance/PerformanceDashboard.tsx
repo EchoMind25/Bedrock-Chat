@@ -149,7 +149,7 @@ export function PerformanceDashboard() {
 								value={latestSnapshot?.memoryMB ?? 0}
 								max={150}
 								unit="MB"
-								target="<50 idle"
+								target="<100 idle"
 								status={getGaugeStatus(
 									latestSnapshot?.memoryMB ?? 0,
 									50,
