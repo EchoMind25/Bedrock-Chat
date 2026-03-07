@@ -255,13 +255,29 @@ export function VoiceChannel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId]);
 
+  // Connection timeout — if stuck in "connecting" for 15s, show error
+  const CONNECTION_TIMEOUT_MS = 15_000;
+  useEffect(() => {
+    if (connectionStatus !== "connecting") return;
+
+    const timer = setTimeout(() => {
+      const current = useVoiceStore.getState().connectionStatus;
+      if (current === "connecting") {
+        useVoiceStore.getState().setConnectionStatus("error");
+        useVoiceStore.getState().setError("Connection timed out — the voice server may be unreachable.");
+      }
+    }, CONNECTION_TIMEOUT_MS);
+
+    return () => clearTimeout(timer);
+  }, [connectionStatus]);
+
   const isConnected = connectionStatus === "connected";
-  const isConnecting =
-    connectionStatus === "connecting" ||
-    (connectionStatus === "idle" && permissionStep === "none");
+  const isConnecting = connectionStatus === "connecting";
   const isReconnecting = connectionStatus === "reconnecting";
   const isError = connectionStatus === "error";
   const isWaitingPermission = permissionStep !== "none";
+  // Show waiting state when idle (before permission flow or after deny)
+  const isIdle = connectionStatus === "idle";
 
   return (
     <>
@@ -421,7 +437,7 @@ export function VoiceChannel({
             isConnecting={isConnecting}
             isReconnecting={isReconnecting}
             isError={isError}
-            isWaitingPermission={isWaitingPermission}
+            isWaitingPermission={isWaitingPermission || isIdle}
             error={error}
             localParticipant={localParticipant}
             remoteParticipantIds={remoteParticipantIds}
