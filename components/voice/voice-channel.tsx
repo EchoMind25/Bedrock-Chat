@@ -367,8 +367,8 @@ export function VoiceChannel({
           </div>
         </motion.div>
 
-        {/* Main content area — LiveKitRoom wraps when connected */}
-        {voiceToken && voiceWsUrl && isConnected ? (
+        {/* Main content area — LiveKitRoom wraps when token is available */}
+        {voiceToken && voiceWsUrl ? (
           <LiveKitRoom
             serverUrl={voiceWsUrl}
             token={voiceToken}
@@ -386,6 +386,11 @@ export function VoiceChannel({
             onConnected={() => {
               useVoiceStore.getState().setConnectionStatus("connected");
             }}
+            onError={(err) => {
+              console.error("[voice] LiveKitRoom error:", err);
+              useVoiceStore.getState().setConnectionStatus("error");
+              useVoiceStore.getState().setError(err?.message || "Voice connection failed");
+            }}
             className="flex-1 flex flex-col min-h-0"
           >
             <RoomAudioRenderer />
@@ -393,10 +398,10 @@ export function VoiceChannel({
             <LiveKitControlSync />
             <VoiceChannelContent
               isConnected={isConnected}
-              isConnecting={false}
-              isReconnecting={false}
-              isError={false}
-              error={null}
+              isConnecting={!isConnected && !isError}
+              isReconnecting={isReconnecting}
+              isError={isError}
+              error={error}
               localParticipant={localParticipant}
               remoteParticipantIds={remoteParticipantIds}
               remoteParticipants={remoteParticipants}

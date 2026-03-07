@@ -41,9 +41,21 @@ export function useLiveKitCall() {
 
         const { token, wsUrl, roomName, capabilities } = await res.json();
 
-        // Pre-warm ICE connection (DNS resolve + TLS handshake + ICE gathering)
-        // This moves negotiation out of the critical connect-to-audio path
-        await room.prepareConnection(wsUrl, token);
+        // Pre-warm ICE connection with a timeout to prevent hanging forever
+        // if the LiveKit server is unreachable
+        const PREPARE_TIMEOUT_MS = 10_000;
+        try {
+          await Promise.race([
+            room.prepareConnection(wsUrl, token),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error("Connection timed out")), PREPARE_TIMEOUT_MS),
+            ),
+          ]);
+        } catch (prepareErr) {
+          // prepareConnection failure is non-fatal — the LiveKitRoom component
+          // will attempt a fresh connection. Log and continue.
+          console.warn("[voice] ICE pre-warm failed, continuing without pre-warming:", prepareErr);
+        }
 
         // Store pre-warmed Room in module-level ref for voice-channel.tsx to consume
         setPrewarmedRoom(room);

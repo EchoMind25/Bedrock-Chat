@@ -188,7 +188,7 @@ export const useVoiceStore = create<VoiceState>()(
 
         setVoiceConnection: (data) =>
           set({
-            connectionStatus: "connected",
+            connectionStatus: "connecting",
             channelId: data.channelId,
             channelName: data.channelName,
             serverId: data.serverId,
