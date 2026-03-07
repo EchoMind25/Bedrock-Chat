@@ -257,10 +257,11 @@ export function VoiceChannel({
 
   const isConnected = connectionStatus === "connected";
   const isConnecting =
-    (connectionStatus === "connecting" || connectionStatus === "idle") &&
-    permissionStep === "none";
+    connectionStatus === "connecting" ||
+    (connectionStatus === "idle" && permissionStep === "none");
   const isReconnecting = connectionStatus === "reconnecting";
   const isError = connectionStatus === "error";
+  const isWaitingPermission = permissionStep !== "none";
 
   return (
     <>
@@ -401,6 +402,7 @@ export function VoiceChannel({
               isConnecting={!isConnected && !isError}
               isReconnecting={isReconnecting}
               isError={isError}
+              isWaitingPermission={false}
               error={error}
               localParticipant={localParticipant}
               remoteParticipantIds={remoteParticipantIds}
@@ -419,6 +421,7 @@ export function VoiceChannel({
             isConnecting={isConnecting}
             isReconnecting={isReconnecting}
             isError={isError}
+            isWaitingPermission={isWaitingPermission}
             error={error}
             localParticipant={localParticipant}
             remoteParticipantIds={remoteParticipantIds}
@@ -598,6 +601,7 @@ interface VoiceChannelContentProps {
   isConnecting: boolean;
   isReconnecting: boolean;
   isError: boolean;
+  isWaitingPermission: boolean;
   error: string | null;
   localParticipant: VoiceParticipant | undefined;
   remoteParticipantIds: string[];
@@ -615,6 +619,7 @@ function VoiceChannelContent({
   isConnecting,
   isReconnecting,
   isError,
+  isWaitingPermission,
   error,
   localParticipant,
   remoteParticipantIds,
@@ -630,6 +635,21 @@ function VoiceChannelContent({
       {/* Orbital Layout Area */}
       <div className="flex-1 flex items-center justify-center relative overflow-hidden">
         <div className="absolute inset-0 bg-linear-to-br from-[oklch(0.12_0.03_260)] via-[oklch(0.10_0.02_280)] to-[oklch(0.08_0.01_300)]" />
+
+        {isWaitingPermission && (
+          <motion.div
+            className="relative z-10 flex flex-col items-center gap-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <div className="p-4 rounded-2xl bg-[oklch(0.55_0.2_265/0.15)] border border-[oklch(0.55_0.2_265/0.2)]">
+              <Users className="w-8 h-8 text-[oklch(0.7_0.2_265)]" />
+            </div>
+            <p className="text-sm text-slate-400">
+              Grant microphone access to join
+            </p>
+          </motion.div>
+        )}
 
         {isConnecting && (
           <motion.div
